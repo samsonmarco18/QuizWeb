@@ -1,0 +1,4 @@
+*.json
+uploads/
+!.gitignore
+!.htaccess
