@@ -75,6 +75,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_
 
 $modes = game_modes();
 $attemptsList = classroom_attempts((int) $classroom['id']);
+$leaderboard = classroom_leaderboard($classroom);
+$currentStudentRank = null;
+foreach ($leaderboard as $leaderboardRow) {
+    if ((int) ($leaderboardRow['student']['id'] ?? 0) === (int) $user['id']) {
+        $currentStudentRank = $leaderboardRow;
+        break;
+    }
+}
 $announcements = classroom_announcements($classroom);
 $chatMessages = classroom_chat_messages($classroom);
 $chatMessageCount = count($chatMessages);
@@ -214,7 +222,7 @@ render_header($classroom['name'], 'classroom-page');
                 $isTeacher = ($message['user_role'] ?? '') === 'teacher';
                 $isCurrentUser = (int) ($message['user_id'] ?? 0) === (int) $user['id'];
                 $name = $message['user_name'] ?? 'Member';
-                $role = ucfirst((string) ($message['user_role'] ?? 'student'));
+                $role = role_label((string) ($message['user_role'] ?? 'student'));
                 $trimmedName = trim($name);
                 $initial = function_exists('mb_substr')
                     ? mb_substr($trimmedName, 0, 1)
@@ -227,7 +235,10 @@ render_header($classroom['name'], 'classroom-page');
                         <div class="chat-message-meta">
                             <div>
                                 <strong><?php echo esc($isCurrentUser ? 'You' : $name); ?></strong>
-                                <span><?php echo esc($isCurrentUser ? 'Your message' : $role); ?></span>
+                                <span class="role-chip <?php echo $isTeacher ? 'role-chip-teacher' : 'role-chip-student'; ?>"><?php echo esc($role); ?></span>
+                                <?php if ($isCurrentUser): ?>
+                                    <span>Your message</span>
+                                <?php endif; ?>
                             </div>
                             <time datetime="<?php echo esc($message['created_at'] ?? now_iso()); ?>"><?php echo esc(format_date($message['created_at'] ?? now_iso())); ?></time>
                         </div>
@@ -340,6 +351,43 @@ render_header($classroom['name'], 'classroom-page');
             </div>
         <?php endif; ?>
     </article>
+</section>
+
+<section class="glass panel leaderboard-panel">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">Leaderboards</span>
+            <h2>Student rankings</h2>
+            <p class="muted">Ranks use each student’s best score per quiz, then break ties by percentage, completed quizzes, and time.</p>
+        </div>
+        <?php if ($currentStudentRank): ?>
+            <div class="rank-summary">
+                <span>Your rank</span>
+                <strong>#<?php echo esc((string) $currentStudentRank['rank']); ?></strong>
+            </div>
+        <?php endif; ?>
+    </div>
+    <div class="leaderboard-list">
+        <?php if ($leaderboard): ?>
+            <?php foreach ($leaderboard as $row): ?>
+                <?php $isCurrentStudent = (int) ($row['student']['id'] ?? 0) === (int) $user['id']; ?>
+                <article class="leaderboard-row <?php echo $isCurrentStudent ? 'is-current-student' : ''; ?>">
+                    <div class="leaderboard-rank">#<?php echo esc((string) $row['rank']); ?></div>
+                    <div class="leaderboard-student">
+                        <strong><?php echo esc($isCurrentStudent ? 'You' : ($row['student']['name'] ?? 'Student')); ?></strong>
+                        <span><?php echo esc($row['quizzes_played'] . ' quizzes played · ' . $row['attempts'] . ' attempts'); ?></span>
+                    </div>
+                    <div class="leaderboard-score">
+                        <strong><?php echo esc($row['total_score'] . '/' . $row['max_score']); ?></strong>
+                        <span><?php echo esc($row['average_percent'] . '% average'); ?></span>
+                    </div>
+                    <div class="leaderboard-time"><?php echo esc($row['elapsed_seconds'] ? $row['elapsed_seconds'] . 's best-time total' : 'No runs yet'); ?></div>
+                </article>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p class="muted">No students have joined this classroom yet.</p>
+        <?php endif; ?>
+    </div>
 </section>
 
 <section class="glass panel">

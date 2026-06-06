@@ -887,6 +887,11 @@ function game_modes(): array
             'icon' => 'B',
             'description' => 'Answer correctly to wear down the boss and protect your health.',
         ],
+        'crossword' => [
+            'label' => 'Crossword Puzzle',
+            'icon' => 'C',
+            'description' => 'Build a clue-based word grid with real intersections and black squares.',
+        ],
         'master_ladder' => [
             'label' => 'Mastery Ladder',
             'icon' => 'L',
@@ -908,6 +913,217 @@ function mastery_levels(): array
 function mastery_threshold_for_quiz(array $quiz): int
 {
     return max(50, min(100, (int) ($quiz['mastery_threshold'] ?? 75)));
+}
+
+function role_label(string $role): string
+{
+    return $role === 'teacher' ? 'Teacher' : 'Student';
+}
+
+function crossword_normalize_answer(string $answer): string
+{
+    return strtoupper(preg_replace('/[^A-Za-z]/', '', $answer));
+}
+
+function crossword_cell_key(int $row, int $col): string
+{
+    return $row . ':' . $col;
+}
+
+function crossword_can_place_word(array $grid, string $word, int $row, int $col, string $direction, int $size): array
+{
+    $length = strlen($word);
+    $intersections = 0;
+    $deltaRow = $direction === 'down' ? 1 : 0;
+    $deltaCol = $direction === 'across' ? 1 : 0;
+    $beforeRow = $row - $deltaRow;
+    $beforeCol = $col - $deltaCol;
+    $afterRow = $row + ($deltaRow * $length);
+    $afterCol = $col + ($deltaCol * $length);
+
+    if ($row < 0 || $col < 0 || $row + ($deltaRow * ($length - 1)) >= $size || $col + ($deltaCol * ($length - 1)) >= $size) {
+        return [false, 0];
+    }
+
+    if (isset($grid[crossword_cell_key($beforeRow, $beforeCol)]) || isset($grid[crossword_cell_key($afterRow, $afterCol)])) {
+        return [false, 0];
+    }
+
+    for ($index = 0; $index < $length; $index += 1) {
+        $cellRow = $row + ($deltaRow * $index);
+        $cellCol = $col + ($deltaCol * $index);
+        $key = crossword_cell_key($cellRow, $cellCol);
+        $existing = $grid[$key] ?? null;
+
+        if ($existing !== null && $existing !== $word[$index]) {
+            return [false, 0];
+        }
+
+        if ($existing === $word[$index]) {
+            $intersections += 1;
+            continue;
+        }
+
+        if ($direction === 'across') {
+            if (isset($grid[crossword_cell_key($cellRow - 1, $cellCol)]) || isset($grid[crossword_cell_key($cellRow + 1, $cellCol)])) {
+                return [false, 0];
+            }
+        } else {
+            if (isset($grid[crossword_cell_key($cellRow, $cellCol - 1)]) || isset($grid[crossword_cell_key($cellRow, $cellCol + 1)])) {
+                return [false, 0];
+            }
+        }
+    }
+
+    return [true, $intersections];
+}
+
+function crossword_place_word(array &$grid, string $word, int $row, int $col, string $direction): void
+{
+    $deltaRow = $direction === 'down' ? 1 : 0;
+    $deltaCol = $direction === 'across' ? 1 : 0;
+
+    for ($index = 0; $index < strlen($word); $index += 1) {
+        $grid[crossword_cell_key($row + ($deltaRow * $index), $col + ($deltaCol * $index))] = $word[$index];
+    }
+}
+
+function build_crossword_layout(array $questions): ?array
+{
+    if (count($questions) < 2) {
+        return null;
+    }
+
+    $entries = array_values($questions);
+    usort($entries, function (array $a, array $b) {
+        return strlen($b['answer'] ?? '') <=> strlen($a['answer'] ?? '');
+    });
+
+    $longest = strlen($entries[0]['answer'] ?? '');
+    $size = max(13, min(25, $longest + (count($entries) * 3)));
+    $center = intdiv($size, 2);
+    $grid = [];
+    $placements = [];
+    $firstWord = $entries[0]['answer'];
+    $firstDirection = ($entries[0]['preferred_direction'] ?? '') === 'down' ? 'down' : 'across';
+    $firstRow = $firstDirection === 'down' ? max(0, $center - intdiv(strlen($firstWord), 2)) : $center;
+    $firstCol = $firstDirection === 'across' ? max(0, $center - intdiv(strlen($firstWord), 2)) : $center;
+
+    crossword_place_word($grid, $firstWord, $firstRow, $firstCol, $firstDirection);
+    $placements[] = [
+        'question_id' => (int) $entries[0]['id'],
+        'answer' => $firstWord,
+        'row' => $firstRow,
+        'col' => $firstCol,
+        'direction' => $firstDirection,
+        'intersections' => 0,
+    ];
+
+    foreach (array_slice($entries, 1) as $entry) {
+        $word = $entry['answer'];
+        $candidates = [];
+        $preferredDirection = ($entry['preferred_direction'] ?? '') === 'down' ? 'down' : 'across';
+
+        foreach ($placements as $placed) {
+            $placedWord = $placed['answer'];
+            $direction = $placed['direction'] === 'across' ? 'down' : 'across';
+
+            if ($direction !== $preferredDirection) {
+                continue;
+            }
+
+            for ($wordIndex = 0; $wordIndex < strlen($word); $wordIndex += 1) {
+                for ($placedIndex = 0; $placedIndex < strlen($placedWord); $placedIndex += 1) {
+                    if ($word[$wordIndex] !== $placedWord[$placedIndex]) {
+                        continue;
+                    }
+
+                    if ($direction === 'down') {
+                        $row = $placed['row'] - $wordIndex;
+                        $col = $placed['col'] + $placedIndex;
+                    } else {
+                        $row = $placed['row'] + $placedIndex;
+                        $col = $placed['col'] - $wordIndex;
+                    }
+
+                    [$canPlace, $intersections] = crossword_can_place_word($grid, $word, $row, $col, $direction, $size);
+
+                    if ($canPlace && $intersections > 0) {
+                        $distance = abs($center - $row) + abs($center - $col);
+                        $candidates[] = [
+                            'row' => $row,
+                            'col' => $col,
+                            'direction' => $direction,
+                            'score' => ($intersections * 20) - $distance,
+                            'intersections' => $intersections,
+                        ];
+                    }
+                }
+            }
+        }
+
+        if (!$candidates) {
+            return null;
+        }
+
+        usort($candidates, function (array $a, array $b) {
+            return $b['score'] <=> $a['score'];
+        });
+
+        $best = $candidates[0];
+        crossword_place_word($grid, $word, $best['row'], $best['col'], $best['direction']);
+        $placements[] = [
+            'question_id' => (int) $entry['id'],
+            'answer' => $word,
+            'row' => $best['row'],
+            'col' => $best['col'],
+            'direction' => $best['direction'],
+            'intersections' => $best['intersections'],
+        ];
+    }
+
+    $rows = array_map('intval', array_map(function (string $key) {
+        return explode(':', $key)[0];
+    }, array_keys($grid)));
+    $cols = array_map('intval', array_map(function (string $key) {
+        return explode(':', $key)[1];
+    }, array_keys($grid)));
+    $minRow = max(0, min($rows) - 1);
+    $maxRow = min($size - 1, max($rows) + 1);
+    $minCol = max(0, min($cols) - 1);
+    $maxCol = min($size - 1, max($cols) + 1);
+    $cells = [];
+
+    for ($row = $minRow; $row <= $maxRow; $row += 1) {
+        $line = [];
+        for ($col = $minCol; $col <= $maxCol; $col += 1) {
+            $line[] = $grid[crossword_cell_key($row, $col)] ?? null;
+        }
+        $cells[] = $line;
+    }
+
+    $acrossNumber = 1;
+    $downNumber = 1;
+    foreach ($placements as &$placement) {
+        $placement['row'] -= $minRow;
+        $placement['col'] -= $minCol;
+        if ($placement['direction'] === 'across') {
+            $placement['number'] = $acrossNumber;
+            $acrossNumber += 1;
+        } else {
+            $placement['number'] = $downNumber;
+            $downNumber += 1;
+        }
+        unset($placement['answer']);
+    }
+    unset($placement);
+
+    return [
+        'rows' => count($cells),
+        'cols' => count($cells[0] ?? []),
+        'cells' => $cells,
+        'placements' => $placements,
+    ];
 }
 
 function mastery_demo_questions(): array
@@ -1304,13 +1520,31 @@ function student_attempts(int $studentId): array
     return $records;
 }
 
-function create_attempt(int $studentId, int $classroomId, array $quiz, array $answers, int $elapsedSeconds): array
+function create_attempt(int $studentId, int $classroomId, array $quiz, array $answers, int $elapsedSeconds, bool $forceZero = false): array
 {
     $records = attempts();
     $score = 0;
     $maxScore = 0;
 
     foreach ($quiz['questions'] as $index => $question) {
+        if ($forceZero) {
+            $maxScore += (int) ($question['points'] ?? 10);
+            continue;
+        }
+
+        if (($quiz['game_type'] ?? '') === 'crossword') {
+            $points = (int) ($question['points'] ?? 10);
+            $expected = crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? '')));
+            $submitted = crossword_normalize_answer((string) ($answers[$index] ?? ''));
+            $maxScore += $points;
+
+            if ($expected !== '' && $submitted === $expected) {
+                $score += $points;
+            }
+
+            continue;
+        }
+
         $isAttemptedQuestion = ($quiz['game_type'] ?? '') === 'master_ladder'
             ? array_key_exists($index, $answers)
             : true;
@@ -1344,6 +1578,80 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
     save_attempts($records);
 
     return $attempt;
+}
+
+function classroom_leaderboard(array $classroom): array
+{
+    $students = classroom_students($classroom);
+    $records = classroom_attempts((int) $classroom['id']);
+    $rows = [];
+
+    foreach ($students as $student) {
+        $rows[(int) $student['id']] = [
+            'student' => $student,
+            'best_by_quiz' => [],
+            'attempts' => 0,
+            'total_score' => 0,
+            'max_score' => 0,
+            'average_percent' => 0,
+            'elapsed_seconds' => 0,
+            'rank' => 0,
+        ];
+    }
+
+    foreach ($records as $attempt) {
+        $studentId = (int) ($attempt['student_id'] ?? 0);
+
+        if (!isset($rows[$studentId])) {
+            continue;
+        }
+
+        $quizId = (int) ($attempt['quiz_id'] ?? 0);
+        $percent = percentage((int) ($attempt['score'] ?? 0), (int) ($attempt['max_score'] ?? 0));
+        $attempt['percent'] = $percent;
+        $rows[$studentId]['attempts'] += 1;
+
+        $currentBest = $rows[$studentId]['best_by_quiz'][$quizId] ?? null;
+        if (!$currentBest
+            || $percent > (int) ($currentBest['percent'] ?? 0)
+            || ($percent === (int) ($currentBest['percent'] ?? 0) && (int) $attempt['elapsed_seconds'] < (int) ($currentBest['elapsed_seconds'] ?? PHP_INT_MAX))
+        ) {
+            $rows[$studentId]['best_by_quiz'][$quizId] = $attempt;
+        }
+    }
+
+    foreach ($rows as &$row) {
+        foreach ($row['best_by_quiz'] as $attempt) {
+            $row['total_score'] += (int) ($attempt['score'] ?? 0);
+            $row['max_score'] += (int) ($attempt['max_score'] ?? 0);
+            $row['elapsed_seconds'] += max(1, (int) ($attempt['elapsed_seconds'] ?? 0));
+        }
+
+        $row['average_percent'] = percentage((int) $row['total_score'], (int) $row['max_score']);
+        $row['quizzes_played'] = count($row['best_by_quiz']);
+        unset($row['best_by_quiz']);
+    }
+    unset($row);
+
+    $rows = array_values($rows);
+    usort($rows, function (array $a, array $b) {
+        return [$b['total_score'], $b['average_percent'], $b['quizzes_played'], $a['elapsed_seconds'], $a['student']['name']]
+            <=> [$a['total_score'], $a['average_percent'], $a['quizzes_played'], $b['elapsed_seconds'], $b['student']['name']];
+    });
+
+    $rank = 0;
+    $previousKey = null;
+    foreach ($rows as $index => &$row) {
+        $key = $row['total_score'] . ':' . $row['average_percent'] . ':' . $row['quizzes_played'];
+        if ($key !== $previousKey) {
+            $rank = $index + 1;
+            $previousKey = $key;
+        }
+        $row['rank'] = $rank;
+    }
+    unset($row);
+
+    return $rows;
 }
 
 function percentage(int $value, int $max): int

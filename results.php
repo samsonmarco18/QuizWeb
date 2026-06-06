@@ -28,18 +28,26 @@ if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
 $quiz = classroom_quiz($classroom, (int) $attempt['quiz_id']);
 $scorePercent = percentage((int) $attempt['score'], (int) $attempt['max_score']);
 $student = find_user_by_id((int) $attempt['student_id']);
+$attemptAnswers = $attempt['answers'] ?? [];
+$isDisqualified = !empty($attemptAnswers['_disqualified']);
 
 render_header('Results', 'results-page');
 ?>
 
 <section class="results-shell glass">
-    <span class="eyebrow">Game Complete</span>
+    <span class="eyebrow"><?php echo $isDisqualified ? 'Quiz Rule Violation' : 'Game Complete'; ?></span>
     <h1><?php echo esc($attempt['quiz_title']); ?></h1>
-    <p class="lead">Great run, <?php echo esc($student['name'] ?? 'Player'); ?>. Here is the score snapshot from your latest game.</p>
+    <p class="lead">
+        <?php if ($isDisqualified): ?>
+            This attempt was marked as 0 after the fullscreen/focus warning limit was exceeded.
+        <?php else: ?>
+            Great run, <?php echo esc($student['name'] ?? 'Player'); ?>. Here is the score snapshot from your latest game.
+        <?php endif; ?>
+    </p>
     <div class="feature-pills centered">
         <span><?php echo esc($classroom['name'] ?? 'Classroom'); ?></span>
         <span><?php echo esc($quiz['game_type'] ?? 'Quiz mode'); ?></span>
-        <span>Performance recap</span>
+        <span><?php echo $isDisqualified ? 'Marked 0' : 'Performance recap'; ?></span>
     </div>
 
     <div class="result-score-ring" style="background:

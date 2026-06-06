@@ -6,6 +6,7 @@
     const addQuestionButton = document.getElementById("add-question-button");
     const builderForm = document.getElementById("quiz-builder-form");
     const payloadInput = document.getElementById("questions_payload");
+    const gameTypeSelect = builderForm?.querySelector('[name="game_type"]');
     const messengerDock = document.querySelector("[data-messenger-dock]");
     const themeStorageKey = "quizweb-theme";
 
@@ -53,6 +54,8 @@
         const card = fragment.querySelector(".question-card");
 
         card.querySelector('[data-field="prompt"]').value = seed.prompt || "";
+        card.querySelector('[data-field="answer"]').value = seed.answer || seed.options?.[0] || "";
+        card.querySelector('[data-field="preferred_direction"]').value = seed.preferred_direction || seed.crossword?.direction || "across";
         card.querySelector('[data-field="option-0"]').value = seed.options?.[0] || "";
         card.querySelector('[data-field="option-1"]').value = seed.options?.[1] || "";
         card.querySelector('[data-field="option-2"]').value = seed.options?.[2] || "";
@@ -67,9 +70,46 @@
         });
 
         questionList.appendChild(fragment);
+        applyBuilderModeToCard(card);
         refreshQuestionLabels();
 
         return card;
+    }
+
+    function currentBuilderMode() {
+        return gameTypeSelect?.value || window.quizBuilderMode || "time_attack";
+    }
+
+    function applyBuilderModeToCard(card) {
+        const isCrossword = currentBuilderMode() === "crossword";
+        card.querySelectorAll("[data-crossword-only]").forEach((element) => {
+            element.hidden = !isCrossword;
+        });
+        card.querySelectorAll("[data-choice-only]").forEach((element) => {
+            element.hidden = isCrossword;
+        });
+
+        const promptLabel = card.querySelector("[data-prompt-label]");
+        const promptInput = card.querySelector('[data-field="prompt"]');
+        if (promptLabel) {
+            promptLabel.textContent = isCrossword ? "Clue" : "Prompt";
+        }
+        if (promptInput) {
+            promptInput.placeholder = isCrossword ? "Write a clear clue for this word" : "Type the question here";
+        }
+    }
+
+    function applyBuilderMode() {
+        if (!questionList) {
+            return;
+        }
+
+        const isCrossword = currentBuilderMode() === "crossword";
+        if (addQuestionButton) {
+            addQuestionButton.textContent = isCrossword ? "Add Word" : "Add Question";
+        }
+        [...questionList.querySelectorAll(".question-card")].forEach((card) => applyBuilderModeToCard(card));
+        refreshQuestionLabels();
     }
 
     function refreshQuestionLabels() {
@@ -80,7 +120,7 @@
         [...questionList.querySelectorAll(".question-card")].forEach((card, index) => {
             const label = card.querySelector("[data-question-label]");
             if (label) {
-                label.textContent = `Question ${index + 1}`;
+                label.textContent = `${currentBuilderMode() === "crossword" ? "Word" : "Question"} ${index + 1}`;
             }
         });
     }
@@ -90,18 +130,37 @@
             return [];
         }
 
-        return [...questionList.querySelectorAll(".question-card")].map((card) => ({
-            prompt: card.querySelector('[data-field="prompt"]').value.trim(),
-            options: [
-                card.querySelector('[data-field="option-0"]').value.trim(),
-                card.querySelector('[data-field="option-1"]').value.trim(),
-                card.querySelector('[data-field="option-2"]').value.trim(),
-                card.querySelector('[data-field="option-3"]').value.trim(),
-            ],
-            correct_index: Number(card.querySelector('[data-field="correct_index"]').value || 0),
-            points: Number(card.querySelector('[data-field="points"]').value || 10),
-            level: card.querySelector('[data-field="level"]').value || "easy",
-        }));
+        const isCrossword = currentBuilderMode() === "crossword";
+
+        return [...questionList.querySelectorAll(".question-card")].map((card) => {
+            const prompt = card.querySelector('[data-field="prompt"]').value.trim();
+            const answer = card.querySelector('[data-field="answer"]').value.trim();
+
+            if (isCrossword) {
+                return {
+                    prompt,
+                    answer,
+                    preferred_direction: card.querySelector('[data-field="preferred_direction"]').value || "across",
+                    options: [answer],
+                    correct_index: 0,
+                    points: Number(card.querySelector('[data-field="points"]').value || 10),
+                    level: card.querySelector('[data-field="level"]').value || "easy",
+                };
+            }
+
+            return {
+                prompt,
+                options: [
+                    card.querySelector('[data-field="option-0"]').value.trim(),
+                    card.querySelector('[data-field="option-1"]').value.trim(),
+                    card.querySelector('[data-field="option-2"]').value.trim(),
+                    card.querySelector('[data-field="option-3"]').value.trim(),
+                ],
+                correct_index: Number(card.querySelector('[data-field="correct_index"]').value || 0),
+                points: Number(card.querySelector('[data-field="points"]').value || 10),
+                level: card.querySelector('[data-field="level"]').value || "easy",
+            };
+        });
     }
 
     if (questionList && builderForm && payloadInput) {
@@ -113,14 +172,21 @@
         }
 
         addQuestionButton?.addEventListener("click", () => buildQuestionCard());
+        gameTypeSelect?.addEventListener("change", applyBuilderMode);
+        applyBuilderMode();
 
         builderForm.addEventListener("submit", (event) => {
             const questions = collectQuestions();
-            const incomplete = questions.some((question) => !question.prompt || question.options.some((option) => !option));
+            const isCrossword = currentBuilderMode() === "crossword";
+            const incomplete = isCrossword
+                ? questions.some((question) => !question.prompt || !question.answer)
+                : questions.some((question) => !question.prompt || question.options.some((option) => !option));
 
             if (!questions.length || incomplete) {
                 event.preventDefault();
-                alert("Please complete every question and answer before saving the quiz.");
+                alert(isCrossword
+                    ? "Please complete every crossword word and clue before saving the puzzle."
+                    : "Please complete every question and answer before saving the quiz.");
                 return;
             }
 

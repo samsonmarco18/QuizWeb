@@ -26,13 +26,17 @@ $quizData = [
     'title' => $quiz['title'],
     'game_type' => $quiz['game_type'],
     'mastery_threshold' => mastery_threshold_for_quiz($quiz),
+    'crossword_layout' => $quiz['crossword_layout'] ?? null,
     'questions' => array_map(function (array $question) {
         return [
+            'id' => (int) ($question['id'] ?? 0),
             'prompt' => $question['prompt'],
-            'options' => array_values($question['options']),
+            'answer' => $question['answer'] ?? ($question['options'][0] ?? ''),
+            'options' => array_values($question['options'] ?? []),
             'correct_index' => (int) ($question['correct_index'] ?? 0),
             'points' => (int) ($question['points'] ?? 10),
             'level' => $question['level'] ?? 'easy',
+            'crossword' => $question['crossword'] ?? null,
         ];
     }, $quiz['questions']),
 ];
@@ -47,9 +51,12 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
             <h1><?php echo esc($quiz['title']); ?></h1>
             <p class="lead compact"><?php echo esc($quiz['description'] ?: $modes[$quiz['game_type']]['description']); ?></p>
             <div class="feature-pills">
-                <span><?php echo esc(count($quiz['questions'])); ?> questions</span>
+                <span><?php echo esc(count($quiz['questions']) . (($quiz['game_type'] ?? '') === 'crossword' ? ' words' : ' questions')); ?></span>
                 <span><?php echo esc($isPreview ? 'Teacher preview' : 'Live student run'); ?></span>
                 <span><?php echo esc($classroom['name']); ?></span>
+                <?php if (($quiz['game_type'] ?? '') === 'crossword'): ?>
+                    <span>Intersecting word grid</span>
+                <?php endif; ?>
                 <?php if (($quiz['game_type'] ?? '') === 'master_ladder'): ?>
                     <span><?php echo esc((string) mastery_threshold_for_quiz($quiz)); ?>% to unlock next level</span>
                 <?php endif; ?>

@@ -183,6 +183,7 @@ function render_messenger_dock(): void
                         <?php if ($classrooms): ?>
                             <?php foreach ($classrooms as $index => $classroom): ?>
                                 <?php
+                                $latestMessage = classroom_latest_chat_message($classroom);
                                 $messages = array_slice(classroom_chat_messages($classroom), -20);
                                 $isActive = $defaultClassroomId
                                     ? (int) $classroom['id'] === $defaultClassroomId
@@ -204,6 +205,7 @@ function render_messenger_dock(): void
                                                 $isSelf = (int) ($message['user_id'] ?? 0) === (int) $user['id'];
                                                 $isTeacher = ($message['user_role'] ?? '') === 'teacher';
                                                 $name = $message['user_name'] ?? 'Member';
+                                                $role = role_label((string) ($message['user_role'] ?? 'student'));
                                                 $trimmedName = trim($name);
                                                 $initial = function_exists('mb_substr')
                                                     ? mb_substr($trimmedName, 0, 1)
@@ -214,7 +216,10 @@ function render_messenger_dock(): void
                                                     <span class="messenger-message-avatar" aria-hidden="true"><?php echo esc($initial ?: 'M'); ?></span>
                                                     <div class="messenger-message-bubble">
                                                         <div class="messenger-message-meta">
-                                                            <strong><?php echo esc($isSelf ? 'You' : $name); ?></strong>
+                                                            <div>
+                                                                <strong><?php echo esc($isSelf ? 'You' : $name); ?></strong>
+                                                                <span class="role-chip <?php echo $isTeacher ? 'role-chip-teacher' : 'role-chip-student'; ?>"><?php echo esc($role); ?></span>
+                                                            </div>
                                                             <time datetime="<?php echo esc($message['created_at'] ?? now_iso()); ?>"><?php echo esc(format_date($message['created_at'] ?? now_iso())); ?></time>
                                                         </div>
                                                         <p><?php echo nl2br(esc($message['body'] ?? '')); ?></p>
