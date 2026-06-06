@@ -4,7 +4,7 @@ session_start();
 
 date_default_timezone_set('Asia/Manila');
 
-define('APP_NAME', 'BrainByte');
+define('APP_NAME', 'CHALK');
 define('DATA_DIR', __DIR__ . '/../data');
 define('USERS_FILE', DATA_DIR . '/users.json');
 define('CLASSROOMS_FILE', DATA_DIR . '/classrooms.json');
@@ -133,6 +133,7 @@ function ensure_database_schema(PDO $pdo): void
             student_ids LONGTEXT NOT NULL,
             quizzes LONGTEXT NOT NULL,
             announcements LONGTEXT NOT NULL,
+            chat_messages LONGTEXT NOT NULL,
             created_at VARCHAR(40) NOT NULL,
             updated_at VARCHAR(40) NOT NULL,
             KEY idx_classrooms_teacher_id (teacher_id)
@@ -159,7 +160,25 @@ function ensure_database_schema(PDO $pdo): void
         $pdo->exec($statement);
     }
 
+    if (!table_has_column($pdo, 'classrooms', 'chat_messages')) {
+        $pdo->exec('ALTER TABLE classrooms ADD COLUMN chat_messages LONGTEXT NOT NULL');
+        $pdo->exec("UPDATE classrooms SET chat_messages = '[]' WHERE chat_messages IS NULL OR chat_messages = ''");
+    }
+
     $initialized = true;
+}
+
+function table_has_column(PDO $pdo, string $table, string $column): bool
+{
+    $statement = $pdo->query('DESCRIBE `' . $table . '`');
+
+    foreach ($statement->fetchAll() as $row) {
+        if (strcasecmp((string) ($row['Field'] ?? ''), $column) === 0) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function table_is_empty(PDO $pdo, string $table): bool
@@ -195,9 +214,9 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
 {
     $statement = $pdo->prepare('
         INSERT INTO classrooms (
-            id, teacher_id, name, subject, description, code, student_ids, quizzes, announcements, created_at, updated_at
+            id, teacher_id, name, subject, description, code, student_ids, quizzes, announcements, chat_messages, created_at, updated_at
         ) VALUES (
-            :id, :teacher_id, :name, :subject, :description, :code, :student_ids, :quizzes, :announcements, :created_at, :updated_at
+            :id, :teacher_id, :name, :subject, :description, :code, :student_ids, :quizzes, :announcements, :chat_messages, :created_at, :updated_at
         )
         ON DUPLICATE KEY UPDATE
             teacher_id = VALUES(teacher_id),
@@ -208,6 +227,7 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
             student_ids = VALUES(student_ids),
             quizzes = VALUES(quizzes),
             announcements = VALUES(announcements),
+            chat_messages = VALUES(chat_messages),
             created_at = VALUES(created_at),
             updated_at = VALUES(updated_at)
     ');
@@ -221,6 +241,7 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
         'student_ids' => db_json_encode(array_values($classroom['student_ids'] ?? [])),
         'quizzes' => db_json_encode(array_values($classroom['quizzes'] ?? [])),
         'announcements' => db_json_encode(array_values($classroom['announcements'] ?? [])),
+        'chat_messages' => db_json_encode(array_values($classroom['chat_messages'] ?? [])),
         'created_at' => $classroom['created_at'],
         'updated_at' => $classroom['updated_at'],
     ]);
@@ -314,6 +335,7 @@ function hydrate_classroom(array $row): array
         'student_ids' => array_map('intval', db_json_decode($row['student_ids'] ?? '[]')),
         'quizzes' => db_json_decode($row['quizzes'] ?? '[]'),
         'announcements' => db_json_decode($row['announcements'] ?? '[]'),
+        'chat_messages' => db_json_decode($row['chat_messages'] ?? '[]'),
         'created_at' => $row['created_at'],
         'updated_at' => $row['updated_at'],
     ];
@@ -449,6 +471,22 @@ function redirect(string $path): void
 {
     header('Location: ' . $path);
     exit;
+}
+
+function current_request_uri(): string
+{
+    return $_SERVER['REQUEST_URI'] ?? '/QuizWeb/dashboard.php';
+}
+
+function safe_local_path(string $path, string $fallback = '/QuizWeb/dashboard.php'): string
+{
+    $path = trim($path);
+
+    if ($path !== '' && str_starts_with($path, '/QuizWeb/')) {
+        return $path;
+    }
+
+    return $fallback;
 }
 
 function flash_set(string $type, string $message): void
@@ -609,6 +647,48 @@ function classroom_announcements(array $classroom): array
     });
 
     return $announcements;
+}
+
+function classroom_chat_messages(array $classroom): array
+{
+    $messages = $classroom['chat_messages'] ?? [];
+
+    usort($messages, function (array $a, array $b) {
+        return strcmp($a['created_at'] ?? '', $b['created_at'] ?? '');
+    });
+
+    return $messages;
+}
+
+function classroom_latest_chat_message(array $classroom): ?array
+{
+    $messages = classroom_chat_messages($classroom);
+
+    if (!$messages) {
+        return null;
+    }
+
+    return $messages[array_key_last($messages)] ?? null;
+}
+
+function chat_message_excerpt(?array $message, int $length = 64): string
+{
+    if (!$message) {
+        return 'No messages yet';
+    }
+
+    $body = trim((string) ($message['body'] ?? ''));
+    $body = preg_replace('/\s+/', ' ', $body) ?: '';
+
+    if ($body === '') {
+        return 'No messages yet';
+    }
+
+    if (function_exists('mb_substr') && function_exists('mb_strlen')) {
+        return mb_strlen($body) > $length ? mb_substr($body, 0, $length - 1) . '…' : $body;
+    }
+
+    return strlen($body) > $length ? substr($body, 0, $length - 1) . '…' : $body;
 }
 
 function find_classroom_announcement(array $classroom, int $announcementId): ?array
@@ -994,13 +1074,14 @@ function ensure_mastery_demo_classroom(array $teacher): array
         $targetClassroom = [
             'id' => next_id($records),
             'teacher_id' => (int) $teacher['id'],
-            'name' => 'BrainByte Mastery Lab',
+            'name' => 'CHALK Mastery Lab',
             'subject' => 'Progression Demo',
             'description' => 'A sample classroom for testing mastery-based level progression.',
             'code' => generate_join_code(),
             'student_ids' => [],
             'quizzes' => [],
             'announcements' => [],
+            'chat_messages' => [],
             'created_at' => now_iso(),
             'updated_at' => now_iso(),
         ];
@@ -1038,6 +1119,19 @@ function student_classrooms(int $studentId): array
     return array_values(array_filter(classrooms(), function (array $classroom) use ($studentId) {
         return in_array($studentId, $classroom['student_ids'] ?? [], true);
     }));
+}
+
+function user_classrooms(array $user): array
+{
+    if (($user['role'] ?? '') === 'teacher') {
+        return teacher_classrooms((int) $user['id']);
+    }
+
+    if (($user['role'] ?? '') === 'student') {
+        return student_classrooms((int) $user['id']);
+    }
+
+    return [];
 }
 
 function find_classroom(int $classroomId): ?array
@@ -1078,6 +1172,22 @@ function create_classroom_announcement(array $classroom, array $teacher, string 
         'title' => $title,
         'body' => $body,
         'attachments' => $attachments,
+        'created_at' => now_iso(),
+    ];
+    $classroom['updated_at'] = now_iso();
+
+    return $classroom;
+}
+
+function create_classroom_chat_message(array $classroom, array $user, string $body): array
+{
+    $classroom['chat_messages'] = $classroom['chat_messages'] ?? [];
+    $classroom['chat_messages'][] = [
+        'id' => next_id($classroom['chat_messages']),
+        'user_id' => (int) $user['id'],
+        'user_name' => $user['name'],
+        'user_role' => $user['role'],
+        'body' => $body,
         'created_at' => now_iso(),
     ];
     $classroom['updated_at'] = now_iso();

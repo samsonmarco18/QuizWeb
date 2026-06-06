@@ -26,6 +26,7 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
             'student_ids' => [],
             'quizzes' => [],
             'announcements' => [],
+            'chat_messages' => [],
             'created_at' => now_iso(),
             'updated_at' => now_iso(),
         ];

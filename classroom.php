@@ -6,6 +6,8 @@ $user = require_login();
 $classroomId = (int) ($_GET['id'] ?? 0);
 $classroom = find_classroom($classroomId);
 $announcementErrors = [];
+$chatErrors = [];
+$GLOBALS['quizweb_current_classroom_id'] = $classroomId;
 
 if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
     flash_set('danger', 'Classroom not found or access denied.');
@@ -46,9 +48,36 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_chat_message') {
+    if (!classroom_belongs_to_user($classroom, $user)) {
+        flash_set('danger', 'Classroom not found or access denied.');
+        redirect('/QuizWeb/dashboard.php');
+    }
+
+    $chatBody = trim($_POST['chat_body'] ?? '');
+
+    if ($chatBody === '') {
+        $chatErrors[] = 'Message cannot be empty.';
+    }
+
+    if (strlen($chatBody) > 1500) {
+        $chatErrors[] = 'Message must be 1500 characters or fewer.';
+    }
+
+    if (!$chatErrors) {
+        $classroom = create_classroom_chat_message($classroom, $user, $chatBody);
+        save_classroom($classroom);
+        flash_set('success', 'Message posted to the classroom chat.');
+        $returnUrl = safe_local_path($_POST['return_url'] ?? '', '/QuizWeb/classroom.php?id=' . $classroom['id']);
+        redirect($returnUrl);
+    }
+}
+
 $modes = game_modes();
 $attemptsList = classroom_attempts((int) $classroom['id']);
 $announcements = classroom_announcements($classroom);
+$chatMessages = classroom_chat_messages($classroom);
+$chatMessageCount = count($chatMessages);
 
 render_header($classroom['name'], 'classroom-page');
 ?>
@@ -159,6 +188,80 @@ render_header($classroom['name'], 'classroom-page');
         <?php else: ?>
             <p class="muted"><?php echo esc($user['role'] === 'teacher' ? 'No announcements yet. Post the first update for your class.' : 'No announcements have been posted in this classroom yet.'); ?></p>
         <?php endif; ?>
+    </div>
+</section>
+
+<section class="glass panel chat-panel">
+    <div class="chat-header">
+        <div>
+            <span class="eyebrow">Group chat</span>
+            <h2>Classroom messages</h2>
+            <p class="chat-header-copy">Keep the conversation moving with quick updates, questions, and replies.</p>
+        </div>
+        <div class="chat-status">
+            <span class="chat-status-dot"></span>
+            <div>
+                <strong>Live thread</strong>
+                <span><?php echo esc($chatMessageCount ? $chatMessageCount . ' messages' : 'Ready for the first message'); ?></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-thread">
+        <?php if ($chatMessages): ?>
+            <?php foreach ($chatMessages as $message): ?>
+                <?php
+                $isTeacher = ($message['user_role'] ?? '') === 'teacher';
+                $isCurrentUser = (int) ($message['user_id'] ?? 0) === (int) $user['id'];
+                $name = $message['user_name'] ?? 'Member';
+                $role = ucfirst((string) ($message['user_role'] ?? 'student'));
+                $trimmedName = trim($name);
+                $initial = function_exists('mb_substr')
+                    ? mb_substr($trimmedName, 0, 1)
+                    : substr($trimmedName, 0, 1);
+                $initial = strtoupper($initial);
+                ?>
+                <article class="chat-message <?php echo $isTeacher ? 'chat-message-teacher' : 'chat-message-student'; ?> <?php echo $isCurrentUser ? 'chat-message-self' : 'chat-message-peer'; ?>">
+                    <div class="chat-avatar" aria-hidden="true"><?php echo esc($initial ?: 'M'); ?></div>
+                    <div class="chat-bubble">
+                        <div class="chat-message-meta">
+                            <div>
+                                <strong><?php echo esc($isCurrentUser ? 'You' : $name); ?></strong>
+                                <span><?php echo esc($isCurrentUser ? 'Your message' : $role); ?></span>
+                            </div>
+                            <time datetime="<?php echo esc($message['created_at'] ?? now_iso()); ?>"><?php echo esc(format_date($message['created_at'] ?? now_iso())); ?></time>
+                        </div>
+                        <p><?php echo nl2br(esc($message['body'] ?? '')); ?></p>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="chat-empty-state">
+                <div class="chat-empty-icon">💬</div>
+                <strong>No messages yet</strong>
+                <p>Start the thread with a question, reminder, or quick hello.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="chat-composer-shell">
+        <form method="post" class="stack-form chat-form">
+            <input type="hidden" name="action" value="post_chat_message">
+            <?php foreach ($chatErrors as $error): ?>
+                <div class="inline-error"><?php echo esc($error); ?></div>
+            <?php endforeach; ?>
+            <label class="chat-composer">
+                <div class="chat-composer-top">
+                    <span>Send a message</span>
+                    <small>Friendly, clear, and class-ready</small>
+                </div>
+                <textarea name="chat_body" rows="3" maxlength="1500" placeholder="Write a message to the class..."><?php echo esc($_POST['chat_body'] ?? ''); ?></textarea>
+            </label>
+            <div class="chat-composer-actions">
+                <p class="chat-composer-hint">Press send to share your update with the class.</p>
+                <button class="button button-primary" type="submit">Send</button>
+            </div>
+        </form>
     </div>
 </section>
 

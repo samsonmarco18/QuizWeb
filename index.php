@@ -9,22 +9,16 @@ if (is_logged_in()) {
 render_header('Home', 'landing-page');
 ?>
 
-<section class="hero-grid">
-    <div class="hero-copy">
-        <span class="eyebrow">Cool classrooms, fast gameplay, full control</span>
-        <h1>Build a quiz arena your students will actually want to play.</h1>
+<section class="hero-grid landing-hero hero-shell" id="hero">
+    <div class="hero-copy hero-copy-wide">
+        <span class="eyebrow">CHALK classroom hub</span>
+        <h1>Unleash better classroom play.</h1>
         <p class="lead">
-            Teachers can create classrooms, share join codes, and fully edit quiz questions and answers across
-            five game modes. Students can join instantly, compete in animated quiz challenges, and keep track of scores.
+            Build rooms, launch quizzes, and keep scores in one clean flow.
         </p>
         <div class="cta-row">
-            <a class="button button-primary" href="/QuizWeb/register.php">Start as Teacher</a>
-            <a class="button button-secondary" href="/QuizWeb/login.php">Student Login</a>
-        </div>
-        <div class="feature-pills">
-            <span>5 editable games</span>
-            <span>Teacher + student roles</span>
-            <span>Classroom join codes</span>
+            <a class="button button-primary" href="/QuizWeb/register.php">Get Started</a>
+            <a class="button button-secondary" href="/QuizWeb/login.php">Learn More</a>
         </div>
         <div class="hero-metrics">
             <article class="metric-pill">
@@ -35,65 +29,38 @@ render_header('Home', 'landing-page');
                 <strong>2</strong>
                 <span>user roles</span>
             </article>
-            <article class="metric-pill">
-                <strong>1</strong>
-                <span>shared class hub</span>
-            </article>
         </div>
     </div>
-    <div class="hero-panel glass">
-        <div class="showcase-window">
-            <div class="showcase-row">
-                <div>
-                    <span class="showcase-badge">Live Classroom Flow</span>
-                    <h2>From announcement to leaderboard in one space</h2>
-                </div>
-                <span class="code-badge">PX-204</span>
-            </div>
-            <div class="showcase-rail">
-                <article class="showcase-module">
-                    <strong>Morning Brief</strong>
-                    <p>Teachers post reminders, modules, images, and files to the class feed.</p>
-                </article>
-                <article class="showcase-module">
-                    <strong>Quiz Launch</strong>
-                    <p>Students jump from the feed into a game mode without leaving the classroom page.</p>
-                </article>
-                <article class="showcase-module">
-                    <strong>Instant Results</strong>
-                    <p>Attempts and scores flow back into the same class space for fast review.</p>
-                </article>
-            </div>
+
+    <div class="hero-center">
+        <div class="hero-art" aria-hidden="true">
+            <div class="hero-art-ring hero-art-ring-one"></div>
+            <div class="hero-art-ring hero-art-ring-two"></div>
+            <div class="hero-art-ring hero-art-ring-three"></div>
+            <div class="hero-art-core"></div>
+            <div class="hero-art-sphere hero-art-sphere-one"></div>
+            <div class="hero-art-sphere hero-art-sphere-two"></div>
+            <div class="hero-art-sphere hero-art-sphere-three"></div>
         </div>
     </div>
-</section>
 
-<section class="info-grid">
-    <article class="glass info-card">
-        <h2>Teacher Control</h2>
-        <p>Create classrooms, design quizzes, edit every question, choose correct answers, and launch multiple game styles from one dashboard.</p>
-    </article>
-    <article class="glass info-card">
-        <h2>Student Friendly</h2>
-        <p>Students join with a code, see their classes instantly, and play responsive quiz games that work on desktop and mobile.</p>
-    </article>
-    <article class="glass info-card">
-        <h2>Gamified Design</h2>
-        <p>Moving backgrounds, glowing controls, score tracking, and vibrant cool-tone visuals give the whole site a playful classroom feel.</p>
-    </article>
-</section>
+    <aside class="hero-panel glass hero-side">
+        <article class="hero-side-card hero-side-feature">
+            <strong>Fresh layout</strong>
+            <p>Clean panels, simple spacing, and a stronger visual focus.</p>
+        </article>
 
-<section class="story-grid">
-    <article class="glass story-card">
-        <span class="eyebrow">Teacher workflow</span>
-        <h2>Create, announce, launch</h2>
-        <p class="lead compact">Set up a room, post a module or reminder, then publish interactive quizzes without juggling multiple tools.</p>
-    </article>
-    <article class="glass story-card">
-        <span class="eyebrow">Student workflow</span>
-        <h2>Join, play, improve</h2>
-        <p class="lead compact">Students land in a cleaner classroom hub with clearer actions, richer feedback, and less clutter on every screen.</p>
-    </article>
+        <div class="hero-side-list">
+            <span>Easy classroom setup</span>
+            <span>Quiz launch flow</span>
+            <span>Green gradient theme</span>
+            <span>Responsive cards</span>
+        </div>
+
+        <article class="hero-side-thumbnail">
+            <div class="hero-side-thumb-art"></div>
+        </article>
+    </aside>
 </section>
 
 <?php render_footer(); ?>

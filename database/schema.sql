@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `classrooms` (
     `student_ids` LONGTEXT NOT NULL,
     `quizzes` LONGTEXT NOT NULL,
     `announcements` LONGTEXT NOT NULL,
+    `chat_messages` LONGTEXT NOT NULL,
     `created_at` VARCHAR(40) NOT NULL,
     `updated_at` VARCHAR(40) NOT NULL,
     PRIMARY KEY (`id`),
