@@ -19,6 +19,7 @@ function nav_links(?array $user): array
 
     if ($user['role'] === 'student') {
         $links[] = ['/QuizWeb/join.php', 'Join Class'];
+        $links[] = ['/QuizWeb/practice.php', 'Focus Practice'];
     }
 
     $links[] = ['/QuizWeb/logout.php', 'Logout'];

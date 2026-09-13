@@ -76,6 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_
 $modes = game_modes();
 $attemptsList = classroom_attempts((int) $classroom['id']);
 $leaderboard = classroom_leaderboard($classroom);
+$classLearningProfile = classroom_learning_profile($classroom);
+$studentClassProfile = $user['role'] === 'student'
+    ? student_learning_profile((int) $user['id'], (int) $classroom['id'])
+    : null;
+$studentClassPracticeQuestions = $studentClassProfile ? learning_practice_questions($studentClassProfile) : [];
 $currentStudentRank = null;
 foreach ($leaderboard as $leaderboardRow) {
     if ((int) ($leaderboardRow['student']['id'] ?? 0) === (int) $user['id']) {
@@ -120,6 +125,113 @@ render_header($classroom['name'], 'classroom-page');
         </article>
     </div>
 </section>
+
+<?php if ($user['role'] === 'teacher'): ?>
+    <section class="glass panel learning-coach-panel">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Class learning map</span>
+                <h2>Weak spots to reteach</h2>
+                <p class="muted">Based on scored student attempts in this classroom.</p>
+            </div>
+        </div>
+        <div class="learning-summary-grid">
+            <article class="stat-card">
+                <strong><?php echo esc((string) $classLearningProfile['overall_accuracy']); ?>%</strong>
+                <span>Class accuracy</span>
+            </article>
+            <article class="stat-card">
+                <strong><?php echo esc((string) $classLearningProfile['analyzed_attempts']); ?></strong>
+                <span>Scored attempts</span>
+            </article>
+            <article class="stat-card">
+                <strong><?php echo esc((string) count($classLearningProfile['weak_questions'])); ?></strong>
+                <span>Weak questions</span>
+            </article>
+        </div>
+
+        <div class="learning-grid">
+            <article class="learning-card">
+                <h3>Question heatlist</h3>
+                <?php if ($classLearningProfile['weak_questions']): ?>
+                    <div class="learning-list">
+                        <?php foreach (array_slice($classLearningProfile['weak_questions'], 0, 4) as $item): ?>
+                            <div class="learning-item">
+                                <div>
+                                    <strong><?php echo esc($item['quiz_title'] . ' - ' . $item['level_label']); ?></strong>
+                                    <span><?php echo esc($item['prompt']); ?></span>
+                                </div>
+                                <div class="insight-meter" aria-label="<?php echo esc((string) $item['accuracy']); ?> percent accuracy">
+                                    <span style="width: <?php echo esc((string) $item['accuracy']); ?>%"></span>
+                                </div>
+                                <small><?php echo esc($item['accuracy'] . '% accuracy; missed by ' . $item['missed_student_count'] . ' student' . ((int) $item['missed_student_count'] === 1 ? '' : 's')); ?></small>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p class="muted">No weak class pattern yet. More student attempts will make this panel useful.</p>
+                <?php endif; ?>
+            </article>
+
+            <article class="learning-card">
+                <h3>Difficulty bands</h3>
+                <?php if ($classLearningProfile['weak_levels']): ?>
+                    <div class="skill-pill-row">
+                        <?php foreach ($classLearningProfile['weak_levels'] as $level): ?>
+                            <span class="skill-pill"><?php echo esc($level['label'] . ': ' . $level['accuracy'] . '%'); ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="muted">Use these bands to decide which items need review before the next game.</p>
+                <?php else: ?>
+                    <p class="muted">No difficulty band is below the 75% watch line yet.</p>
+                <?php endif; ?>
+            </article>
+        </div>
+    </section>
+<?php else: ?>
+    <section class="glass panel learning-coach-panel">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Your learning map</span>
+                <h2>Class-specific focus</h2>
+                <p class="muted"><?php echo esc($studentClassProfile['trend_message']); ?></p>
+            </div>
+            <?php if ($studentClassPracticeQuestions): ?>
+                <a class="button button-primary" href="/QuizWeb/practice.php">Practice Weak Items</a>
+            <?php endif; ?>
+        </div>
+        <div class="learning-summary-grid">
+            <article class="stat-card">
+                <strong><?php echo esc((string) $studentClassProfile['overall_accuracy']); ?>%</strong>
+                <span>Your accuracy here</span>
+            </article>
+            <article class="stat-card">
+                <strong><?php echo esc((string) $studentClassProfile['questions_seen']); ?></strong>
+                <span>Questions analyzed</span>
+            </article>
+            <article class="stat-card">
+                <strong><?php echo esc((string) count($studentClassProfile['focus_items'])); ?></strong>
+                <span>Focus items</span>
+            </article>
+        </div>
+
+        <?php if ($studentClassProfile['focus_items']): ?>
+            <div class="learning-list compact-learning-list">
+                <?php foreach (array_slice($studentClassProfile['focus_items'], 0, 3) as $item): ?>
+                    <div class="learning-item">
+                        <div>
+                            <strong><?php echo esc($item['level_label'] . ' - ' . $item['quiz_title']); ?></strong>
+                            <span><?php echo esc($item['prompt']); ?></span>
+                        </div>
+                        <small><?php echo esc($item['guidance']); ?></small>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <p class="muted">No weak item is visible in this classroom yet. Play a quiz to generate a class-specific recommendation.</p>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
 
 <section class="glass panel newsfeed-panel">
     <div class="section-heading">

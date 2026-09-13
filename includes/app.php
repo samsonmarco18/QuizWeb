@@ -1663,6 +1663,535 @@ function percentage(int $value, int $max): int
     return (int) round(($value / $max) * 100);
 }
 
+function average_percentage(array $values): int
+{
+    $values = array_values(array_filter($values, function ($value) {
+        return is_numeric($value);
+    }));
+
+    if (!$values) {
+        return 0;
+    }
+
+    return (int) round(array_sum($values) / count($values));
+}
+
+function attempt_is_disqualified(array $attempt): bool
+{
+    $answers = $attempt['answers'] ?? [];
+
+    return is_array($answers) && !empty($answers['_disqualified']);
+}
+
+function answer_at_index(array $answers, int $index, bool &$exists)
+{
+    if (array_key_exists($index, $answers)) {
+        $exists = true;
+        return $answers[$index];
+    }
+
+    $stringIndex = (string) $index;
+    if (array_key_exists($stringIndex, $answers)) {
+        $exists = true;
+        return $answers[$stringIndex];
+    }
+
+    $exists = false;
+    return null;
+}
+
+function learning_level_label(string $level): string
+{
+    $levels = mastery_levels();
+
+    return $levels[$level] ?? ucfirst($level ?: 'easy');
+}
+
+function option_answer_label(array $question, $selected): string
+{
+    if ($selected === null || $selected === '') {
+        return 'No answer';
+    }
+
+    $selectedIndex = (int) $selected;
+    $options = array_values($question['options'] ?? []);
+
+    if (!array_key_exists($selectedIndex, $options)) {
+        return 'Invalid answer';
+    }
+
+    return chr(65 + $selectedIndex) . '. ' . $options[$selectedIndex];
+}
+
+function correct_answer_label(array $question, string $gameType): string
+{
+    if ($gameType === 'crossword') {
+        return crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? '')));
+    }
+
+    return option_answer_label($question, $question['correct_index'] ?? null);
+}
+
+function learning_guidance(array $question, bool $isCorrect, bool $attempted, string $gameType): string
+{
+    if ($isCorrect) {
+        return 'Keep it fresh by explaining why this answer is correct in one sentence.';
+    }
+
+    if (!$attempted) {
+        return 'Replay this item and answer it before moving on; skipped questions usually hide the real weak spot.';
+    }
+
+    if ($gameType === 'crossword') {
+        $answer = correct_answer_label($question, $gameType);
+        return 'Review the meaning and spelling of "' . $answer . '", then use the clue to recall it without looking.';
+    }
+
+    $level = (string) ($question['level'] ?? 'easy');
+    if (in_array($level, ['hard', 'master'], true)) {
+        return 'Break the problem into steps, then compare each step with the correct answer.';
+    }
+
+    return 'Compare your answer with the correct one and write a short rule you can reuse next time.';
+}
+
+function attempt_question_review_rows(array $quiz, array $attempt): array
+{
+    if (attempt_is_disqualified($attempt)) {
+        return [];
+    }
+
+    $gameType = (string) ($quiz['game_type'] ?? ($attempt['game_type'] ?? 'time_attack'));
+    $answers = is_array($attempt['answers'] ?? null) ? $attempt['answers'] : [];
+    $rows = [];
+
+    foreach (array_values($quiz['questions'] ?? []) as $index => $question) {
+        $answerExists = false;
+        $selected = answer_at_index($answers, $index, $answerExists);
+        $points = (int) ($question['points'] ?? 10);
+        $level = (string) ($question['level'] ?? 'easy');
+        $countsForLearning = $gameType === 'master_ladder' ? $answerExists : true;
+
+        if ($gameType === 'crossword') {
+            $expected = crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? '')));
+            $submitted = crossword_normalize_answer((string) ($selected ?? ''));
+            $attempted = $submitted !== '';
+            $isCorrect = $expected !== '' && $submitted === $expected;
+            $submittedLabel = $attempted ? $submitted : 'No answer';
+        } else {
+            $correctIndex = (int) ($question['correct_index'] ?? 0);
+            $attempted = $answerExists && $selected !== null && $selected !== '';
+            $isCorrect = $attempted && (int) $selected === $correctIndex;
+            $submittedLabel = option_answer_label($question, $selected);
+        }
+
+        $rows[] = [
+            'index' => $index,
+            'question_id' => (int) ($question['id'] ?? ($index + 1)),
+            'prompt' => (string) ($question['prompt'] ?? ''),
+            'level' => $level,
+            'level_label' => learning_level_label($level),
+            'points' => $points,
+            'earned_points' => $isCorrect ? $points : 0,
+            'attempted' => $attempted,
+            'counts_for_learning' => $countsForLearning,
+            'is_correct' => $isCorrect,
+            'submitted_answer' => $submittedLabel,
+            'correct_answer' => correct_answer_label($question, $gameType),
+            'guidance' => learning_guidance($question, $isCorrect, $attempted, $gameType),
+            'game_type' => $gameType,
+            'options' => array_values($question['options'] ?? []),
+            'correct_index' => (int) ($question['correct_index'] ?? 0),
+            'answer' => $question['answer'] ?? ($question['options'][0] ?? ''),
+        ];
+    }
+
+    return $rows;
+}
+
+function learning_empty_profile(): array
+{
+    return [
+        'attempts' => 0,
+        'analyzed_attempts' => 0,
+        'questions_seen' => 0,
+        'correct' => 0,
+        'overall_accuracy' => 0,
+        'trend_message' => 'Play a quiz first so the learning coach can build a profile.',
+        'focus_items' => [],
+        'weak_levels' => [],
+        'strong_levels' => [],
+        'plan_steps' => [
+            'Join a classroom or open an assigned quiz.',
+            'Complete one full game so the system can find your weak areas.',
+        ],
+        'disqualified_attempts' => 0,
+    ];
+}
+
+function finalize_learning_stats(array $stats): array
+{
+    foreach ($stats as &$row) {
+        $row['accuracy'] = percentage((int) ($row['correct'] ?? 0), (int) ($row['attempts'] ?? 0));
+        $row['missed'] = max(0, (int) ($row['attempts'] ?? 0) - (int) ($row['correct'] ?? 0));
+    }
+    unset($row);
+
+    return $stats;
+}
+
+function student_learning_profile(int $studentId, ?int $classroomId = null): array
+{
+    $records = student_attempts($studentId);
+
+    if ($classroomId !== null) {
+        $records = array_values(array_filter($records, function (array $attempt) use ($classroomId) {
+            return (int) ($attempt['classroom_id'] ?? 0) === $classroomId;
+        }));
+    }
+
+    $profile = learning_empty_profile();
+    $profile['attempts'] = count($records);
+
+    $levelStats = [];
+    $questionStats = [];
+    $recentPercentages = [];
+
+    foreach ($records as $attempt) {
+        if (attempt_is_disqualified($attempt)) {
+            $profile['disqualified_attempts'] += 1;
+            continue;
+        }
+
+        $classroom = find_classroom((int) ($attempt['classroom_id'] ?? 0));
+        if (!$classroom) {
+            continue;
+        }
+
+        $quiz = classroom_quiz($classroom, (int) ($attempt['quiz_id'] ?? 0));
+        if (!$quiz) {
+            continue;
+        }
+
+        $profile['analyzed_attempts'] += 1;
+        $recentPercentages[] = percentage((int) ($attempt['score'] ?? 0), (int) ($attempt['max_score'] ?? 0));
+
+        foreach (attempt_question_review_rows($quiz, $attempt) as $row) {
+            if (!$row['counts_for_learning']) {
+                continue;
+            }
+
+            $level = $row['level'];
+            if (!isset($levelStats[$level])) {
+                $levelStats[$level] = [
+                    'level' => $level,
+                    'label' => $row['level_label'],
+                    'attempts' => 0,
+                    'correct' => 0,
+                    'missed' => 0,
+                    'accuracy' => 0,
+                ];
+            }
+
+            $profile['questions_seen'] += 1;
+            $levelStats[$level]['attempts'] += 1;
+
+            if ($row['is_correct']) {
+                $profile['correct'] += 1;
+                $levelStats[$level]['correct'] += 1;
+            }
+
+            $questionKey = implode(':', [
+                (int) $classroom['id'],
+                (int) ($quiz['id'] ?? 0),
+                (int) $row['question_id'],
+                $row['index'],
+            ]);
+
+            if (!isset($questionStats[$questionKey])) {
+                $questionStats[$questionKey] = [
+                    'classroom_id' => (int) $classroom['id'],
+                    'classroom_name' => $classroom['name'],
+                    'quiz_id' => (int) ($quiz['id'] ?? 0),
+                    'quiz_title' => $quiz['title'] ?? $attempt['quiz_title'],
+                    'game_type' => $quiz['game_type'] ?? $attempt['game_type'],
+                    'prompt' => $row['prompt'],
+                    'level' => $row['level'],
+                    'level_label' => $row['level_label'],
+                    'correct_answer' => $row['correct_answer'],
+                    'last_submitted_answer' => $row['submitted_answer'],
+                    'attempts' => 0,
+                    'correct' => 0,
+                    'missed' => 0,
+                    'accuracy' => 0,
+                    'guidance' => $row['guidance'],
+                    'question' => [
+                        'id' => $row['question_id'],
+                        'prompt' => $row['prompt'],
+                        'options' => $row['options'],
+                        'correct_index' => $row['correct_index'],
+                        'points' => $row['points'],
+                        'level' => $row['level'],
+                        'answer' => $row['answer'],
+                    ],
+                ];
+            }
+
+            $questionStats[$questionKey]['attempts'] += 1;
+            $questionStats[$questionKey]['last_submitted_answer'] = $row['submitted_answer'];
+            $questionStats[$questionKey]['guidance'] = $row['guidance'];
+
+            if ($row['is_correct']) {
+                $questionStats[$questionKey]['correct'] += 1;
+            }
+        }
+    }
+
+    $profile['overall_accuracy'] = percentage((int) $profile['correct'], (int) $profile['questions_seen']);
+    $levelStats = finalize_learning_stats($levelStats);
+    $questionStats = finalize_learning_stats($questionStats);
+
+    $weakLevels = array_values(array_filter($levelStats, function (array $row) {
+        return (int) ($row['attempts'] ?? 0) > 0 && (int) ($row['accuracy'] ?? 0) < 75;
+    }));
+    usort($weakLevels, function (array $a, array $b) {
+        return [$a['accuracy'], $b['attempts']] <=> [$b['accuracy'], $a['attempts']];
+    });
+
+    $strongLevels = array_values(array_filter($levelStats, function (array $row) {
+        return (int) ($row['attempts'] ?? 0) > 0 && (int) ($row['accuracy'] ?? 0) >= 85;
+    }));
+    usort($strongLevels, function (array $a, array $b) {
+        return [$b['accuracy'], $b['attempts']] <=> [$a['accuracy'], $a['attempts']];
+    });
+
+    $focusItems = array_values(array_filter($questionStats, function (array $row) {
+        return (int) ($row['attempts'] ?? 0) > 0 && ((int) ($row['accuracy'] ?? 0) < 70 || (int) ($row['correct'] ?? 0) === 0);
+    }));
+    usort($focusItems, function (array $a, array $b) {
+        return [$a['accuracy'], $b['missed'], $b['attempts']] <=> [$b['accuracy'], $a['missed'], $a['attempts']];
+    });
+
+    if (!$focusItems && $questionStats) {
+        $focusItems = array_values($questionStats);
+        usort($focusItems, function (array $a, array $b) {
+            return [$a['accuracy'], $b['missed']] <=> [$b['accuracy'], $a['missed']];
+        });
+    }
+
+    $profile['focus_items'] = array_slice($focusItems, 0, 6);
+    $profile['weak_levels'] = array_slice($weakLevels, 0, 4);
+    $profile['strong_levels'] = array_slice($strongLevels, 0, 4);
+
+    $latestAverage = average_percentage(array_slice($recentPercentages, 0, 3));
+    $previousAverage = average_percentage(array_slice($recentPercentages, 3, 3));
+
+    if (!$profile['analyzed_attempts']) {
+        $profile['trend_message'] = 'No scored attempts yet. Finish one quiz to unlock recommendations.';
+    } elseif ($previousAverage > 0) {
+        $difference = $latestAverage - $previousAverage;
+        if ($difference > 0) {
+            $profile['trend_message'] = 'Latest average is ' . $latestAverage . '%, up ' . $difference . ' points from the previous set.';
+        } elseif ($difference < 0) {
+            $profile['trend_message'] = 'Latest average is ' . $latestAverage . '%, down ' . abs($difference) . ' points. Focus practice is recommended.';
+        } else {
+            $profile['trend_message'] = 'Latest average is steady at ' . $latestAverage . '%. Push one weak area above 75%.';
+        }
+    } else {
+        $profile['trend_message'] = 'Latest average is ' . $latestAverage . '%. Add more attempts to reveal a trend.';
+    }
+
+    if ($profile['focus_items']) {
+        $first = $profile['focus_items'][0];
+        $profile['plan_steps'] = [
+            'Start Focus Practice for the weakest multiple-choice items.',
+            'Replay "' . $first['quiz_title'] . '" and aim for at least 80%.',
+            'Write a one-sentence explanation for: ' . $first['prompt'],
+        ];
+    } elseif ($profile['analyzed_attempts']) {
+        $profile['plan_steps'] = [
+            'No urgent weak area is below 70%; raise the target to 90%.',
+            'Replay your lowest quiz and try to beat your best time.',
+        ];
+    }
+
+    return $profile;
+}
+
+function learning_practice_questions(array $profile, int $limit = 8): array
+{
+    $questions = [];
+    $seen = [];
+
+    foreach ($profile['focus_items'] ?? [] as $item) {
+        $question = $item['question'] ?? [];
+        $options = array_values($question['options'] ?? []);
+        $correctIndex = (int) ($question['correct_index'] ?? -1);
+
+        if (count($options) < 4 || $correctIndex < 0 || $correctIndex > 3) {
+            continue;
+        }
+
+        $key = md5((string) ($question['prompt'] ?? '') . '|' . implode('|', $options));
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $questions[] = [
+            'id' => count($questions) + 1,
+            'prompt' => $question['prompt'],
+            'options' => array_slice($options, 0, 4),
+            'correct_index' => $correctIndex,
+            'points' => 10,
+            'level' => $question['level'] ?? 'easy',
+        ];
+
+        if (count($questions) >= $limit) {
+            break;
+        }
+    }
+
+    return $questions;
+}
+
+function classroom_learning_profile(array $classroom): array
+{
+    $records = classroom_attempts((int) $classroom['id']);
+    $levelStats = [];
+    $questionStats = [];
+    $analyzedAttempts = 0;
+    $questionsSeen = 0;
+    $correct = 0;
+
+    foreach ($records as $attempt) {
+        if (attempt_is_disqualified($attempt)) {
+            continue;
+        }
+
+        $quiz = classroom_quiz($classroom, (int) ($attempt['quiz_id'] ?? 0));
+        if (!$quiz) {
+            continue;
+        }
+
+        $analyzedAttempts += 1;
+        $student = find_user_by_id((int) ($attempt['student_id'] ?? 0));
+
+        foreach (attempt_question_review_rows($quiz, $attempt) as $row) {
+            if (!$row['counts_for_learning']) {
+                continue;
+            }
+
+            $questionsSeen += 1;
+            if ($row['is_correct']) {
+                $correct += 1;
+            }
+
+            $level = $row['level'];
+            if (!isset($levelStats[$level])) {
+                $levelStats[$level] = [
+                    'level' => $level,
+                    'label' => $row['level_label'],
+                    'attempts' => 0,
+                    'correct' => 0,
+                    'missed' => 0,
+                    'accuracy' => 0,
+                ];
+            }
+            $levelStats[$level]['attempts'] += 1;
+            if ($row['is_correct']) {
+                $levelStats[$level]['correct'] += 1;
+            }
+
+            $questionKey = implode(':', [
+                (int) ($quiz['id'] ?? 0),
+                (int) $row['question_id'],
+                $row['index'],
+            ]);
+
+            if (!isset($questionStats[$questionKey])) {
+                $questionStats[$questionKey] = [
+                    'quiz_id' => (int) ($quiz['id'] ?? 0),
+                    'quiz_title' => $quiz['title'] ?? $attempt['quiz_title'],
+                    'game_type' => $quiz['game_type'] ?? $attempt['game_type'],
+                    'prompt' => $row['prompt'],
+                    'level_label' => $row['level_label'],
+                    'correct_answer' => $row['correct_answer'],
+                    'attempts' => 0,
+                    'correct' => 0,
+                    'missed' => 0,
+                    'accuracy' => 0,
+                    'missed_students' => [],
+                ];
+            }
+
+            $questionStats[$questionKey]['attempts'] += 1;
+            if ($row['is_correct']) {
+                $questionStats[$questionKey]['correct'] += 1;
+            } else {
+                $studentName = $student['name'] ?? 'Student';
+                $questionStats[$questionKey]['missed_students'][(int) ($attempt['student_id'] ?? 0)] = $studentName;
+            }
+        }
+    }
+
+    $levelStats = finalize_learning_stats($levelStats);
+    $questionStats = finalize_learning_stats($questionStats);
+
+    foreach ($questionStats as &$row) {
+        $row['missed_student_count'] = count($row['missed_students']);
+        $row['missed_students'] = array_values($row['missed_students']);
+    }
+    unset($row);
+
+    $weakQuestions = array_values(array_filter($questionStats, function (array $row) {
+        return (int) ($row['attempts'] ?? 0) > 0 && (int) ($row['accuracy'] ?? 0) < 75;
+    }));
+    usort($weakQuestions, function (array $a, array $b) {
+        return [$a['accuracy'], $b['missed_student_count'], $b['attempts']] <=> [$b['accuracy'], $a['missed_student_count'], $a['attempts']];
+    });
+
+    $weakLevels = array_values(array_filter($levelStats, function (array $row) {
+        return (int) ($row['attempts'] ?? 0) > 0 && (int) ($row['accuracy'] ?? 0) < 75;
+    }));
+    usort($weakLevels, function (array $a, array $b) {
+        return [$a['accuracy'], $b['attempts']] <=> [$b['accuracy'], $a['attempts']];
+    });
+
+    return [
+        'attempts' => count($records),
+        'analyzed_attempts' => $analyzedAttempts,
+        'questions_seen' => $questionsSeen,
+        'overall_accuracy' => percentage($correct, $questionsSeen),
+        'weak_questions' => array_slice($weakQuestions, 0, 6),
+        'weak_levels' => array_slice($weakLevels, 0, 4),
+    ];
+}
+
+function attempt_learning_summary(array $quiz, array $attempt): array
+{
+    $rows = attempt_question_review_rows($quiz, $attempt);
+    $counted = array_values(array_filter($rows, function (array $row) {
+        return !empty($row['counts_for_learning']);
+    }));
+    $weakRows = array_values(array_filter($counted, function (array $row) {
+        return empty($row['is_correct']);
+    }));
+    $correctRows = array_values(array_filter($counted, function (array $row) {
+        return !empty($row['is_correct']);
+    }));
+
+    return [
+        'rows' => $rows,
+        'weak_rows' => $weakRows,
+        'correct_rows' => $correctRows,
+        'accuracy' => percentage(count($correctRows), count($counted)),
+        'headline' => $weakRows
+            ? 'Focus next on ' . $weakRows[0]['level_label'] . ': ' . $weakRows[0]['prompt']
+            : 'No weak item in this run. Keep replaying for speed and consistency.',
+    ];
+}
+
 function teacher_dashboard_stats(int $teacherId): array
 {
     $classrooms = teacher_classrooms($teacherId);

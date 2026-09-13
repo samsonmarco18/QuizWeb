@@ -8,6 +8,7 @@
     const submitUrl = root.dataset.submitUrl;
     const classroomId = root.dataset.classroomId;
     const isPreview = root.dataset.isPreview === "1";
+    const practiceMode = root.dataset.practiceMode === "1";
     const returnUrl = root.dataset.returnUrl || "/QuizWeb/dashboard.php";
     const mode = quiz.game_type || "time_attack";
     const crosswordMode = mode === "crossword";
@@ -16,6 +17,7 @@
     const crosswordLayout = quiz.crossword_layout || null;
     const progressCount = document.querySelector("[data-progress-count]");
     const scoreValue = document.querySelector("[data-score-value]");
+    const streakValue = document.querySelector("[data-streak-value]");
     const timerValue = document.querySelector("[data-timer-value]");
     const questionText = document.querySelector("[data-question-text]");
     const questionPoints = document.querySelector("[data-question-points]");
@@ -23,6 +25,7 @@
     const answerGrid = document.querySelector("[data-answer-grid]");
     const controls = document.querySelector("[data-game-controls]");
     const note = document.querySelector("[data-game-note]");
+    const questionStage = document.querySelector(".question-stage");
     const progressBar = document.querySelector("[data-progress-bar]");
     const battleStrip = document.querySelector("[data-battle-strip]");
     const bossHealthFill = document.querySelector("[data-boss-health]");
@@ -132,6 +135,16 @@
         if (note) {
             note.textContent = message;
         }
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#039;",
+        })[character]);
     }
 
     function currentMasteryStage() {
@@ -453,12 +466,39 @@
         }, 1000);
     }
 
+    function showFeedbackBurst(isCorrect, timedOut) {
+        if (!questionStage) {
+            return;
+        }
+
+        const burst = document.createElement("div");
+        burst.className = `feedback-burst ${isCorrect ? "is-correct" : "is-wrong"}`;
+        burst.textContent = isCorrect
+            ? (state.streak >= 3 ? `${state.streak}x streak` : "Correct")
+            : (timedOut ? "Time up" : "Review");
+        questionStage.appendChild(burst);
+        root.classList.toggle("is-hot-streak", state.streak >= 3);
+
+        window.setTimeout(() => {
+            burst.remove();
+        }, 900);
+    }
+
     function buildAnswerButton(answer, answerIndex) {
         const element = document.createElement("button");
         element.type = "button";
         element.className = "answer-button";
-        element.innerHTML = `<span class="answer-index">${answerIndex + 1}</span><span>${answer}</span>`;
         element.dataset.answerIndex = String(answerIndex);
+
+        const index = document.createElement("span");
+        index.className = "answer-index";
+        index.textContent = String(answerIndex + 1);
+
+        const label = document.createElement("span");
+        label.className = "answer-label";
+        label.textContent = String(answer ?? "");
+
+        element.append(index, label);
 
         if (mode === "memory_flip") {
             element.style.transform = `rotate(${(Math.random() - 0.5) * 4}deg)`;
@@ -510,6 +550,11 @@
         next?.focus();
     }
 
+    function focusCrosswordCell(row, col) {
+        const target = answerGrid.querySelector(`.crossword-cell-input[data-row="${row}"][data-col="${col}"]`);
+        target?.focus();
+    }
+
     function renderCrossword() {
         const placements = crosswordPlacements();
 
@@ -557,11 +602,11 @@
                 <div class="crossword-clues">
                     <section>
                         <h3>Across</h3>
-                        ${acrossClues.map((placement) => `<p><strong>${placement.number}.</strong> ${placement.question.prompt}</p>`).join("") || "<p>No across clues.</p>"}
+                        ${acrossClues.map((placement) => `<p><strong>${placement.number}.</strong> ${escapeHtml(placement.question.prompt)}</p>`).join("") || "<p>No across clues.</p>"}
                     </section>
                     <section>
                         <h3>Down</h3>
-                        ${downClues.map((placement) => `<p><strong>${placement.number}.</strong> ${placement.question.prompt}</p>`).join("") || "<p>No down clues.</p>"}
+                        ${downClues.map((placement) => `<p><strong>${placement.number}.</strong> ${escapeHtml(placement.question.prompt)}</p>`).join("") || "<p>No down clues.</p>"}
                     </section>
                 </div>
             </div>
@@ -572,6 +617,27 @@
                 input.value = normalizeCrosswordWord(input.value).slice(0, 1);
                 if (input.value) {
                     focusNextCrosswordCell(input);
+                }
+            });
+
+            input.addEventListener("keydown", (event) => {
+                const row = Number(input.dataset.row);
+                const col = Number(input.dataset.col);
+
+                if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    focusCrosswordCell(row, col + 1);
+                } else if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    focusCrosswordCell(row, col - 1);
+                } else if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    focusCrosswordCell(row + 1, col);
+                } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    focusCrosswordCell(row - 1, col);
+                } else if (event.key === "Backspace" && !input.value) {
+                    focusCrosswordCell(row, col - 1);
                 }
             });
         });
@@ -633,13 +699,18 @@
         finishGame();
     }
 
+    function healthStep() {
+        return Math.max(4, Math.ceil(100 / Math.max(questions.length, 1)));
+    }
+
     function decorateAfterAnswer(isCorrect, timedOut) {
         if (mode === "boss_battle") {
+            const damage = healthStep();
             if (isCorrect) {
-                state.bossHealth = Math.max(0, state.bossHealth - 20);
+                state.bossHealth = Math.max(0, state.bossHealth - damage);
                 setNote(`Direct hit. Boss health is now ${state.bossHealth}%.`);
             } else {
-                state.playerHealth = Math.max(0, state.playerHealth - 20);
+                state.playerHealth = Math.max(0, state.playerHealth - damage);
                 setNote(timedOut ? `Time up. Your shield dropped to ${state.playerHealth}%.` : `The boss struck back. Shield at ${state.playerHealth}%.`);
             }
             updateBattleMeters();
@@ -714,7 +785,7 @@
             answerGrid.innerHTML = `
                 <div class="start-card">
                     <strong>${modeNotes[mode] || "Choose the best answer."}</strong>
-                    <p>${isPreview ? "This is a teacher preview, so your run will not be saved." : "Your score, time, and accuracy will be saved when you finish."}</p>
+                    <p>${practiceMode ? "This focus round is for practice only, so it will not be saved to the scoreboard." : (isPreview ? "This is a teacher preview, so your run will not be saved." : "Your score, time, and accuracy will be saved when you finish.")}</p>
                     <p>Keyboard shortcuts: <span>1-4 to answer</span>, <span>Enter to continue</span>.</p>
                     ${integrityStartNotice()}
                 </div>
@@ -722,8 +793,8 @@
         }
 
         setControls([
-            button(isPreview ? "Start Preview" : "Start Game", "button button-primary", startGame),
-            button("Back to Classroom", "button button-secondary", () => {
+            button(practiceMode ? "Start Practice" : (isPreview ? "Start Preview" : "Start Game"), "button button-primary", startGame),
+            button(practiceMode ? "Back to Dashboard" : "Back to Classroom", "button button-secondary", () => {
                 window.location.href = returnUrl;
             }),
         ]);
@@ -737,7 +808,7 @@
         }
 
         state.started = true;
-        setNote(isPreview ? "Game on." : "Entering fullscreen...");
+        setNote(isPreview ? (practiceMode ? "Practice started." : "Game on.") : "Entering fullscreen...");
         clearControls();
         requestQuizFullscreen().finally(() => {
             if (!state.started || state.finished) {
@@ -847,6 +918,7 @@
             }
         });
 
+        showFeedbackBurst(isCorrect, timedOut);
         decorateAfterAnswer(isCorrect, timedOut);
         updateHud();
 
@@ -922,6 +994,10 @@
             scoreValue.textContent = String(state.score);
         }
 
+        if (streakValue) {
+            streakValue.textContent = `${state.streak}x`;
+        }
+
         const runAccuracy = accuracy();
         const ladderSummary = masteryMode
             ? (state.masteredLevels.length
@@ -929,7 +1005,7 @@
                 : `Unlocked up to: ${state.failedLevelLabel || "Easy"}`)
             : `Best streak ${state.bestStreak}`;
 
-        questionText.textContent = isPreview ? "Preview complete." : "Run complete.";
+        questionText.textContent = practiceMode ? "Practice complete." : (isPreview ? "Preview complete." : "Run complete.");
         questionPoints.textContent = `${state.score} total points`;
         questionHelper.textContent = `Accuracy ${runAccuracy}% | ${ladderSummary} | ${state.elapsedSeconds}s elapsed`;
         answerGrid.innerHTML = `
@@ -950,10 +1026,10 @@
         `;
 
         if (isPreview) {
-            setNote("Preview complete. Teacher previews are not saved to the scoreboard.");
+            setNote(practiceMode ? "Practice complete. This run was not saved to the scoreboard." : "Preview complete. Teacher previews are not saved to the scoreboard.");
             setControls([
-                button("Replay Preview", "button button-primary", () => window.location.reload()),
-                button("Back to Classroom", "button button-secondary", () => {
+                button(practiceMode ? "Replay Practice" : "Replay Preview", "button button-primary", () => window.location.reload()),
+                button(practiceMode ? "Back to Dashboard" : "Back to Classroom", "button button-secondary", () => {
                     window.location.href = returnUrl;
                 }),
             ]);

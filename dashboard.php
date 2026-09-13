@@ -48,9 +48,13 @@ render_header('Dashboard', 'dashboard-page');
 if ($user['role'] === 'teacher') {
     $stats = teacher_dashboard_stats((int) $user['id']);
     $myClassrooms = teacher_classrooms((int) $user['id']);
+    $learningProfile = null;
+    $practiceQuestions = [];
 } else {
     $stats = student_dashboard_stats((int) $user['id']);
     $myClassrooms = student_classrooms((int) $user['id']);
+    $learningProfile = student_learning_profile((int) $user['id']);
+    $practiceQuestions = learning_practice_questions($learningProfile);
 }
 ?>
 
@@ -96,6 +100,76 @@ if ($user['role'] === 'teacher') {
     </div>
 </section>
 
+<?php if ($user['role'] === 'student'): ?>
+    <section class="glass panel learning-coach-panel">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Self-learning coach</span>
+                <h2>Where to focus next</h2>
+                <p class="muted"><?php echo esc($learningProfile['trend_message']); ?></p>
+            </div>
+            <?php if ($practiceQuestions): ?>
+                <a class="button button-primary" href="/QuizWeb/practice.php">Start Focus Practice</a>
+            <?php endif; ?>
+        </div>
+
+        <div class="learning-summary-grid">
+            <article class="stat-card">
+                <strong><?php echo esc((string) $learningProfile['overall_accuracy']); ?>%</strong>
+                <span>Overall accuracy</span>
+            </article>
+            <article class="stat-card">
+                <strong><?php echo esc((string) $learningProfile['questions_seen']); ?></strong>
+                <span>Questions analyzed</span>
+            </article>
+            <article class="stat-card">
+                <strong><?php echo esc((string) count($learningProfile['focus_items'])); ?></strong>
+                <span>Focus items</span>
+            </article>
+        </div>
+
+        <div class="learning-grid">
+            <article class="learning-card">
+                <h3>Weak areas</h3>
+                <?php if ($learningProfile['focus_items']): ?>
+                    <div class="learning-list">
+                        <?php foreach (array_slice($learningProfile['focus_items'], 0, 3) as $item): ?>
+                            <div class="learning-item">
+                                <div>
+                                    <strong><?php echo esc($item['level_label'] . ' - ' . $item['quiz_title']); ?></strong>
+                                    <span><?php echo esc($item['prompt']); ?></span>
+                                </div>
+                                <div class="insight-meter" aria-label="<?php echo esc((string) $item['accuracy']); ?> percent accuracy">
+                                    <span style="width: <?php echo esc((string) $item['accuracy']); ?>%"></span>
+                                </div>
+                                <small><?php echo esc($item['accuracy'] . '% accuracy after ' . $item['attempts'] . ' attempt' . ((int) $item['attempts'] === 1 ? '' : 's')); ?></small>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p class="muted">No weak area is visible yet. Finish more quiz games to build a sharper profile.</p>
+                <?php endif; ?>
+            </article>
+
+            <article class="learning-card">
+                <h3>Study plan</h3>
+                <ol class="learning-steps">
+                    <?php foreach ($learningProfile['plan_steps'] as $step): ?>
+                        <li><?php echo esc($step); ?></li>
+                    <?php endforeach; ?>
+                </ol>
+                <?php if ($learningProfile['weak_levels']): ?>
+                    <div class="skill-pill-row">
+                        <?php foreach ($learningProfile['weak_levels'] as $level): ?>
+                            <span class="skill-pill"><?php echo esc($level['label'] . ': ' . $level['accuracy'] . '%'); ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </article>
+        </div>
+    </section>
+<?php endif; ?>
+
 <?php if ($user['role'] === 'teacher'): ?>
     <section class="panel-grid">
         <article class="glass panel">
@@ -129,7 +203,7 @@ if ($user['role'] === 'teacher') {
             <div class="section-heading">
                 <div>
                     <span class="eyebrow">Game modes</span>
-                    <h2>Six editable formats</h2>
+                    <h2>Seven editable formats</h2>
                 </div>
             </div>
             <div class="mode-list">

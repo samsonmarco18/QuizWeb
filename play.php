@@ -65,6 +65,7 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
         <div class="hud-stats">
             <div class="hud-pill"><span>Question</span><strong data-progress-count>1 / <?php echo esc((string) count($quiz['questions'])); ?></strong></div>
             <div class="hud-pill"><span>Score</span><strong data-score-value>0</strong></div>
+            <div class="hud-pill"><span>Streak</span><strong data-streak-value>0x</strong></div>
             <div class="hud-pill"><span>Timer</span><strong data-timer-value>0s</strong></div>
         </div>
     </div>

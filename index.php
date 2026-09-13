@@ -14,7 +14,7 @@ render_header('Home', 'landing-page');
         <span class="eyebrow">CHALK classroom hub</span>
         <h1>Unleash better classroom play.</h1>
         <p class="lead">
-            Build rooms, launch quizzes, and keep scores in one clean flow.
+            Build rooms, launch quiz games, and let students see exactly where they need practice.
         </p>
         <div class="cta-row">
             <a class="button button-primary" href="/QuizWeb/register.php">Get Started</a>
@@ -22,7 +22,7 @@ render_header('Home', 'landing-page');
         </div>
         <div class="hero-metrics">
             <article class="metric-pill">
-                <strong>5</strong>
+                <strong>7</strong>
                 <span>game modes</span>
             </article>
             <article class="metric-pill">
@@ -46,14 +46,14 @@ render_header('Home', 'landing-page');
 
     <aside class="hero-panel glass hero-side">
         <article class="hero-side-card hero-side-feature">
-            <strong>Fresh layout</strong>
-            <p>Clean panels, simple spacing, and a stronger visual focus.</p>
+            <strong>Self-learning coach</strong>
+            <p>Weak areas, class patterns, and focused practice rounds appear after quiz attempts.</p>
         </article>
 
         <div class="hero-side-list">
             <span>Easy classroom setup</span>
             <span>Quiz launch flow</span>
-            <span>Green gradient theme</span>
+            <span>Seven playable modes</span>
             <span>Responsive cards</span>
         </div>
 
