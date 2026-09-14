@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once __DIR__ . '/app.php';
 
@@ -107,7 +107,7 @@ function render_header(string $title, string $pageClass = ''): void
                     <?php echo esc($flash['message']); ?>
                 </div>
             <?php endif; ?>
-    <?php
+<?php
 }
 
 function render_messenger_dock(): void

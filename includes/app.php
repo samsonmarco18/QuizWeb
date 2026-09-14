@@ -169,7 +169,13 @@ function table_has_column(PDO $pdo, string $table, string $column): bool
 
 function table_is_empty(PDO $pdo, string $table): bool
 {
-    $statement = $pdo->query('SELECT COUNT(*) FROM `' . $table . '`');
+    $allowedTables = ['users', 'classrooms', 'attempts'];
+
+    if (!in_array($table, $allowedTables, true)) {
+        throw new InvalidArgumentException('Unsupported table name.');
+    }
+
+    $statement = $pdo->query('SELECT COUNT(*) FROM ' . $table);
 
     return (int) $statement->fetchColumn() === 0;
 }
