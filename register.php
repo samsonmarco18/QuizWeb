@@ -50,18 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 render_header('Register', 'auth-page');
 ?>
 
-<section class="auth-wrap glass">
-    <div class="auth-copy">
-        <span class="eyebrow">Create your profile</span>
-        <h1>Set up a teacher or student account</h1>
-        <p class="lead">Teachers can create classes and custom games. Students can join using a classroom code.</p>
-        <div class="auth-badges">
-            <span>Quick signup</span>
-            <span>Teacher tools</span>
-            <span>Student join codes</span>
+<section class="auth-layout">
+    <aside class="auth-branding">
+        <a class="brand auth-brand" href="/QuizWeb/login.php" aria-label="<?php echo esc(APP_NAME); ?> home">
+            <span class="brand-badge brand-badge-minimal">CH</span>
+            <span class="brand-copy">
+                <strong><?php echo esc(APP_NAME); ?></strong>
+                <small>Classroom quiz space</small>
+            </span>
+        </a>
+    </aside>
+    <form method="post" class="stack-form auth-card">
+        <div class="auth-form-heading">
+            <div class="auth-title-row">
+                <h1>Create account</h1>
+                <span class="chalk-sticker" aria-hidden="true"></span>
+            </div>
+            <p>Start learning your way.</p>
         </div>
-    </div>
-    <form method="post" class="stack-form">
         <?php foreach ($errors as $error): ?>
             <div class="inline-error"><?php echo esc($error); ?></div>
         <?php endforeach; ?>
@@ -91,17 +97,8 @@ render_header('Register', 'auth-page');
             </select>
         </label>
         <button class="button button-primary" type="submit">Create Account</button>
+        <p class="muted auth-switch">Already have an account? <a href="/QuizWeb/login.php">Sign in</a></p>
     </form>
-    <aside class="auth-side">
-        <article class="auth-side-card">
-            <strong>Built for teachers</strong>
-            <p>Set up classrooms fast, share announcements, and keep quizzes, files, and activity in one place.</p>
-        </article>
-        <article class="auth-side-card">
-            <strong>Easy for students</strong>
-            <p>Join with a code, follow feed updates, and play through every challenge on desktop or phone.</p>
-        </article>
-    </aside>
 </section>
 
 <?php render_footer(); ?>

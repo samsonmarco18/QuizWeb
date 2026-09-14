@@ -6,14 +6,12 @@ function nav_links(?array $user): array
 {
     if (!$user) {
         return [
-            ['/QuizWeb/index.php', 'Home'],
             ['/QuizWeb/login.php', 'Login'],
             ['/QuizWeb/register.php', 'Register'],
         ];
     }
 
     $links = [
-        ['/QuizWeb/index.php', 'Home'],
         ['/QuizWeb/dashboard.php', 'Dashboard'],
     ];
 
@@ -49,6 +47,7 @@ function render_header(string $title, string $pageClass = ''): void
 {
     $user = current_user();
     $flash = flash_get();
+    $showHeader = !str_contains($pageClass, 'auth-page');
     ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -66,8 +65,9 @@ function render_header(string $title, string $pageClass = ''): void
         <div class="ambient ambient-two"></div>
         <div class="ambient ambient-three"></div>
         <div class="screen-mesh"></div>
+        <?php if ($showHeader): ?>
         <header class="site-header glass">
-            <a class="brand" href="/QuizWeb/index.php">
+            <a class="brand" href="<?php echo $user ? '/QuizWeb/dashboard.php' : '/QuizWeb/login.php'; ?>">
                 <span class="brand-badge brand-badge-minimal">CH</span>
                 <span class="brand-copy">
                     <strong><?php echo esc(APP_NAME); ?></strong>
@@ -100,6 +100,7 @@ function render_header(string $title, string $pageClass = ''): void
                 </button>
             </div>
         </header>
+        <?php endif; ?>
         <main class="page-shell">
             <?php if ($flash): ?>
                 <div class="flash flash-<?php echo esc($flash['type']); ?>">

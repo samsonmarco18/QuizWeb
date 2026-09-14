@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    ports: ["8080:80"]
+    environment:
+      QUIZWEB_DB_HOST: postgres
+      QUIZWEB_DB_PORT: "5432"
+      QUIZWEB_DB_NAME: quizweb
+      QUIZWEB_DB_USER: quizweb
+      QUIZWEB_DB_PASS: quizweb_local_password
+    volumes: ["./data/uploads:/var/www/html/QuizWeb/data/uploads"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: quizweb
+      POSTGRES_USER: quizweb
+      POSTGRES_PASSWORD: quizweb_local_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quizweb -d quizweb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  postgres_data:

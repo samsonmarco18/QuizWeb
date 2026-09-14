@@ -25,18 +25,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 render_header('Login', 'auth-page');
 ?>
 
-<section class="auth-wrap glass">
-    <div class="auth-copy">
-        <span class="eyebrow">Welcome back</span>
-        <h1>Log in to your quiz arena</h1>
-        <p class="lead">Teachers can manage classrooms and games. Students can jump back into live quiz action.</p>
-        <div class="auth-badges">
-            <span>Classroom newsfeed</span>
-            <span>Quiz dashboards</span>
-            <span>Mobile friendly play</span>
+<section class="auth-layout">
+    <aside class="auth-branding">
+        <a class="brand auth-brand" href="/QuizWeb/login.php" aria-label="<?php echo esc(APP_NAME); ?> home">
+            <span class="brand-badge brand-badge-minimal">CH</span>
+            <span class="brand-copy">
+                <strong><?php echo esc(APP_NAME); ?></strong>
+                <small>Classroom quiz space</small>
+            </span>
+        </a>
+    </aside>
+    <form method="post" class="stack-form auth-card">
+        <div class="auth-form-heading">
+            <div class="auth-title-row">
+                <h1>Sign in</h1>
+                <span class="chalk-sticker" aria-hidden="true"></span>
+            </div>
+            <p>Welcome back.</p>
         </div>
-    </div>
-    <form method="post" class="stack-form">
         <?php foreach ($errors as $error): ?>
             <div class="inline-error"><?php echo esc($error); ?></div>
         <?php endforeach; ?>
@@ -48,19 +54,9 @@ render_header('Login', 'auth-page');
             <span>Password</span>
             <input type="password" name="password" required placeholder="Enter your password">
         </label>
-        <button class="button button-primary" type="submit">Login</button>
-        <p class="muted">Need an account? <a href="/QuizWeb/register.php">Create one here</a>.</p>
+        <button class="button button-primary" type="submit">Sign in</button>
+        <p class="muted auth-switch">New here? <a href="/QuizWeb/register.php">Create an account</a></p>
     </form>
-    <aside class="auth-side">
-        <article class="auth-side-card">
-            <strong>Teacher view</strong>
-            <p>Create classrooms, publish announcements, attach modules, and manage game-based assessments.</p>
-        </article>
-        <article class="auth-side-card">
-            <strong>Student view</strong>
-            <p>See updates, open classroom files, and jump into quizzes from one clean classroom space.</p>
-        </article>
-    </aside>
 </section>
 
 <?php render_footer(); ?>

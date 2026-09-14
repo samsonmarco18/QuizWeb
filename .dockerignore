@@ -1,0 +1,8 @@
+.git
+.agents
+.codex
+data/*.json
+data/uploads
+.env
+.env.*
+!.env.example

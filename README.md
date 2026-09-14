@@ -2,9 +2,25 @@
 
 CHALK is a PHP classroom quiz system for teachers and students. Teachers create classrooms, post announcements, build quiz games, and review class performance. Students join with a code, play quiz games, see results, and get a self-learning coach that points out weak areas.
 
-## Requirements
+## Local Docker setup (PostgreSQL)
 
-- XAMPP with Apache, PHP, and MySQL
+The production stack uses PHP/Apache and PostgreSQL. Install Docker Desktop, then run:
+
+```bash
+docker compose up --build
+```
+
+Open `http://localhost:8080/QuizWeb/`. PostgreSQL data is stored in the named `postgres_data` volume and announcement uploads are persisted in `data/uploads`.
+
+## Render deployment
+
+This repository includes a Render Blueprint in `render.yaml`. Push the project to a Git repository, then create a new **Blueprint** in Render and select that repository. The Blueprint provisions the Docker web service and a managed PostgreSQL 16 database, wiring the database credentials through environment variables. The web service is available at `/QuizWeb/` after deployment.
+
+For local non-Docker PostgreSQL configuration, copy `.env.example` and set the `QUIZWEB_DB_*` environment variables in your web-server environment. Do not commit real passwords.
+
+## Legacy XAMPP setup
+
+- XAMPP with Apache, PHP, and PostgreSQL PDO support
 - Project folder located at `C:\xampp\htdocs\QuizWeb`
 - Browser access to `http://localhost/QuizWeb/`
 
@@ -15,7 +31,7 @@ CHALK is a PHP classroom quiz system for teachers and students. Teachers create 
 3. Open `http://localhost/QuizWeb/` in your browser.
 4. Register one teacher account and one student account.
 
-The app automatically creates the `quizweb` MySQL database and tables when it runs. The schema is also available in `database/schema.sql` if you want to inspect or import it manually.
+Create a PostgreSQL database named `quizweb` and apply `database/schema.sql` before starting the app. Docker Compose and Render handle this automatically.
 
 ## Teacher Test Flow
 
@@ -76,6 +92,6 @@ For a quick Mastery Ladder test, use `Create Sample Mastery Quiz` on the teacher
 ## Troubleshooting
 
 - If the page does not load, confirm Apache is running and visit `http://localhost/QuizWeb/`.
-- If login or saving fails, confirm MySQL is running.
-- If the database needs to be recreated, drop the `quizweb` database from phpMyAdmin and reload the app.
+- If login or saving fails, confirm PostgreSQL is running and the `pdo_pgsql` PHP extension is enabled.
+- If the database needs to be recreated locally, create a new `quizweb` database and apply `database/schema.sql` again.
 - If uploads fail, make sure PHP file uploads are enabled in XAMPP and the `data/uploads` folder is writable.

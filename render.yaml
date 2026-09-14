@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: chalk-web
+    runtime: docker
+    plan: free
+    healthCheckPath: /QuizWeb/login.php
+    envVars:
+      - key: QUIZWEB_DB_HOST
+        fromDatabase: {name: chalk-postgres, property: host}
+      - key: QUIZWEB_DB_PORT
+        fromDatabase: {name: chalk-postgres, property: port}
+      - key: QUIZWEB_DB_NAME
+        fromDatabase: {name: chalk-postgres, property: database}
+      - key: QUIZWEB_DB_USER
+        fromDatabase: {name: chalk-postgres, property: user}
+      - key: QUIZWEB_DB_PASS
+        fromDatabase: {name: chalk-postgres, property: password}
+databases:
+  - name: chalk-postgres
+    plan: free
+    databaseName: quizweb
+    user: quizweb
+    postgresMajorVersion: "16"
