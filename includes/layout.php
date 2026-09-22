@@ -20,9 +20,22 @@ function nav_links(?array $user): array
         $links[] = ['/QuizWeb/practice.php', 'Focus Practice'];
     }
 
-    $links[] = ['/QuizWeb/logout.php', 'Logout'];
-
     return $links;
+}
+
+function nav_icon(string $name): string
+{
+    $paths = [
+        'Dashboard' => '<path d="m3 10 9-7 9 7v10H14v-6h-4v6H5V10"/>',
+        'Join Class' => '<circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6m3 4a6 6 0 0 1 3 5v2"/>',
+        'Focus Practice' => '<path d="M12 5v16M12 5C8 2 5 2 2 4v16c3-2 6-2 10 1 4-3 7-3 10-1V4c-3-2-6-2-10 1Z"/>',
+        'user' => '<circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3Z"/>',
+        'settings' => '<circle cx="12" cy="7" r="4"/><path d="M5 22v-3a7 7 0 0 1 14 0v3"/>',
+        'moon' => '<path d="M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z"/>',
+        'logout' => '<path d="M10 3H4v18h6m5-14 5 5-5 5M8 12h12"/>',
+        'chevron' => '<path d="m6 9 6 6 6-6"/>',
+    ];
+    return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
 }
 
 function current_path(): string
@@ -61,6 +74,7 @@ function render_header(string $title, string $pageClass = ''): void
         <link rel="stylesheet" href="/QuizWeb/assets/css/site.css">
     </head>
     <body class="<?php echo esc($pageClass); ?>">
+        <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>
         <div class="ambient ambient-one"></div>
         <div class="ambient ambient-two"></div>
         <div class="ambient ambient-three"></div>
@@ -75,31 +89,41 @@ function render_header(string $title, string $pageClass = ''): void
                 </span>
             </a>
             <div class="header-actions">
-                <nav class="top-nav">
+                <nav class="top-nav" aria-label="Main navigation">
                     <?php foreach (nav_links($user) as [$href, $label]): ?>
-                        <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>"><?php echo esc($label); ?></a>
+                        <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>" <?php echo current_path() === $href ? 'aria-current="page"' : ''; ?>><?php echo nav_icon($label); ?><span><?php echo esc($label); ?></span></a>
                     <?php endforeach; ?>
                 </nav>
                 <?php if ($user): ?>
-                    <div class="user-chip">
-                        <span class="user-chip-role"><?php echo esc(ucfirst($user['role'])); ?></span>
-                        <strong><?php echo esc($user['name']); ?></strong>
+                    <div class="account-menu">
+                        <button class="account-toggle" type="button" aria-expanded="false" aria-controls="account-dropdown">
+                            <span class="account-avatar"><?php echo nav_icon('user'); ?></span>
+                            <strong><?php echo esc($user['name']); ?></strong>
+                            <?php echo nav_icon('chevron'); ?>
+                        </button>
+                        <div class="account-dropdown" id="account-dropdown" hidden>
+                            <div class="account-summary"><span class="account-avatar"><?php echo nav_icon('user'); ?></span><div><strong><?php echo esc($user['name']); ?></strong><small><?php echo esc(ucfirst($user['role'])); ?></small></div></div>
+                            <button class="account-item" type="button" data-profile-open><?php echo nav_icon('settings'); ?><span>Profile Settings</span></button>
+                            <button class="account-item theme-toggle" id="theme-toggle" type="button" aria-pressed="false"><?php echo nav_icon('moon'); ?><span class="theme-toggle-label">Dark Mode</span><span class="theme-switch" aria-hidden="true"></span></button>
+                            <a class="account-item" href="/QuizWeb/logout.php"><?php echo nav_icon('logout'); ?><span>Logout</span></a>
+                        </div>
                     </div>
-                    <button class="messenger-nav-button" type="button" data-messenger-nav-toggle aria-label="Open messenger" aria-expanded="false">
-                        <span class="messenger-nav-icon messenger-bubble-icon" aria-hidden="true">
-                            <span class="messenger-bubble-dot"></span>
-                            <span class="messenger-bubble-dot"></span>
-                            <span class="messenger-bubble-dot"></span>
-                        </span>
-                        <span class="messenger-badge messenger-nav-badge" data-messenger-badge hidden>0</span>
-                    </button>
-                <?php endif; ?>
+                <?php else: ?>
                 <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
                     <span class="theme-toggle-dot"></span>
                     <span class="theme-toggle-label">Dark Mode</span>
                 </button>
+                <?php endif; ?>
             </div>
         </header>
+        <?php if ($user): ?>
+        <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-title">
+            <h2 id="profile-title">Profile Settings</h2>
+            <dl><dt>Name</dt><dd><?php echo esc($user['name']); ?></dd><dt>Email</dt><dd><?php echo esc($user['email'] ?? ''); ?></dd><dt>Role</dt><dd><?php echo esc(ucfirst($user['role'])); ?></dd></dl>
+            <p>Contact your administrator to update your account details.</p>
+            <form method="dialog"><button class="button button-primary">Close</button></form>
+        </dialog>
+        <?php endif; ?>
         <?php endif; ?>
         <main class="page-shell">
             <?php if ($flash): ?>

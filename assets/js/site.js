@@ -19,7 +19,7 @@
 
         if (themeToggle) {
             themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
-            themeToggle.querySelector(".theme-toggle-label").textContent = isDark ? "Light Mode" : "Dark Mode";
+            themeToggle.querySelector(".theme-toggle-label").textContent = "Dark Mode";
         }
 
         try {
@@ -29,7 +29,7 @@
         }
     }
 
-    if (themeToggle) {
+    {
         let savedTheme = "default";
 
         try {
@@ -40,10 +40,37 @@
 
         setTheme(savedTheme === "dark");
 
-        themeToggle.addEventListener("click", () => {
+        themeToggle?.addEventListener("click", () => {
             setTheme(!body.classList.contains("theme-dark"));
         });
     }
+
+    const accountToggle = document.querySelector(".account-toggle");
+    const accountDropdown = document.getElementById("account-dropdown");
+    function closeAccountMenu() {
+        if (accountDropdown) accountDropdown.hidden = true;
+        accountToggle?.setAttribute("aria-expanded", "false");
+    }
+    accountToggle?.addEventListener("click", () => {
+        accountDropdown.hidden = !accountDropdown.hidden;
+        accountToggle.setAttribute("aria-expanded", String(!accountDropdown.hidden));
+    });
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".account-menu")) closeAccountMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && accountDropdown && !accountDropdown.hidden) {
+            closeAccountMenu();
+            accountToggle.focus();
+        }
+    });
+    document.querySelector(".account-menu")?.addEventListener("focusout", (event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) closeAccountMenu();
+    });
+    document.querySelector("[data-profile-open]")?.addEventListener("click", () => {
+        closeAccountMenu();
+        document.getElementById("profile-dialog")?.showModal();
+    });
 
     function buildQuestionCard(seed = {}) {
         if (!questionTemplate || !questionList) {
