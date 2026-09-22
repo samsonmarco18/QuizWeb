@@ -3847,3 +3847,25 @@ body.login-page:not(.theme-dark) .auth-brand .brand-copy small { color: #607c6b;
     .login-page .auth-brand .brand-copy strong { font-size: 19px; }
     .login-page .auth-card { padding: 20px; }
 }
+
+/* Shared dark account palette, including browser-filled credentials. */
+body.auth-page.theme-dark :is(.auth-card, .signup-card) { background: var(--panel-strong); color: var(--text); border-color: var(--line); }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) label > span { color: var(--text); }
+body.auth-page.theme-dark :is(.auth-form-heading p, .auth-switch) { color: var(--muted); }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) :is(input, select) { background: #1d342e; color: var(--text); border-color: #405a50; caret-color: var(--text); color-scheme: dark; }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) input::placeholder { color: #a5b9ae; opacity: 1; }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #1d342e inset; -webkit-text-fill-color: #edf6ef; caret-color: #edf6ef; }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) input:autofill { background-color: #1d342e; color: #edf6ef; }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) :is(input, select):focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 208, 200, .12); }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) .button-primary { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #04120c; box-shadow: 0 8px 20px rgba(0, 0, 0, .15); }
+body.auth-page.theme-dark :is(.auth-card, .signup-card) .button-primary:hover { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+body.auth-page.theme-dark :is(.auth-switch, .signup-login) a { color: var(--accent); }
+.login-page .auth-brand { gap: 18px; }
+.login-page .auth-brand .brand-badge { flex-basis: 128px; width: 128px; height: 128px; border-radius: 28px; font-size: 52px; }
+.login-page .auth-brand .brand-copy strong { font-size: 27px; }
+.login-page .auth-brand .brand-copy small { font-size: 12px; }
+@media (max-width: 760px) {
+    .login-page .auth-brand .brand-badge { flex-basis: 76px; width: 76px; height: 76px; border-radius: 18px; font-size: 32px; }
+    .login-page .auth-brand .brand-copy strong { font-size: 23px; }
+    .login-page .auth-brand .brand-copy small { font-size: 11px; }
+}
