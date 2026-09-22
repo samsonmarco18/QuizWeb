@@ -1,104 +1,83 @@
 <?php
-
 require_once __DIR__ . '/includes/layout.php';
-
-if (is_logged_in()) {
-    redirect('/QuizWeb/dashboard.php');
-}
-
+require_once __DIR__ . '/includes/profile.php';
+if (is_logged_in()) redirect('/QuizWeb/dashboard.php');
+$_SESSION['signup_csrf'] ??= bin2hex(random_bytes(32));
 $errors = [];
-
+$createdName = $_SESSION['signup_created_name'] ?? null;
+unset($_SESSION['signup_created_name']);
+$role = is_string($_POST['role'] ?? null) ? $_POST['role'] : 'student';
+$profile = profile_input($_POST);
+$name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
+$email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-    $role = $_POST['role'] ?? 'student';
-
-    if ($name === '' || $email === '' || $password === '') {
-        $errors[] = 'Please fill in all required fields.';
-    }
-
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Please enter a valid email address.';
-    }
-
-    if ($password !== $confirmPassword) {
-        $errors[] = 'Passwords do not match.';
-    }
-
-    if (strlen($password) < 6) {
-        $errors[] = 'Password must be at least 6 characters long.';
-    }
-
-    if (!in_array($role, ['teacher', 'student'], true)) {
-        $errors[] = 'Please choose a valid role.';
-    }
-
-    if (find_user_by_email($email)) {
-        $errors[] = 'An account already exists for that email.';
-    }
-
+    $createdName = null;
+    $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+    $confirm = is_string($_POST['confirm_password'] ?? null) ? $_POST['confirm_password'] : '';
+    if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['signup_csrf'], $_POST['csrf'])) $errors[] = 'Your form expired. Please try again.';
+    if ($name === '' || strlen($name) > 150) $errors[] = 'Enter your full name (up to 150 characters).';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) $errors[] = 'Enter a valid email address.';
+    if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) $errors[] = 'Use at least 8 characters with a letter and a number.';
+    if ($password !== $confirm) $errors[] = 'Passwords do not match.';
+    if (!in_array($role, ['teacher', 'student'], true)) $errors[] = 'Choose a valid role.';
+    $errors = array_merge($errors, profile_errors($profile, $role));
+    if (!$errors && find_user_by_email($email)) $errors[] = 'An account already exists for that email.';
     if (!$errors) {
-        $user = register_user($name, $email, $password, $role);
-        login_user($user);
-        flash_set('success', 'Account created successfully. Your quiz space is ready!');
-        redirect('/QuizWeb/dashboard.php');
+        register_user($name, $email, $password, $role, $profile);
+        $_SESSION['signup_created_name'] = $name;
+        $_SESSION['signup_csrf'] = bin2hex(random_bytes(32));
+        redirect('/QuizWeb/register.php?created=1');
     }
 }
-
-render_header('Register', 'auth-page');
+render_header('Register', 'auth-page signup-page');
 ?>
-
-<section class="auth-layout">
-    <aside class="auth-branding">
-        <a class="brand auth-brand" href="/QuizWeb/login.php" aria-label="<?php echo esc(APP_NAME); ?> home">
-            <span class="brand-badge brand-badge-minimal">CH</span>
-            <span class="brand-copy">
-                <strong><?php echo esc(APP_NAME); ?></strong>
-                <small>Classroom quiz space</small>
-            </span>
-        </a>
+<section class="signup-layout">
+    <aside class="signup-brand-panel">
+        <a class="signup-brand" href="/QuizWeb/login.php"><span class="brand-badge">CH</span><strong>CHALK</strong><small>Classroom quiz space</small></a>
+        <p>Learn. Practice. Improve.<br>Anywhere.</p>
+        <svg class="signup-waves" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true"><path d="M0 35C110 35 110 180 260 110S360 100 400 140V180H0Z" fill="currentColor" opacity=".12"/><path d="M0 90C100 45 170 190 290 135S360 120 400 150V180H0Z" fill="currentColor" opacity=".12"/></svg>
     </aside>
-    <form method="post" class="stack-form auth-card">
-        <div class="auth-form-heading">
-            <div class="auth-title-row">
-                <h1>Create account</h1>
-                <span class="chalk-sticker" aria-hidden="true"></span>
-            </div>
-            <p>Start learning your way.</p>
-        </div>
-        <?php foreach ($errors as $error): ?>
-            <div class="inline-error"><?php echo esc($error); ?></div>
-        <?php endforeach; ?>
-        <label>
-            <span>Full Name</span>
-            <input type="text" name="name" required value="<?php echo esc($_POST['name'] ?? ''); ?>" placeholder="Your name">
-        </label>
-        <label>
-            <span>Email</span>
-            <input type="email" name="email" required value="<?php echo esc($_POST['email'] ?? ''); ?>" placeholder="you@example.com">
-        </label>
-        <div class="split-fields">
-            <label>
-                <span>Password</span>
-                <input type="password" name="password" required placeholder="Minimum 6 characters">
-            </label>
-            <label>
-                <span>Confirm Password</span>
-                <input type="password" name="confirm_password" required placeholder="Repeat your password">
-            </label>
-        </div>
-        <label>
-            <span>I am joining as</span>
-            <select name="role">
-                <option value="teacher" <?php echo (($_POST['role'] ?? '') === 'teacher') ? 'selected' : ''; ?>>Teacher</option>
-                <option value="student" <?php echo (($_POST['role'] ?? 'student') === 'student') ? 'selected' : ''; ?>>Student</option>
-            </select>
-        </label>
-        <button class="button button-primary" type="submit">Create Account</button>
-        <p class="muted auth-switch">Already have an account? <a href="/QuizWeb/login.php">Sign in</a></p>
+    <?php if ($createdName !== null): ?>
+        <section class="signup-card signup-success" aria-labelledby="signup-success-title">
+            <span class="signup-success-check" aria-hidden="true">&#10003;</span>
+            <h1 id="signup-success-title">Account created!</h1>
+            <p>Welcome to CHALK, <?php echo esc($createdName); ?>!</p>
+            <p>You're all set to start your learning journey.</p>
+            <a class="button button-primary" href="/QuizWeb/login.php">Go to Login</a>
+        </section>
+    <?php else: ?>
+    <form method="post" class="signup-card" id="signup-form">
+        <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['signup_csrf']); ?>">
+        <div class="signup-card-top"><span class="signup-mini-brand"><span>CH</span> CHALK</span><small data-step-counter aria-live="polite">Step 1 of 4</small></div>
+        <ol class="signup-progress" aria-label="Registration progress">
+            <?php foreach (['Account', 'Personal Info', 'Academic Info', 'Review'] as $index => $label): ?><li data-progress-step="<?php echo $index; ?>"><span><?php echo $index + 1; ?></span><?php echo esc($label); ?></li><?php endforeach; ?>
+        </ol>
+        <?php if ($errors): ?><div class="inline-error" role="alert"><ul><?php foreach ($errors as $error): ?><li><?php echo esc($error); ?></li><?php endforeach; ?></ul></div><?php endif; ?>
+        <section data-signup-step="0" class="signup-step">
+            <h1 tabindex="-1">Create your account</h1><p>Let's get started with your basic information.</p>
+            <label><span>Full Name</span><input name="name" autocomplete="name" maxlength="150" required value="<?php echo esc($name); ?>" placeholder="Enter your full name"></label>
+            <label><span>Email Address</span><input type="email" name="email" autocomplete="email" maxlength="190" required value="<?php echo esc($email); ?>" placeholder="Enter your email address"></label>
+            <label><span>Password</span><span class="signup-password"><input type="password" name="password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" required placeholder="Create a password" aria-describedby="password-guidance"><button type="button" data-password-toggle aria-label="Show password" aria-pressed="false">Show</button></span></label>
+            <small id="password-guidance">At least 8 characters, including a letter and a number.</small>
+            <label><span>Confirm Password</span><input type="password" name="confirm_password" autocomplete="new-password" required placeholder="Repeat your password"></label>
+            <label><span>I am joining as</span><select name="role"><option value="student"<?php echo $role === 'student' ? ' selected' : ''; ?>>Student</option><option value="teacher"<?php echo $role === 'teacher' ? ' selected' : ''; ?>>Teacher</option></select></label>
+        </section>
+        <section data-signup-step="1" class="signup-step">
+            <h1 tabindex="-1">Personal information</h1><p>Tell us more about yourself.</p>
+            <div class="signup-field-grid"><?php render_profile_fields($profile, ['student_number', 'birthdate'], $role); ?></div>
+            <?php render_profile_fields($profile, ['gender'], $role); ?>
+        </section>
+        <section data-signup-step="2" class="signup-step">
+            <h1 tabindex="-1">Academic information</h1><p>Help us personalize your learning experience.</p>
+            <?php render_profile_fields($profile, ['program', 'year_level'], $role); ?>
+        </section>
+        <section data-signup-step="3" class="signup-step">
+            <h1 tabindex="-1">Review your information</h1><p>Make sure everything is correct before creating your account.</p>
+            <dl class="signup-review" data-signup-review></dl>
+        </section>
+        <div class="signup-actions"><button class="button button-secondary" type="button" data-signup-back hidden>&lsaquo; Back</button><button class="button button-primary" type="button" data-signup-next hidden>Next &rsaquo;</button><button class="button button-primary" type="submit" data-signup-submit>Create Account</button></div>
+        <p class="signup-login">Already have an account? <a href="/QuizWeb/login.php">Sign in</a></p>
     </form>
+    <?php endif; ?>
 </section>
-
-<?php render_footer(); ?>
+<?php render_footer(['/QuizWeb/assets/js/signup.js']); ?>

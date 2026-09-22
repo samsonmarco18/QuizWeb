@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/app.php';
+require_once __DIR__ . '/profile.php';
 
 function nav_links(?array $user): array
 {
@@ -121,7 +122,8 @@ function render_header(string $title, string $pageClass = ''): void
         <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-title">
             <h2 id="profile-title">Profile Settings</h2>
             <dl><dt>Name</dt><dd><?php echo esc($user['name']); ?></dd><dt>Email</dt><dd><?php echo esc($user['email'] ?? ''); ?></dd><dt>Role</dt><dd><?php echo esc(ucfirst($user['role'])); ?></dd></dl>
-            <p>Contact your administrator to update your account details.</p>
+            <dl class="profile-details"><?php foreach (profile_labels() as $field => $label): ?><dt><?php echo esc($label); ?></dt><dd><?php echo esc(($user['profile'][$field] ?? '') ?: 'Not provided'); ?></dd><?php endforeach; ?></dl>
+            <a class="button button-secondary" href="/QuizWeb/profile.php">Edit Profile</a>
             <form method="dialog"><button class="button button-primary">Close</button></form>
         </dialog>
         <?php endif; ?>

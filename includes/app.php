@@ -153,6 +153,10 @@ function ensure_database_schema(PDO $pdo): void
         $pdo->exec("ALTER TABLE classrooms ADD COLUMN chat_messages JSONB NOT NULL DEFAULT '[]'::jsonb");
     }
 
+    if (!table_has_column($pdo, 'users', 'profile')) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN profile JSONB NOT NULL DEFAULT '{}'::jsonb");
+    }
+
     $initialized = true;
 }
 
@@ -183,14 +187,15 @@ function table_is_empty(PDO $pdo, string $table): bool
 function insert_user_record(PDO $pdo, array $user): void
 {
     $statement = $pdo->prepare('
-        INSERT INTO users (id, name, email, password, role, created_at)
-        VALUES (:id, :name, :email, :password, :role, :created_at)
+        INSERT INTO users (id, name, email, password, role, created_at, profile)
+        VALUES (:id, :name, :email, :password, :role, :created_at, :profile)
         ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             email = EXCLUDED.email,
             password = EXCLUDED.password,
             role = EXCLUDED.role,
-            created_at = EXCLUDED.created_at
+            created_at = EXCLUDED.created_at,
+            profile = EXCLUDED.profile
     ');
     $statement->execute([
         'id' => (int) $user['id'],
@@ -199,6 +204,7 @@ function insert_user_record(PDO $pdo, array $user): void
         'password' => $user['password'],
         'role' => $user['role'],
         'created_at' => $user['created_at'],
+        'profile' => json_encode($user['profile'] ?? [], JSON_FORCE_OBJECT),
     ]);
 }
 
@@ -312,6 +318,7 @@ function hydrate_user(array $row): array
         'password' => $row['password'],
         'role' => $row['role'],
         'created_at' => $row['created_at'],
+        'profile' => db_json_decode($row['profile'] ?? '{}'),
     ];
 }
 
@@ -811,7 +818,7 @@ function find_user_by_id(int $id): ?array
     return null;
 }
 
-function register_user(string $name, string $email, string $password, string $role): array
+function register_user(string $name, string $email, string $password, string $role, array $profile = []): array
 {
     $records = users();
     $user = [
@@ -821,6 +828,7 @@ function register_user(string $name, string $email, string $password, string $ro
         'password' => password_hash($password, PASSWORD_DEFAULT),
         'role' => $role,
         'created_at' => now_iso(),
+        'profile' => $profile,
     ];
 
     $records[] = $user;
