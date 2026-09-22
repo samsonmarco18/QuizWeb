@@ -58,7 +58,7 @@ if ($user['role'] === 'teacher') {
 }
 ?>
 
-<section class="dashboard-hero glass">
+<section class="dashboard-hero dashboard-overview">
     <div>
         <span class="eyebrow"><?php echo esc(ucfirst($user['role'])); ?> Command Center</span>
         <h1><?php echo esc('Hello, ' . $user['name']); ?></h1>
@@ -69,38 +69,34 @@ if ($user['role'] === 'teacher') {
                 Join classrooms, play quiz games, and keep improving your scores across every challenge.
             <?php endif; ?>
         </p>
-        <div class="feature-pills">
-            <?php if ($user['role'] === 'teacher'): ?>
-                <span>Build classrooms</span>
-                <span>Post updates</span>
-                <span>Launch quiz games</span>
-            <?php else: ?>
-                <span>Track scores</span>
-                <span>Join class spaces</span>
-                <span>Play game modes</span>
-            <?php endif; ?>
-        </div>
     </div>
     <div class="hero-side-stack">
         <div class="stat-grid">
             <?php foreach ($stats as $label => $value): ?>
                 <article class="stat-card">
+                    <span class="dashboard-stat-icon" aria-hidden="true"><?php echo nav_icon($label === 'classrooms' ? 'Focus Practice' : ($label === 'best_score' ? 'trophy' : ($label === 'students' ? 'Join Class' : 'chart'))); ?></span>
                     <strong><?php echo esc((string) $value); ?></strong>
                     <span><?php echo esc(ucwords(str_replace('_', ' ', $label))); ?></span>
                 </article>
             <?php endforeach; ?>
         </div>
-        <article class="hero-note-card">
-            <span class="eyebrow">Page focus</span>
-            <h3><?php echo esc($user['role'] === 'teacher' ? 'Shape each class hub' : 'Stay in the learning loop'); ?></h3>
-            <p><?php echo esc($user['role'] === 'teacher'
-                ? 'This page is your launchpad for classrooms, quizzes, and class activity.'
-                : 'This page keeps your joined classrooms, recent attempts, and next actions in one calm space.'); ?></p>
-        </article>
     </div>
 </section>
 
 <?php if ($user['role'] === 'student'): ?>
+    <section class="dashboard-start">
+        <div>
+            <h2>Start Learning Today</h2>
+            <p>Join a class, take quizzes, and track your progress.</p>
+            <div class="dashboard-shortcuts">
+                <a class="button button-primary" href="/QuizWeb/join.php"><?php echo nav_icon('Join Class'); ?>Join Class</a>
+                <a class="button button-secondary" href="#recent-progress"><?php echo nav_icon('Dashboard'); ?>Track Scores</a>
+                <a class="button button-secondary" href="#joined-classrooms"><?php echo nav_icon('Focus Practice'); ?>Play Game Modes</a>
+            </div>
+        </div>
+        <span class="dashboard-book" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span>
+    </section>
+    <div class="dashboard-coach-grid">
     <section class="glass panel learning-coach-panel">
         <div class="section-heading">
             <div>
@@ -128,7 +124,9 @@ if ($user['role'] === 'teacher') {
             </article>
         </div>
 
-        <div class="learning-grid">
+        <?php if ($learningProfile['focus_items']): ?>
+            <details class="dashboard-weak-areas">
+                <summary>Review weak areas</summary>
             <article class="learning-card">
                 <h3>Weak areas</h3>
                 <?php if ($learningProfile['focus_items']): ?>
@@ -150,9 +148,12 @@ if ($user['role'] === 'teacher') {
                     <p class="muted">No weak area is visible yet. Finish more quiz games to build a sharper profile.</p>
                 <?php endif; ?>
             </article>
+            </details>
+        <?php endif; ?>
+    </section>
 
-            <article class="learning-card">
-                <h3>Study plan</h3>
+            <section class="glass panel dashboard-study-plan">
+                <h2><?php echo nav_icon('Focus Practice'); ?>Study Plan</h2>
                 <ol class="learning-steps">
                     <?php foreach ($learningProfile['plan_steps'] as $step): ?>
                         <li><?php echo esc($step); ?></li>
@@ -165,9 +166,8 @@ if ($user['role'] === 'teacher') {
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </article>
-        </div>
-    </section>
+            </section>
+    </div>
 <?php endif; ?>
 
 <?php if ($user['role'] === 'teacher'): ?>
@@ -224,18 +224,8 @@ if ($user['role'] === 'teacher') {
         </article>
     </section>
 <?php else: ?>
-    <section class="panel-grid">
-        <article class="glass panel">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow">Join your teacher</span>
-                    <h2>Enter a classroom code</h2>
-                </div>
-                <a class="button button-secondary" href="/QuizWeb/join.php">Join Class</a>
-            </div>
-            <p class="lead compact">Use the code your teacher shared to unlock new games and classroom quizzes.</p>
-        </article>
-        <article class="glass panel">
+    <div class="dashboard-bottom-grid">
+        <section class="glass panel" id="recent-progress">
             <div class="section-heading">
                 <div>
                     <span class="eyebrow">Recent progress</span>
@@ -255,16 +245,16 @@ if ($user['role'] === 'teacher') {
                     <p class="muted">No quiz attempts yet. Join a classroom and start playing.</p>
                 <?php endif; ?>
             </div>
-        </article>
-    </section>
+        </section>
 <?php endif; ?>
 
-<section class="glass panel">
+<section class="glass panel" id="joined-classrooms">
     <div class="section-heading">
         <div>
             <span class="eyebrow"><?php echo esc($user['role'] === 'teacher' ? 'Your classrooms' : 'Joined classrooms'); ?></span>
-            <h2><?php echo esc($user['role'] === 'teacher' ? 'Manage your spaces' : 'Keep learning'); ?></h2>
+            <h2><?php echo esc($user['role'] === 'teacher' ? 'Manage your spaces' : 'Your Classes'); ?></h2>
         </div>
+        <?php if ($user['role'] === 'student'): ?><a class="button button-secondary" href="/QuizWeb/join.php">Join Class</a><?php endif; ?>
     </div>
 
     <?php if ($myClassrooms): ?>
@@ -291,5 +281,6 @@ if ($user['role'] === 'teacher') {
         <p class="muted"><?php echo esc($user['role'] === 'teacher' ? 'No classrooms yet. Create your first one above.' : 'You have not joined any classrooms yet.'); ?></p>
     <?php endif; ?>
 </section>
+<?php if ($user['role'] === 'student'): ?></div><?php endif; ?>
 
 <?php render_footer(); ?>

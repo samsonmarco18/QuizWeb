@@ -34,6 +34,8 @@ function nav_icon(string $name): string
         'moon' => '<path d="M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z"/>',
         'logout' => '<path d="M10 3H4v18h6m5-14 5 5-5 5M8 12h12"/>',
         'chevron' => '<path d="m6 9 6 6 6-6"/>',
+        'chart' => '<path d="M5 20V10m7 10V4m7 16V7" stroke-width="3"/>',
+        'trophy' => '<path d="M8 3h8v6a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v5m-4 3h8m-6-3h4"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
 }
@@ -73,7 +75,7 @@ function render_header(string $title, string $pageClass = ''): void
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/QuizWeb/assets/css/site.css">
     </head>
-    <body class="<?php echo esc($pageClass); ?>">
+    <body class="<?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>
         <div class="ambient ambient-one"></div>
         <div class="ambient ambient-two"></div>
@@ -85,7 +87,6 @@ function render_header(string $title, string $pageClass = ''): void
                 <span class="brand-badge brand-badge-minimal">CH</span>
                 <span class="brand-copy">
                     <strong><?php echo esc(APP_NAME); ?></strong>
-                    <small>Minimal classroom quiz space</small>
                 </span>
             </a>
             <div class="header-actions">
@@ -124,6 +125,21 @@ function render_header(string $title, string $pageClass = ''): void
             <form method="dialog"><button class="button button-primary">Close</button></form>
         </dialog>
         <?php endif; ?>
+        <?php endif; ?>
+        <?php if ($user && $showHeader && !str_contains($pageClass, 'game-page')): ?>
+        <aside class="classroom-sidebar" aria-label="Classrooms">
+            <h2>Classrooms</h2>
+            <nav aria-label="Your classrooms">
+                <?php $sidebarClassrooms = user_classrooms($user); ?>
+                <?php foreach ($sidebarClassrooms as $sidebarClassroom): ?>
+                    <?php $isCurrentClassroom = current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']; ?>
+                    <a class="classroom-sidebar-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
+                        <?php echo nav_icon('Join Class'); ?><span><?php echo esc($sidebarClassroom['name']); ?></span>
+                    </a>
+                <?php endforeach; ?>
+                <?php if (!$sidebarClassrooms): ?><p class="sidebar-empty"><?php echo $user['role'] === 'teacher' ? 'Your classrooms will appear here.' : 'Join a class to see it here.'; ?></p><?php endif; ?>
+            </nav>
+        </aside>
         <?php endif; ?>
         <main class="page-shell">
             <?php if ($flash): ?>
