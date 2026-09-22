@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-render_header('Login', 'auth-page');
+render_header('Login', 'auth-page login-page');
 ?>
 
 <section class="auth-layout">
