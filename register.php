@@ -33,9 +33,7 @@ render_header('Register', 'auth-page signup-page');
 ?>
 <section class="signup-layout">
     <aside class="signup-brand-panel">
-        <a class="signup-brand" href="/QuizWeb/login.php"><span class="brand-badge">CH</span><strong>CHALK</strong><small>Classroom quiz space</small></a>
-        <p>Learn. Practice. Improve.<br>Anywhere.</p>
-        <svg class="signup-waves" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true"><path d="M0 35C110 35 110 180 260 110S360 100 400 140V180H0Z" fill="currentColor" opacity=".12"/><path d="M0 90C100 45 170 190 290 135S360 120 400 150V180H0Z" fill="currentColor" opacity=".12"/></svg>
+        <a class="signup-brand" href="/QuizWeb/login.php"><span class="brand-badge">CH</span><strong>CHALK</strong></a>
     </aside>
     <?php if ($createdName !== null): ?>
         <section class="signup-card signup-success" aria-labelledby="signup-success-title">
@@ -54,25 +52,25 @@ render_header('Register', 'auth-page signup-page');
         </ol>
         <?php if ($errors): ?><div class="inline-error" role="alert"><ul><?php foreach ($errors as $error): ?><li><?php echo esc($error); ?></li><?php endforeach; ?></ul></div><?php endif; ?>
         <section data-signup-step="0" class="signup-step">
-            <h1 tabindex="-1">Create your account</h1><p>Let's get started with your basic information.</p>
+            <h1 tabindex="-1">Create your account</h1>
             <label><span>Full Name</span><input name="name" autocomplete="name" maxlength="150" required value="<?php echo esc($name); ?>" placeholder="Enter your full name"></label>
             <label><span>Email Address</span><input type="email" name="email" autocomplete="email" maxlength="190" required value="<?php echo esc($email); ?>" placeholder="Enter your email address"></label>
             <label><span>Password</span><span class="signup-password"><input type="password" name="password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" required placeholder="Create a password" aria-describedby="password-guidance"><button type="button" data-password-toggle aria-label="Show password" aria-pressed="false">Show</button></span></label>
-            <small id="password-guidance">At least 8 characters, including a letter and a number.</small>
             <label><span>Confirm Password</span><input type="password" name="confirm_password" autocomplete="new-password" required placeholder="Repeat your password"></label>
+            <small id="password-guidance">8+ characters, including a letter and a number.</small>
             <label><span>I am joining as</span><select name="role"><option value="student"<?php echo $role === 'student' ? ' selected' : ''; ?>>Student</option><option value="teacher"<?php echo $role === 'teacher' ? ' selected' : ''; ?>>Teacher</option></select></label>
         </section>
         <section data-signup-step="1" class="signup-step">
-            <h1 tabindex="-1">Personal information</h1><p>Tell us more about yourself.</p>
+            <h1 tabindex="-1">Personal information</h1>
             <div class="signup-field-grid"><?php render_profile_fields($profile, ['student_number', 'birthdate'], $role); ?></div>
             <?php render_profile_fields($profile, ['gender'], $role); ?>
         </section>
         <section data-signup-step="2" class="signup-step">
-            <h1 tabindex="-1">Academic information</h1><p>Help us personalize your learning experience.</p>
+            <h1 tabindex="-1">Academic information</h1>
             <?php render_profile_fields($profile, ['program', 'year_level'], $role); ?>
         </section>
         <section data-signup-step="3" class="signup-step">
-            <h1 tabindex="-1">Review your information</h1><p>Make sure everything is correct before creating your account.</p>
+            <h1 tabindex="-1">Review your information</h1>
             <dl class="signup-review" data-signup-review></dl>
         </section>
         <div class="signup-actions"><button class="button button-secondary" type="button" data-signup-back hidden>&lsaquo; Back</button><button class="button button-primary" type="button" data-signup-next hidden>Next &rsaquo;</button><button class="button button-primary" type="submit" data-signup-submit>Create Account</button></div>

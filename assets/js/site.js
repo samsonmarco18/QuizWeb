@@ -20,6 +20,10 @@
         if (themeToggle) {
             themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
             themeToggle.querySelector(".theme-toggle-label").textContent = "Dark Mode";
+            if (themeToggle.classList.contains("auth-theme-toggle")) {
+                themeToggle.querySelector(".theme-toggle-label").textContent = isDark ? "Light" : "Dark";
+                themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+            }
         }
 
         try {

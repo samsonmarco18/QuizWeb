@@ -3732,3 +3732,73 @@ body:not(.theme-dark) .signup-brand-panel { background: linear-gradient(160deg, 
     .signup-field-grid { grid-template-columns: 1fr; }
     .signup-page .page-shell { width: calc(100% - 24px); padding: 20px 0; }
 }
+
+/* Compact signup with a full-page mint paper backdrop. */
+body.auth-page:not(.theme-dark) {
+    background-color: #dceddf;
+    background-image: url('/QuizWeb/assets/texture.svg'), url('/QuizWeb/assets/auth-waves.svg'), linear-gradient(145deg, #e5f1e9, #cce4d7);
+    background-size: 180px 180px, 100% 32vh, 100% 100%;
+    background-position: 0 0, center bottom, center;
+    background-repeat: repeat, no-repeat, no-repeat;
+}
+body.auth-page.theme-dark {
+    --panel: #243e36;
+    --panel-strong: #284239;
+    --line: #4b695b;
+    --text: #edf6ef;
+    --muted: #c2d3c9;
+    background: url('/QuizWeb/assets/texture.svg') repeat, url('/QuizWeb/assets/auth-waves.svg') center bottom / 100% 32vh no-repeat, linear-gradient(145deg, #345749, #25463c);
+    animation: none;
+}
+body.auth-page :is(.ambient, .screen-mesh), body.auth-page::before, body.auth-page::after { display: none; }
+.auth-theme-toggle { position: fixed; top: 16px; left: 16px; z-index: 30; display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--text); font: inherit; font-size: 11px; cursor: pointer; box-shadow: 0 2px 10px #123a2310; }
+.auth-theme-toggle .nav-icon { width: 16px; height: 16px; flex-basis: 16px; }
+.auth-theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.signup-page .page-shell { width: min(calc(100% - 64px), 800px); min-height: 100dvh; margin: 0 auto; padding: 24px 0; }
+.signup-layout { grid-template-columns: minmax(180px, .8fr) minmax(0, 1.2fr); gap: 36px; align-items: center; }
+.signup-brand-panel, body:not(.theme-dark) .signup-brand-panel { min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+.signup-brand .brand-badge { width: 76px; height: 76px; border-radius: 17px; font-size: 32px; }
+.signup-brand strong { font-size: 22px; }
+.signup-card { min-height: 0; padding: 20px; border-radius: 15px; gap: 12px; }
+.signup-card-top { min-height: 26px; }
+.signup-mini-brand > span { width: 26px; height: 26px; font-size: 11px; }
+.signup-progress { margin: 0 0 4px; }
+.signup-progress li { gap: 5px; }
+.signup-step { gap: 10px; min-height: 258px; }
+.signup-step h1, .signup-success h1 { font-size: 21px; }
+.signup-step label { gap: 4px; min-width: 0; }
+.signup-card :is(input, select) { height: 35px; padding: 7px 10px; font-size: 11px; }
+.signup-card label > span { font-size: 11px; }
+.signup-password input { padding-right: 45px; }
+.signup-step[data-signup-step="0"] { grid-template-columns: 1fr 1fr; column-gap: 12px; }
+.signup-step[data-signup-step="0"] > :is(h1, small),
+.signup-step[data-signup-step="0"] > label:nth-of-type(1),
+.signup-step[data-signup-step="0"] > label:nth-of-type(2),
+.signup-step[data-signup-step="0"] > label:last-child { grid-column: 1 / -1; }
+.signup-actions { padding-top: 4px; }
+.signup-actions .button { min-height: 34px; padding: 8px 14px; font-size: 11px; }
+.signup-review { padding: 12px; gap: 10px; font-size: 11px; }
+.signup-success { min-height: 340px; }
+.signup-card .inline-error { font-size: 11px; padding: 8px; }
+.signup-card .inline-error ul { margin: 0; padding-left: 16px; }
+@media (max-width: 760px) {
+    .signup-page .page-shell { width: min(calc(100% - 24px), 440px); padding: 52px 0 14px; align-content: center; }
+    .signup-layout { grid-template-columns: 1fr; gap: 12px; }
+    .signup-brand { display: flex; align-items: center; gap: 10px; }
+    .signup-brand .brand-badge { width: 36px; height: 36px; border-radius: 9px; font-size: 17px; }
+    .signup-brand strong { font-size: 16px; }
+    .signup-card { min-height: 0; padding: 16px; gap: 10px; }
+    .signup-field-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .auth-theme-toggle { top: 10px; left: 10px; padding: 7px 9px; }
+}
+@media (max-height: 650px) {
+    .signup-page .page-shell { padding-top: 12px; padding-bottom: 12px; }
+    .signup-card { padding: 14px 18px; gap: 8px; }
+    .signup-step { gap: 7px; min-height: 230px; }
+    .signup-step h1 { font-size: 19px; }
+    .signup-actions { padding-top: 0; }
+}
+@media (max-width: 760px) and (max-height: 650px) {
+    .signup-page .page-shell { padding-top: 48px; padding-bottom: 8px; }
+    .signup-brand-panel { display: none; }
+}

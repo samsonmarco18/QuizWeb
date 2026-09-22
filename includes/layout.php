@@ -82,6 +82,11 @@ function render_header(string $title, string $pageClass = ''): void
         <div class="ambient ambient-two"></div>
         <div class="ambient ambient-three"></div>
         <div class="screen-mesh"></div>
+        <?php if (!$showHeader): ?>
+        <button class="auth-theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Dark mode" title="Toggle light / dark mode">
+            <?php echo nav_icon('moon'); ?><span class="theme-toggle-label">Dark Mode</span>
+        </button>
+        <?php endif; ?>
         <?php if ($showHeader): ?>
         <header class="site-header glass">
             <a class="brand" href="<?php echo $user ? '/QuizWeb/dashboard.php' : '/QuizWeb/login.php'; ?>">
