@@ -43,7 +43,7 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
     redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
 }
 
-render_header('Dashboard', 'dashboard-page');
+render_header('Dashboard', 'dashboard-page ' . ($user['role'] === 'student' ? 'student-dashboard' : 'teacher-dashboard'));
 
 if ($user['role'] === 'teacher') {
     $stats = teacher_dashboard_stats((int) $user['id']);
@@ -61,8 +61,8 @@ if ($user['role'] === 'teacher') {
 
 <section class="dashboard-hero dashboard-overview">
     <div>
-        <span class="eyebrow"><?php echo esc(ucfirst($user['role'])); ?> Command Center</span>
-        <h1><?php echo esc('Hello, ' . $user['name']); ?></h1>
+        <span class="eyebrow"><?php echo esc($user['role'] === 'student' ? 'Student Dashboard' : 'Teacher Command Center'); ?></span>
+        <h1><?php echo esc('Hello, ' . $user['name']); ?><?php if ($user['role'] === 'student'): ?> <span aria-hidden="true">👋</span><?php endif; ?></h1>
         <p class="lead">
             <?php if ($user['role'] === 'teacher'): ?>
                 Create classrooms, build quiz games, and guide your students through an interactive learning arena.
@@ -76,8 +76,8 @@ if ($user['role'] === 'teacher') {
             <?php foreach ($stats as $label => $value): ?>
                 <article class="stat-card">
                     <span class="dashboard-stat-icon" aria-hidden="true"><?php echo nav_icon($label === 'classrooms' ? 'Focus Practice' : ($label === 'best_score' ? 'trophy' : ($label === 'students' ? 'Join Class' : 'chart'))); ?></span>
-                    <strong><?php echo esc((string) $value); ?></strong>
-                    <span><?php echo esc(ucwords(str_replace('_', ' ', $label))); ?></span>
+                    <strong><?php echo esc((string) $value . ($label === 'best_score' ? '%' : '')); ?></strong>
+                    <span><?php echo esc($user['role'] === 'student' ? ($label === 'classrooms' ? 'Enrolled Classes' : ($label === 'attempts' ? 'Quizzes Taken' : 'Best Score')) : ucwords(str_replace('_', ' ', $label))); ?></span>
                 </article>
             <?php endforeach; ?>
         </div>

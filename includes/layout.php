@@ -135,9 +135,27 @@ function render_header(string $title, string $pageClass = ''): void
         <?php endif; ?>
         <?php if ($user && $showHeader && !str_contains($pageClass, 'game-page')): ?>
         <aside class="classroom-sidebar" aria-label="Classrooms">
+            <?php $sidebarClassrooms = user_classrooms($user); ?>
+            <?php if (str_contains($pageClass, 'student-dashboard')): ?>
+                <h2>Classrooms</h2>
+                <a class="student-sidebar-heading" href="/QuizWeb/dashboard.php" aria-current="page"><?php echo nav_icon('Focus Practice'); ?><strong>My Classes</strong><?php echo nav_icon('chevron'); ?></a>
+                <nav class="student-classroom-nav" aria-label="Your classrooms">
+                    <a class="classroom-sidebar-link is-active" href="#joined-classrooms"><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
+                    <?php foreach ($sidebarClassrooms as $sidebarIndex => $sidebarClassroom): ?>
+                        <a class="classroom-sidebar-link student-class-link" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>">
+                            <i class="student-class-dot dot-<?php echo esc((string) (($sidebarIndex % 3) + 1)); ?>" aria-hidden="true"></i><span><?php echo esc($sidebarClassroom['name']); ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if (!$sidebarClassrooms): ?><p class="sidebar-empty">Join a class to see it here.</p><?php endif; ?>
+                </nav>
+                <nav class="student-sidebar-tools" aria-label="Student tools">
+                    <a class="classroom-sidebar-link" href="#recent-progress"><?php echo nav_icon('chart'); ?><span>Results</span></a>
+                    <a class="classroom-sidebar-link" href="/QuizWeb/practice.php"><?php echo nav_icon('trophy'); ?><span>Focus Practice</span></a>
+                    <a class="classroom-sidebar-link" href="/QuizWeb/join.php"><?php echo nav_icon('Join Class'); ?><span>Join a Class</span></a>
+                </nav>
+            <?php else: ?>
             <h2>Classrooms</h2>
             <nav aria-label="Your classrooms">
-                <?php $sidebarClassrooms = user_classrooms($user); ?>
                 <?php foreach ($sidebarClassrooms as $sidebarClassroom): ?>
                     <?php $isCurrentClassroom = current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']; ?>
                     <a class="classroom-sidebar-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
@@ -146,6 +164,7 @@ function render_header(string $title, string $pageClass = ''): void
                 <?php endforeach; ?>
                 <?php if (!$sidebarClassrooms): ?><p class="sidebar-empty"><?php echo $user['role'] === 'teacher' ? 'Your classrooms will appear here.' : 'Join a class to see it here.'; ?></p><?php endif; ?>
             </nav>
+            <?php endif; ?>
         </aside>
         <?php endif; ?>
         <main class="page-shell">
