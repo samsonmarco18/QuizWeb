@@ -189,7 +189,6 @@ function render_header(string $title, string $pageClass = ''): void
             <?php if ($flash): ?>
                 <div class="flash flash-<?php echo esc($flash['type']); ?>" role="status">
                     <span class="flash-message"><?php echo esc($flash['message']); ?></span>
-                    <button class="flash-close" type="button" aria-label="Close notification" title="Close notification" data-flash-close><?php echo nav_icon('close'); ?></button>
                 </div>
             <?php endif; ?>
         <main class="page-shell">

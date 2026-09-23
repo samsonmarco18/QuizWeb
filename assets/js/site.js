@@ -12,8 +12,8 @@
     const classroomSidebar = document.getElementById("classroom-sidebar");
     const themeStorageKey = "quizweb-theme";
 
-    document.querySelectorAll('[data-flash-close]').forEach((button) => {
-        button.addEventListener('click', () => button.closest('.flash')?.remove());
+    document.querySelectorAll('.flash').forEach((notification) => {
+        window.setTimeout(() => notification.remove(), 2000);
     });
 
     function setSidebarOpen(open) {
