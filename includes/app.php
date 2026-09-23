@@ -680,7 +680,7 @@ function chat_message_excerpt(?array $message, int $length = 64): string
     $body = preg_replace('/\s+/', ' ', $body) ?: '';
 
     if ($body === '') {
-        return 'No messages yet';
+        return (string) ($message['poll']['question'] ?? $message['attachments'][0]['name'] ?? (($message['link'] ?? '') ?: 'Shared a message'));
     }
 
     if (function_exists('mb_substr') && function_exists('mb_strlen')) {

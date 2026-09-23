@@ -35,6 +35,18 @@ Create a PostgreSQL database named `quizweb` and apply `database/schema.sql` bef
 
 ## Teacher Test Flow
 
+### Classroom messenger
+
+The floating chat button opens classroom conversations. Messages send without a page reload, and conversations refresh every five seconds while the tab is visible. Search and the Unread filter work across the current user's classrooms.
+
+- Enter sends; Shift+Enter adds a line break. Failed sends retain the draft.
+- File and Image attach up to four files (10 MB each, also subject to PHP upload limits). Downloads require classroom membership.
+- Link shares an HTTP/HTTPS URL; the smile button inserts emoji.
+- Poll accepts 2–6 distinct options. Each member can vote once and change their vote.
+- Repeated submission of the same send request does not create another message.
+
+Run `php tests/chat_test.php` for validation, permissions, and voting checks. Add `--database` with PostgreSQL running and `pdo_pgsql` enabled to test persistence in a rolled-back transaction.
+
 1. Log in as a teacher.
 2. Create a classroom from the dashboard.
 3. Open the classroom and copy the join code.

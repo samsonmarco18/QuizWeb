@@ -42,7 +42,16 @@ function nav_icon(string $name): string
         'Play Game Modes' => '<path d="M8 8h8a5 5 0 0 1 5 5v3a3 3 0 0 1-5 2l-2-2h-4l-2 2a3 3 0 0 1-5-2v-3a5 5 0 0 1 5-5Z"/><path d="M8 11v4m-2-2h4m6 0h.01"/>',
         'archive' => '<path d="M4 7h16v14H4V7Zm-1-4h18v4H3V3Zm6 8h6"/>',
         'bookmark' => '<path d="M6 3h12v18l-6-4-6 4V3Z"/>',
-        'message' => '<path d="M4 4h16v13H8l-4 4V4Z"/><path d="M8 9h8M8 13h5"/>',
+        'message' => '<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-3 2 1.8-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M7 10h8m-8 4h5"/>',
+        'clip' => '<path d="m8 13 7-7a3 3 0 0 1 4 4L9 20a5 5 0 0 1-7-7L13 2m-8 14 10-10"/>',
+        'image' => '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-6 5 7"/>',
+        'link' => '<path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m4 2 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 0)"/>',
+        'smile' => '<circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0M8 9h.01M16 9h.01"/>',
+        'poll' => '<path d="M4 20V10h4v10m2 0V4h4v16m2 0v-7h4v7M2 20h20"/>',
+        'send' => '<path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/>',
+        'search' => '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+        'close' => '<path d="m6 6 12 12M6 18 18 6"/>',
+        'arrow-right' => '<path d="M5 12h14m-6-6 6 6-6 6"/>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
@@ -177,12 +186,12 @@ function render_header(string $title, string $pageClass = ''): void
             <?php endif; ?>
         </aside>
         <?php endif; ?>
-        <main class="page-shell">
             <?php if ($flash): ?>
-                <div class="flash flash-<?php echo esc($flash['type']); ?>">
+                <div class="flash flash-<?php echo esc($flash['type']); ?>" role="status">
                     <?php echo esc($flash['message']); ?>
                 </div>
             <?php endif; ?>
+        <main class="page-shell">
 <?php
 }
 
@@ -200,8 +209,9 @@ function render_messenger_dock(): void
     });
     $defaultClassroomId = (int) ($GLOBALS['quizweb_current_classroom_id'] ?? ($classrooms[0]['id'] ?? 0));
     $currentRequest = safe_local_path(current_request_uri(), '/QuizWeb/dashboard.php');
+    $_SESSION['chat_csrf'] = $_SESSION['chat_csrf'] ?? bin2hex(random_bytes(32));
     ?>
-    <div class="messenger-dock" data-messenger-dock data-default-chat-id="<?php echo esc((string) $defaultClassroomId); ?>" data-current-user-id="<?php echo esc((string) $user['id']); ?>">
+    <div class="messenger-dock" data-messenger-dock data-chat-csrf="<?php echo esc($_SESSION['chat_csrf']); ?>" data-default-chat-id="<?php echo esc((string) $defaultClassroomId); ?>" data-current-user-id="<?php echo esc((string) $user['id']); ?>">
         <button class="messenger-launcher" type="button" aria-expanded="false" aria-controls="messenger-panel" aria-label="Messages" title="Messages">
             <span class="messenger-launcher-icon" aria-hidden="true"><?php echo nav_icon('message'); ?></span>
             <span class="messenger-badge messenger-launcher-badge" data-messenger-badge hidden>0</span>
@@ -209,17 +219,21 @@ function render_messenger_dock(): void
 
         <section class="messenger-panel" id="messenger-panel" aria-hidden="true" hidden>
             <div class="messenger-shell">
-                <div class="messenger-shell-header">
-                    <div>
-                        <span class="eyebrow">Messenger</span>
-                        <h2>Group chats</h2>
-                        <p>Tap a classroom to jump straight into the conversation.</p>
-                    </div>
-                    <button class="messenger-close" type="button" data-messenger-close aria-label="Close messenger">&times;</button>
-                </div>
-
+                <button class="messenger-close" type="button" data-messenger-close aria-label="Close messenger"><?php echo nav_icon('close'); ?></button>
                 <div class="messenger-shell-body">
                     <aside class="messenger-group-list" aria-label="Group chats">
+                <div class="messenger-shell-header">
+                    <div>
+                        <h2><?php echo nav_icon('send'); ?> Messenger</h2>
+                        <p>Classroom conversations in one place.</p>
+                    </div>
+                </div>
+                        <label class="messenger-search"><?php echo nav_icon('search'); ?><input type="search" data-messenger-search placeholder="Search conversations..." aria-label="Search conversations"></label>
+                        <div class="messenger-filters" aria-label="Filter conversations">
+                            <button type="button" class="is-active" data-messenger-filter="all" aria-pressed="true">All</button>
+                            <button type="button" data-messenger-filter="unread" aria-pressed="false">Unread</button>
+                        </div>
+                        <p class="messenger-search-empty" data-messenger-search-empty hidden>No matching conversations.</p>
                         <?php if ($classrooms): ?>
                             <?php foreach ($classrooms as $index => $classroom): ?>
                                 <?php
@@ -265,11 +279,12 @@ function render_messenger_dock(): void
                                 ?>
                                 <article class="messenger-thread <?php echo $isActive ? 'is-active' : ''; ?>" data-messenger-thread data-chat-id="<?php echo esc((string) $classroom['id']); ?>" data-latest-at="<?php echo esc((string) ($latestMessage['created_at'] ?? '')); ?>" data-latest-user-id="<?php echo esc((string) ($latestMessage['user_id'] ?? 0)); ?>" id="messenger-thread-<?php echo esc((string) $classroom['id']); ?>">
                                     <div class="messenger-thread-top">
+                                        <span class="messenger-group-avatar" aria-hidden="true"><?php echo esc(strtoupper(substr(trim((string) $classroom['name']), 0, 1)) ?: 'C'); ?></span>
                                         <div>
                                             <span class="eyebrow"><?php echo esc($classroom['subject'] ?: 'Classroom'); ?></span>
                                             <h3><?php echo esc($classroom['name']); ?></h3>
                                         </div>
-                                        <a class="messenger-open-link" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Open classroom</a>
+                                        <a class="messenger-open-link" aria-label="Open classroom" title="Open classroom" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>"><?php echo nav_icon('arrow-right'); ?></a>
                                     </div>
 
                                     <div class="messenger-thread-messages">
@@ -313,12 +328,26 @@ function render_messenger_dock(): void
                                         <input type="hidden" name="return_url" value="<?php echo esc($currentRequest); ?>">
                                         <label>
                                             <span>Message</span>
-                                            <textarea name="chat_body" rows="2" maxlength="1500" placeholder="Type a message to the class..."></textarea>
+                                            <textarea name="chat_body" rows="1" maxlength="1500" placeholder="Type a message..."></textarea>
                                         </label>
                                         <div class="messenger-compose-actions">
-                                            <p>Posts to this classroom chat.</p>
-                                            <button class="button button-primary" type="submit">Send</button>
+                                            <button class="button button-primary" type="submit" aria-label="Send message" title="Send message"><?php echo nav_icon('send'); ?></button>
                                         </div>
+                                        <div class="messenger-tools">
+                                            <button type="button" data-chat-file="file"><?php echo nav_icon('clip'); ?> File</button>
+                                            <button type="button" data-chat-file="image"><?php echo nav_icon('image'); ?> Image</button>
+                                            <button type="button" data-chat-toggle="link" aria-expanded="false"><?php echo nav_icon('link'); ?> Link</button>
+                                            <button type="button" data-chat-toggle="poll" aria-expanded="false"><?php echo nav_icon('poll'); ?> Poll</button>
+                                            <button type="button" data-chat-toggle="emoji" aria-expanded="false" aria-label="Insert emoji"><?php echo nav_icon('smile'); ?></button>
+                                        </div>
+                                        <input type="file" data-chat-files multiple hidden>
+                                        <div class="chat-selected-files" data-chat-selected hidden></div>
+                                        <div class="chat-extra" data-chat-extra="link" hidden><label>Link URL<input type="url" name="link" placeholder="https://example.com"></label></div>
+                                        <div class="chat-extra" data-chat-extra="poll" hidden><label>Poll question<input name="poll_question" maxlength="240" placeholder="What should we review next?"></label><label>Options (one per line)<textarea name="poll_options" rows="3" placeholder="Option one&#10;Option two"></textarea></label></div>
+                                        <div class="chat-emoji-picker" data-chat-extra="emoji" hidden>
+                                            <?php foreach (['😀', '😊', '👍', '❤️', '🎉', '👏', '🤔', '✅'] as $emoji): ?><button type="button" data-chat-emoji="<?php echo esc($emoji); ?>" aria-label="Insert <?php echo esc($emoji); ?>"><?php echo $emoji; ?></button><?php endforeach; ?>
+                                        </div>
+                                        <p class="chat-send-status" data-chat-status role="status"></p>
                                     </form>
                                 </article>
                             <?php endforeach; ?>
