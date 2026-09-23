@@ -4004,10 +4004,12 @@ body.signup-page:not(.theme-dark) .signup-brand .brand-copy small { color: #607c
 .student-dashboard.has-classroom-sidebar { --sidebar-width: 178px; --header-height: 78px; }
 .student-dashboard .site-header { position: sticky; top: 0; right: auto; left: auto; z-index: 30; display: flex; width: 100%; min-height: var(--header-height); padding: 12px 18px; border-width: 0 0 1px; border-color: var(--student-border); border-radius: 0; background: rgba(6, 24, 32, .96); box-shadow: 0 8px 28px rgba(0, 0, 0, .12); }
 .student-dashboard .site-header > .brand { display: flex; }
-.student-dashboard .site-header .top-nav { display: flex; margin: 0 auto; }
+.student-dashboard .site-header .top-nav { display: none; }
 .student-dashboard .site-header .header-actions { display: flex; flex: 1 1 auto; margin: 0 0 0 24px; }
 .student-dashboard .site-header .top-nav { margin-left: 0; margin-right: 0; }
 .student-dashboard .site-header .account-menu { margin-left: auto; }
+.dashboard-sample-action { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.dashboard-sample-action small { color: var(--student-muted); font-size: 9px; }
 .student-dashboard .site-header .nav-link.is-active { color: #f3fbfa; background: #145b50; border-color: #1c6d60; }
 .student-dashboard .site-header .nav-link:hover { color: var(--student-text); background: rgba(57, 210, 180, .1); }
 .student-dashboard .account-toggle { padding: 7px 9px; border: 1px solid transparent; border-radius: 9px; background: transparent; box-shadow: none; }

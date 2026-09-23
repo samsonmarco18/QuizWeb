@@ -141,7 +141,7 @@ function render_header(string $title, string $pageClass = ''): void
                 <details class="student-classes-dropdown" open>
                     <summary class="student-sidebar-heading"><?php echo nav_icon('Focus Practice'); ?><strong>My Classes</strong><?php echo nav_icon('chevron'); ?></summary>
                     <nav class="student-classroom-nav" aria-label="Your classrooms">
-                        <a class="classroom-sidebar-link is-active" href="#joined-classrooms"><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
+                        <a class="classroom-sidebar-link" href="#joined-classrooms"><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
                         <?php foreach ($sidebarClassrooms as $sidebarIndex => $sidebarClassroom): ?>
                             <a class="classroom-sidebar-link student-class-link" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>">
                                 <i class="student-class-dot dot-<?php echo esc((string) (($sidebarIndex % 3) + 1)); ?>" aria-hidden="true"></i><span><?php echo esc($sidebarClassroom['name']); ?></span>
@@ -151,6 +151,7 @@ function render_header(string $title, string $pageClass = ''): void
                     </nav>
                 </details>
                 <nav class="student-sidebar-tools" aria-label="Student tools">
+                    <a class="classroom-sidebar-link is-active" href="/QuizWeb/dashboard.php" aria-current="page"><?php echo nav_icon('Dashboard'); ?><span>Dashboard</span></a>
                     <a class="classroom-sidebar-link" href="#recent-progress"><?php echo nav_icon('chart'); ?><span>Results</span></a>
                     <a class="classroom-sidebar-link" href="/QuizWeb/practice.php"><?php echo nav_icon('trophy'); ?><span>Focus Practice</span></a>
                     <a class="classroom-sidebar-link" href="/QuizWeb/join.php"><?php echo nav_icon('Join Class'); ?><span>Join a Class</span></a>

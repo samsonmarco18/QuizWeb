@@ -1,9 +1,21 @@
 <?php
 
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/scripts/seed_sample_data.php';
 
 $user = require_login();
 $errors = [];
+
+if ($user['role'] === 'student' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'load_sample_data') {
+    try {
+        seed_sample_data($user);
+        flash_set('success', 'Sample classes loaded with three teachers and a five-student cohort.');
+    } catch (Throwable $exception) {
+        error_log('Sample data load failed: ' . $exception->getMessage());
+        flash_set('danger', 'Sample data could not be loaded. Check the Render PostgreSQL connection and try again.');
+    }
+    redirect('/QuizWeb/dashboard.php');
+}
 
 if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_classroom') {
     $name = trim($_POST['name'] ?? '');
@@ -71,6 +83,13 @@ if ($user['role'] === 'teacher') {
                 Join classrooms, play quiz games, and keep improving your scores across every challenge.
             <?php endif; ?>
         </p>
+        <?php if ($user['role'] === 'student' && !$myClassrooms): ?>
+            <form method="post" class="dashboard-sample-action">
+                <input type="hidden" name="action" value="load_sample_data">
+                <button class="button button-primary" type="submit">Load Sample Classes</button>
+                <small>Add 3 subject teachers, 5 students including you, quizzes, and scores.</small>
+            </form>
+        <?php endif; ?>
     </div>
     <div class="hero-side-stack">
         <div class="stat-grid">

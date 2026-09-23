@@ -6,10 +6,13 @@ if (PHP_SAPI === 'cli') {
 
 require_once __DIR__ . '/../includes/app.php';
 
-if (!in_array('pgsql', PDO::getAvailableDrivers(), true)) {
+if (PHP_SAPI === 'cli' && !in_array('pgsql', PDO::getAvailableDrivers(), true)) {
     fwrite(STDERR, "The pdo_pgsql PHP extension is required to seed the PostgreSQL database.\n");
     exit(1);
 }
+
+function seed_sample_data(?array $currentStudent = null): array
+{
 
 $password = 'Sample123!';
 $teacherSeeds = [
@@ -24,6 +27,10 @@ $studentSeeds = [
     ['Noah Ramos', 'noah.ramos@chalk.demo'],
     ['Zoe Bautista', 'zoe.bautista@chalk.demo'],
 ];
+
+if ($currentStudent && ($currentStudent['role'] ?? '') === 'student') {
+    $studentSeeds[0] = [$currentStudent['name'], $currentStudent['email']];
+}
 
 foreach ($teacherSeeds as [$name, $email, $subject]) {
     if (!find_user_by_email($email)) {
@@ -74,6 +81,8 @@ foreach ($teacherSeeds as $index => [$teacherName, $teacherEmail, $subject]) {
     }
 
     if (!$classroom) {
+        $preferredCode = 'DEMO' . ($index + 1);
+        $preferredCodeOwner = find_classroom_by_code($preferredCode);
         $questions = [];
         foreach ($questionSets[$subject] as $questionIndex => [$prompt, $options, $correctIndex]) {
             $questions[] = [
@@ -91,7 +100,7 @@ foreach ($teacherSeeds as $index => [$teacherName, $teacherEmail, $subject]) {
             'name' => $className,
             'subject' => $subject,
             'description' => 'Sample ' . $subject . ' classroom with quiz and performance data.',
-            'code' => 'DEMO' . ($index + 1),
+            'code' => $preferredCodeOwner ? generate_join_code() : $preferredCode,
             'student_ids' => $studentIds,
             'quizzes' => [[
                 'id' => 1,
@@ -109,7 +118,7 @@ foreach ($teacherSeeds as $index => [$teacherName, $teacherEmail, $subject]) {
         ];
         $records[] = $classroom;
     } else {
-        $classroom['student_ids'] = array_values(array_unique(array_merge($classroom['student_ids'] ?? [], $studentIds)));
+        $classroom['student_ids'] = $studentIds;
         foreach ($records as $recordIndex => $record) {
             if ((int) $record['id'] === (int) $classroom['id']) {
                 $records[$recordIndex] = $classroom;
@@ -151,8 +160,14 @@ foreach ($students as $studentIndex => $student) {
     }
 }
 
-echo "Sample data ready.\n";
-echo "Password for all demo accounts: {$password}\n";
-foreach (array_merge($teacherSeeds, $studentSeeds) as $seed) {
-    echo "- {$seed[1]}\n";
+    return ['password' => $password, 'teachers' => $teacherSeeds, 'students' => $studentSeeds];
+}
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    $seeded = seed_sample_data();
+    echo "Sample data ready.\n";
+    echo "Password for all demo accounts: {$seeded['password']}\n";
+    foreach (array_merge($seeded['teachers'], $seeded['students']) as $seed) {
+        echo "- {$seed[1]}\n";
+    }
 }
