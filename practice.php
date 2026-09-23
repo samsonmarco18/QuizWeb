@@ -5,9 +5,10 @@ require_once __DIR__ . '/includes/layout.php';
 $user = require_role('student');
 $profile = student_learning_profile((int) $user['id']);
 $practiceQuestions = learning_practice_questions($profile);
+$practiceReturn = safe_local_path((string) ($_GET['return'] ?? '/QuizWeb/dashboard.php'), '/QuizWeb/dashboard.php');
 
 if (!$practiceQuestions) {
-    render_header('Focus Practice', 'dashboard-page');
+    render_header('Focus Practice', 'student-page focus-practice-page');
     ?>
     <section class="dashboard-hero glass">
         <div>
@@ -39,6 +40,31 @@ if (!$practiceQuestions) {
     exit;
 }
 
+if (($_GET['start'] ?? '') !== '1') {
+    $recommended = $profile['focus_items'][0] ?? null;
+    render_header('Focus Practice', 'student-page focus-practice-page');
+    ?>
+    <header class="page-heading">
+        <div><span class="eyebrow">Self-learning coach</span><h1>Focus Practice</h1><p>Practice the topics that need the most improvement.</p></div>
+        <a class="button button-secondary" href="<?php echo esc($practiceReturn); ?>">Back</a>
+    </header>
+    <section class="glass panel focus-ready-card">
+        <div class="focus-ready-copy">
+            <span class="focus-ready-icon"><?php echo nav_icon('Focus Practice'); ?></span>
+            <div><span class="eyebrow">Recommended topic</span><h2><?php echo esc($recommended['quiz_title'] ?? 'Weak question review'); ?></h2><p><?php echo esc($recommended['prompt'] ?? 'A focused set based on your latest quiz results.'); ?></p></div>
+        </div>
+        <div class="focus-ready-stats">
+            <div><strong><?php echo esc((string) $profile['overall_accuracy']); ?>%</strong><span>Current accuracy</span></div>
+            <div><strong><?php echo esc((string) count($practiceQuestions)); ?></strong><span>Questions</span></div>
+            <div><strong><?php echo esc($recommended['level_label'] ?? 'Mixed'); ?></strong><span>Difficulty</span></div>
+        </div>
+        <div class="action-row"><a class="button button-primary" href="/QuizWeb/practice.php?start=1&amp;return=<?php echo rawurlencode($practiceReturn); ?>">Start Practice</a><a class="button button-secondary" href="/QuizWeb/student_results.php">View Results</a></div>
+    </section>
+    <?php
+    render_footer();
+    exit;
+}
+
 $quizData = [
     'id' => 0,
     'title' => 'Focus Practice',
@@ -59,6 +85,7 @@ $quizData = [
     }, $practiceQuestions, array_keys($practiceQuestions)),
 ];
 $_SESSION['focus_training_quiz'] = $quizData;
+$_SESSION['focus_training_return'] = $practiceReturn;
 
 render_header('Focus Practice', 'game-page mode-time_attack practice-page');
 ?>
@@ -80,6 +107,7 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
             <div class="hud-pill"><span>Score</span><strong data-score-value>0</strong></div>
             <div class="hud-pill"><span>Streak</span><strong data-streak-value>0x</strong></div>
             <div class="hud-pill"><span>Timer</span><strong data-timer-value>0s</strong></div>
+            <a class="button button-secondary game-exit-button" href="<?php echo esc($practiceReturn); ?>">Exit</a>
         </div>
     </div>
 
@@ -91,7 +119,7 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
         data-submit-url="/QuizWeb/submit_focus.php"
         data-is-preview="0"
         data-practice-mode="1"
-        data-return-url="/QuizWeb/dashboard.php"
+        data-return-url="<?php echo esc($practiceReturn); ?>"
     >
         <div class="game-progress">
             <div class="game-progress-bar" data-progress-bar></div>

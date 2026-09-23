@@ -8,7 +8,26 @@
     const payloadInput = document.getElementById("questions_payload");
     const gameTypeSelect = builderForm?.querySelector('[name="game_type"]');
     const messengerDock = document.querySelector("[data-messenger-dock]");
+    const sidebarToggle = document.querySelector(".sidebar-toggle");
+    const classroomSidebar = document.getElementById("classroom-sidebar");
     const themeStorageKey = "quizweb-theme";
+
+    function setSidebarOpen(open) {
+        body?.classList.toggle("sidebar-open", open);
+        sidebarToggle?.setAttribute("aria-expanded", open ? "true" : "false");
+        sidebarToggle?.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+    }
+
+    sidebarToggle?.addEventListener("click", () => setSidebarOpen(!body.classList.contains("sidebar-open")));
+    classroomSidebar?.addEventListener("click", (event) => {
+        if (event.target.closest("a") && window.matchMedia("(max-width: 760px)").matches) setSidebarOpen(false);
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") setSidebarOpen(false);
+    });
+    document.addEventListener("click", (event) => {
+        if (body.classList.contains("sidebar-open") && !event.target.closest("#classroom-sidebar, .sidebar-toggle")) setSidebarOpen(false);
+    });
 
     function setTheme(isDark) {
         if (!body) {

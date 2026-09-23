@@ -22,6 +22,8 @@ $quiz['title'] = 'Focus Training';
 $quiz['game_type'] = 'focus_training';
 create_attempt((int) $user['id'], 0, $quiz, $answers, $elapsedSeconds);
 unset($_SESSION['focus_training_quiz']);
+$returnUrl = safe_local_path((string) ($_SESSION['focus_training_return'] ?? '/QuizWeb/dashboard.php'), '/QuizWeb/dashboard.php');
+unset($_SESSION['focus_training_return']);
 
 flash_set('success', 'Focus Training recorded. It will not affect your classroom leaderboard.');
-redirect('/QuizWeb/dashboard.php#recent-progress');
+redirect($returnUrl);

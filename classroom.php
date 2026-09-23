@@ -126,8 +126,15 @@ render_header($classroom['name'], 'classroom-page');
     </div>
 </section>
 
+<nav class="classroom-tabs" aria-label="Classroom sections">
+    <a href="#overview">Overview</a>
+    <a href="#quizzes">Quizzes</a>
+    <a href="#materials">Materials</a>
+    <a href="#results">Results</a>
+</nav>
+
 <?php if ($user['role'] === 'teacher'): ?>
-    <section class="glass panel learning-coach-panel">
+    <section class="glass panel learning-coach-panel" id="overview">
         <div class="section-heading">
             <div>
                 <span class="eyebrow">Class learning map</span>
@@ -189,7 +196,7 @@ render_header($classroom['name'], 'classroom-page');
         </div>
     </section>
 <?php else: ?>
-    <section class="glass panel learning-coach-panel">
+    <section class="glass panel learning-coach-panel" id="overview">
         <div class="section-heading">
             <div>
                 <span class="eyebrow">Your learning map</span>
@@ -197,7 +204,7 @@ render_header($classroom['name'], 'classroom-page');
                 <p class="muted"><?php echo esc($studentClassProfile['trend_message']); ?></p>
             </div>
             <?php if ($studentClassPracticeQuestions): ?>
-                <a class="button button-primary" href="/QuizWeb/practice.php">Practice Weak Items</a>
+                <a class="button button-primary" href="/QuizWeb/practice.php?return=<?php echo rawurlencode('/QuizWeb/classroom.php?id=' . $classroom['id']); ?>">Practice Weak Items</a>
             <?php endif; ?>
         </div>
         <div class="learning-summary-grid">
@@ -233,7 +240,7 @@ render_header($classroom['name'], 'classroom-page');
     </section>
 <?php endif; ?>
 
-<section class="glass panel newsfeed-panel">
+<section class="glass panel newsfeed-panel" id="materials">
     <div class="section-heading">
         <div>
             <span class="eyebrow"><?php echo esc($user['role'] === 'teacher' ? 'Class updates' : 'Newsfeed'); ?></span>
@@ -388,7 +395,7 @@ render_header($classroom['name'], 'classroom-page');
     </div>
 </section>
 
-<section class="panel-grid">
+<section class="panel-grid" id="quizzes">
     <article class="glass panel">
         <div class="section-heading">
             <div>
@@ -465,7 +472,7 @@ render_header($classroom['name'], 'classroom-page');
     </article>
 </section>
 
-<section class="glass panel leaderboard-panel">
+<section class="glass panel leaderboard-panel" id="results">
     <div class="section-heading">
         <div>
             <span class="eyebrow">Leaderboards</span>

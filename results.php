@@ -137,7 +137,7 @@ render_header('Results', 'results-page');
             <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $attempt['quiz_id']); ?>">Play Again</a>
         <?php endif; ?>
         <?php if ($studentPracticeQuestions): ?>
-            <a class="button button-secondary" href="/QuizWeb/practice.php">Focus Practice</a>
+            <a class="button button-secondary" href="/QuizWeb/practice.php?return=<?php echo rawurlencode('/QuizWeb/results.php?id=' . $attempt['id']); ?>">Focus Practice</a>
         <?php endif; ?>
     </div>
 </section>

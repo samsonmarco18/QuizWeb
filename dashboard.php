@@ -95,6 +95,7 @@ if ($user['role'] === 'teacher') {
 </section>
 
 <?php if ($user['role'] === 'student'): ?>
+    <div class="dashboard-primary-grid">
     <section class="glass panel dashboard-deadlines-panel">
         <div class="section-heading">
             <div><span class="eyebrow">Schedule</span><h2>Upcoming deadlines</h2></div>
@@ -103,15 +104,38 @@ if ($user['role'] === 'teacher') {
         <div class="dashboard-deadline-list">
             <?php foreach (array_slice($upcomingDeadlines, 0, 4) as $deadline): ?>
                 <?php $dueTime = strtotime($deadline['quiz']['due_at']); ?>
+                <?php
+                $deadlineAttempt = latest_attempt_for_quiz((int) $user['id'], (int) $deadline['classroom']['id'], (int) $deadline['quiz']['id']);
+                $deadlineStatus = $deadlineAttempt ? 'completed' : ($dueTime < time() ? 'overdue' : ($dueTime <= strtotime('+2 days') ? 'due-soon' : 'upcoming'));
+                $deadlineLabel = ['completed' => 'Completed', 'overdue' => 'Overdue', 'due-soon' => 'Due Soon', 'upcoming' => 'Upcoming'][$deadlineStatus];
+                ?>
                 <article class="dashboard-deadline-row">
                     <time datetime="<?php echo esc($deadline['quiz']['due_at']); ?>"><strong><?php echo esc(strtoupper(date('M', $dueTime))); ?></strong><span><?php echo esc(date('d', $dueTime)); ?></span></time>
                     <div><strong><?php echo esc($deadline['quiz']['title']); ?></strong><span><?php echo esc($deadline['classroom']['subject'] . ' · ' . classroom_teacher_name($deadline['classroom'])); ?></span></div>
                     <small><?php echo esc(date('D, g:i A', $dueTime)); ?></small>
+                    <span class="deadline-status status-<?php echo esc($deadlineStatus); ?>"><?php echo esc($deadlineLabel); ?></span>
                 </article>
             <?php endforeach; ?>
             <?php if (!$upcomingDeadlines): ?><p class="muted">No quiz or assignment deadlines have been posted yet.</p><?php endif; ?>
         </div>
     </section>
+    <section class="glass panel dashboard-continue-panel">
+        <div class="section-heading"><div><span class="eyebrow">Continue learning</span><h2>Your active classes</h2></div><a class="button button-secondary" href="/QuizWeb/game_modes.php">View All</a></div>
+        <div class="dashboard-continue-list">
+            <?php foreach (array_slice($myClassrooms, 0, 3) as $classroom): ?>
+                <?php $continueQuiz = $classroom['quizzes'][0] ?? null; ?>
+                <?php $continueAttempt = $continueQuiz ? latest_attempt_for_quiz((int) $user['id'], (int) $classroom['id'], (int) $continueQuiz['id']) : null; ?>
+                <?php $continuePercent = $continueAttempt ? percentage((int) $continueAttempt['score'], (int) $continueAttempt['max_score']) : 0; ?>
+                <article class="dashboard-continue-row">
+                    <span class="dashboard-class-icon"><?php echo nav_icon('Focus Practice'); ?></span>
+                    <div><strong><?php echo esc($classroom['subject']); ?></strong><small><?php echo esc($continueQuiz['title'] ?? 'No quiz available'); ?></small><div class="continue-progress"><span style="width: <?php echo esc((string) $continuePercent); ?>%"></span></div></div>
+                    <?php if ($continueQuiz): ?><a class="button button-secondary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $continueQuiz['id']); ?>"><?php echo $continueAttempt ? 'Replay' : 'Start'; ?></a><?php endif; ?>
+                </article>
+            <?php endforeach; ?>
+            <?php if (!$myClassrooms): ?><div class="empty-state compact-empty"><p>You haven't joined a class yet.</p><a class="button button-primary" href="/QuizWeb/join.php">Join Class</a></div><?php endif; ?>
+        </div>
+    </section>
+    </div>
     <section class="dashboard-start">
         <div>
             <h2>Start Learning Today</h2>
@@ -133,7 +157,7 @@ if ($user['role'] === 'teacher') {
                 <p class="muted"><?php echo esc($learningProfile['trend_message']); ?></p>
             </div>
             <?php if ($practiceQuestions): ?>
-                <a class="button button-primary" href="/QuizWeb/practice.php">Start Focus Practice</a>
+                <a class="button button-primary" href="/QuizWeb/practice.php?return=<?php echo rawurlencode('/QuizWeb/dashboard.php'); ?>">Start Focus Practice</a>
             <?php endif; ?>
         </div>
 
@@ -209,7 +233,7 @@ if ($user['role'] === 'teacher') {
                     <h2>Strong and weak areas</h2>
                     <p class="muted">Use your recorded answers to decide where to study next.</p>
                 </div>
-                <?php if ($practiceQuestions): ?><a class="button button-primary" href="/QuizWeb/practice.php">Start Focus Training</a><?php endif; ?>
+                <?php if ($practiceQuestions): ?><a class="button button-primary" href="/QuizWeb/practice.php?return=<?php echo rawurlencode('/QuizWeb/dashboard.php'); ?>">Start Focus Training</a><?php endif; ?>
             </div>
             <div class="dashboard-skill-columns">
                 <div class="dashboard-skill-group is-strong">

@@ -18,7 +18,8 @@ function nav_links(?array $user): array
 
     if ($user['role'] === 'student') {
         $links[] = ['/QuizWeb/join.php', 'Join Class'];
-        $links[] = ['/QuizWeb/practice.php', 'Focus Practice'];
+        $links[] = ['/QuizWeb/student_results.php', 'Track Scores'];
+        $links[] = ['/QuizWeb/game_modes.php', 'Play Game Modes'];
     }
 
     return $links;
@@ -37,6 +38,12 @@ function nav_icon(string $name): string
         'chevron' => '<path d="m6 9 6 6 6-6"/>',
         'chart' => '<path d="M5 20V10m7 10V4m7 16V7" stroke-width="3"/>',
         'trophy' => '<path d="M8 3h8v6a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v5m-4 3h8m-6-3h4"/>',
+        'Track Scores' => '<path d="M5 20V10m7 10V4m7 16V7"/><path d="M3 20h18"/>',
+        'Play Game Modes' => '<path d="M8 8h8a5 5 0 0 1 5 5v3a3 3 0 0 1-5 2l-2-2h-4l-2 2a3 3 0 0 1-5-2v-3a5 5 0 0 1 5-5Z"/><path d="M8 11v4m-2-2h4m6 0h.01"/>',
+        'archive' => '<path d="M4 7h16v14H4V7Zm-1-4h18v4H3V3Zm6 8h6"/>',
+        'bookmark' => '<path d="M6 3h12v18l-6-4-6 4V3Z"/>',
+        'message' => '<path d="M4 4h16v13H8l-4 4V4Z"/><path d="M8 9h8M8 13h5"/>',
+        'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
 }
@@ -95,6 +102,7 @@ function render_header(string $title, string $pageClass = ''): void
                     <strong><?php echo esc(APP_NAME); ?></strong>
                 </span>
             </a>
+            <?php if ($user): ?><button class="sidebar-toggle" type="button" aria-expanded="false" aria-controls="classroom-sidebar" aria-label="Open navigation"><?php echo nav_icon('menu'); ?></button><?php endif; ?>
             <div class="header-actions">
                 <nav class="top-nav" aria-label="Main navigation">
                     <?php foreach (nav_links($user) as [$href, $label]): ?>
@@ -134,14 +142,14 @@ function render_header(string $title, string $pageClass = ''): void
         <?php endif; ?>
         <?php endif; ?>
         <?php if ($user && $showHeader && !str_contains($pageClass, 'game-page')): ?>
-        <aside class="classroom-sidebar" aria-label="Classrooms">
+        <aside class="classroom-sidebar" id="classroom-sidebar" aria-label="Classrooms">
             <?php $sidebarClassrooms = user_classrooms($user); ?>
-            <?php if (str_contains($pageClass, 'student-dashboard')): ?>
+            <?php if (($user['role'] ?? '') === 'student'): ?>
                 <h2>Classrooms</h2>
                 <details class="student-classes-dropdown" open>
                     <summary class="student-sidebar-heading"><?php echo nav_icon('Focus Practice'); ?><strong>My Classes</strong><?php echo nav_icon('chevron'); ?></summary>
                     <nav class="student-classroom-nav" aria-label="Your classrooms">
-                        <a class="classroom-sidebar-link" href="#joined-classrooms"><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
+                        <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/dashboard.php' ? ' is-active' : ''; ?>" href="/QuizWeb/dashboard.php#joined-classrooms"><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
                         <?php foreach ($sidebarClassrooms as $sidebarIndex => $sidebarClassroom): ?>
                             <a class="classroom-sidebar-link student-class-link" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>">
                                 <i class="student-class-dot dot-<?php echo esc((string) (($sidebarIndex % 3) + 1)); ?>" aria-hidden="true"></i><span><?php echo esc($sidebarClassroom['name']); ?></span>
@@ -151,10 +159,9 @@ function render_header(string $title, string $pageClass = ''): void
                     </nav>
                 </details>
                 <nav class="student-sidebar-tools" aria-label="Student tools">
-                    <a class="classroom-sidebar-link is-active" href="/QuizWeb/dashboard.php" aria-current="page"><?php echo nav_icon('Dashboard'); ?><span>Dashboard</span></a>
-                    <a class="classroom-sidebar-link" href="#recent-progress"><?php echo nav_icon('chart'); ?><span>Results</span></a>
-                    <a class="classroom-sidebar-link" href="/QuizWeb/practice.php"><?php echo nav_icon('trophy'); ?><span>Focus Practice</span></a>
-                    <a class="classroom-sidebar-link" href="/QuizWeb/join.php"><?php echo nav_icon('Join Class'); ?><span>Join a Class</span></a>
+                    <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/archive.php' ? ' is-active' : ''; ?>" href="/QuizWeb/archive.php"><?php echo nav_icon('archive'); ?><span>Archive</span></a>
+                    <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/saved.php' ? ' is-active' : ''; ?>" href="/QuizWeb/saved.php"><?php echo nav_icon('bookmark'); ?><span>Saved</span></a>
+                    <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/student_results.php' ? ' is-active' : ''; ?>" href="/QuizWeb/student_results.php"><?php echo nav_icon('chart'); ?><span>Results</span></a>
                 </nav>
             <?php else: ?>
             <h2>Classrooms</h2>
@@ -195,12 +202,8 @@ function render_messenger_dock(): void
     $currentRequest = safe_local_path(current_request_uri(), '/QuizWeb/dashboard.php');
     ?>
     <div class="messenger-dock" data-messenger-dock data-default-chat-id="<?php echo esc((string) $defaultClassroomId); ?>" data-current-user-id="<?php echo esc((string) $user['id']); ?>">
-        <button class="messenger-launcher" type="button" aria-expanded="false" aria-controls="messenger-panel" aria-label="Open messenger">
-            <span class="messenger-launcher-icon messenger-bubble-icon" aria-hidden="true">
-                <span class="messenger-bubble-dot"></span>
-                <span class="messenger-bubble-dot"></span>
-                <span class="messenger-bubble-dot"></span>
-            </span>
+        <button class="messenger-launcher" type="button" aria-expanded="false" aria-controls="messenger-panel" aria-label="Messages" title="Messages">
+            <span class="messenger-launcher-icon" aria-hidden="true"><?php echo nav_icon('message'); ?></span>
             <span class="messenger-badge messenger-launcher-badge" data-messenger-badge hidden>0</span>
         </button>
 
