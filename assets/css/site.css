@@ -3478,9 +3478,10 @@ textarea:focus {
 /* Reference navbar and light palette. Existing dark-mode colors stay intact. */
 body:not(.theme-dark) {
     color-scheme: light;
-    --bg-1: #e4ebe6;
-    --bg-2: #dfe8e2;
-    --bg-3: #d8e3dc;
+    --light-canvas: #f3efd9;
+    --bg-1: var(--light-canvas);
+    --bg-2: var(--light-canvas);
+    --bg-3: var(--light-canvas);
     --panel: #f0f4f1;
     --panel-strong: #f3f6f4;
     --line: #c7d5cc;
@@ -3495,7 +3496,7 @@ body:not(.theme-dark) {
     --warning: #826018;
     --success: #247047;
     --shadow: 0 8px 28px rgba(24, 49, 35, 0.06);
-    background: #e4ebe6;
+    background: var(--light-canvas);
     animation: none;
 }
 body:not(.theme-dark)::before,
@@ -3669,8 +3670,7 @@ body:not(.theme-dark) .dashboard-start { background: #d4e7db; border-color: #c7d
     .site-header .account-menu { max-width: 230px; }
 }
 body:not(.theme-dark) {
-    background-image: url('/QuizWeb/assets/texture.svg'), radial-gradient(ellipse at 15% 15%, rgba(184, 213, 198, .5), transparent 48%), radial-gradient(ellipse at 90% 85%, rgba(181, 206, 188, .45), transparent 50%);
-    background-size: 180px 180px, 100% 100%, 100% 100%;
+    background-image: none;
     background-attachment: fixed;
 }
 .signup-page .page-shell { width: min(100% - 40px, 960px); padding: 30px 0; }
@@ -3736,13 +3736,9 @@ body:not(.theme-dark) .signup-brand-panel { background: linear-gradient(160deg, 
     .signup-page .page-shell { width: calc(100% - 24px); padding: 20px 0; }
 }
 
-/* Compact signup with a full-page mint paper backdrop. */
+/* Compact signup with the shared cream backdrop. */
 body.auth-page:not(.theme-dark) {
-    background-color: #dceddf;
-    background-image: url('/QuizWeb/assets/texture.svg'), url('/QuizWeb/assets/auth-waves.svg'), linear-gradient(145deg, #e5f1e9, #cce4d7);
-    background-size: 180px 180px, 100% 32vh, 100% 100%;
-    background-position: 0 0, center bottom, center;
-    background-repeat: repeat, no-repeat, no-repeat;
+    background: var(--light-canvas);
 }
 body.auth-page.theme-dark {
     --panel: #243e36;
@@ -3892,7 +3888,7 @@ body.auth-page.theme-dark :is(.auth-switch, .signup-login) a { color: var(--acce
     --app-shadow: 0 10px 30px rgba(0, 8, 14, .14);
 }
 body:not(.theme-dark) {
-    --bg-primary: #edf3ef;
+    --bg-primary: var(--light-canvas);
     --bg-secondary: #f7faf8;
     --surface: #ffffff;
     --surface-hover: #edf6f2;
@@ -4322,7 +4318,7 @@ body.signup-page:not(.theme-dark) .signup-brand .brand-copy small { color: #607c
 
 /* Matching light treatment: same hierarchy, warmer canvas, and stronger text contrast. */
 body.student-dashboard:not(.theme-dark) {
-    --student-bg: #edf3ef;
+    --student-bg: var(--light-canvas);
     --student-sidebar: #f8fbf9;
     --student-panel: #ffffff;
     --student-panel-2: #f3f8f5;
@@ -4331,7 +4327,7 @@ body.student-dashboard:not(.theme-dark) {
     --student-muted: #62776f;
     --student-teal: #147c68;
     --student-gold: #9a741c;
-    background: radial-gradient(circle at 75% 0, rgba(38, 134, 104, .08), transparent 30%), var(--student-bg);
+    background: var(--student-bg);
     color: var(--student-text);
 }
 body.student-dashboard:not(.theme-dark) .classroom-sidebar { background: var(--student-sidebar); color: var(--student-text); border-color: var(--student-border); box-shadow: 8px 0 28px rgba(33, 69, 55, .04); }
