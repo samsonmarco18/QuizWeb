@@ -55,6 +55,7 @@ if ($user['role'] === 'teacher') {
     $myClassrooms = student_classrooms((int) $user['id']);
     $learningProfile = student_learning_profile((int) $user['id']);
     $practiceQuestions = learning_practice_questions($learningProfile);
+    $recentAttempts = array_slice(student_attempts((int) $user['id']), 0, 6);
 }
 ?>
 
@@ -109,19 +110,23 @@ if ($user['role'] === 'teacher') {
             <?php endif; ?>
         </div>
 
-        <div class="learning-summary-grid">
-            <article class="stat-card">
-                <strong><?php echo esc((string) $learningProfile['overall_accuracy']); ?>%</strong>
-                <span>Overall accuracy</span>
-            </article>
-            <article class="stat-card">
-                <strong><?php echo esc((string) $learningProfile['questions_seen']); ?></strong>
-                <span>Questions analyzed</span>
-            </article>
-            <article class="stat-card">
-                <strong><?php echo esc((string) count($learningProfile['focus_items'])); ?></strong>
-                <span>Focus items</span>
-            </article>
+        <div class="dashboard-learning-overview">
+            <div class="dashboard-accuracy-ring<?php echo (int) $learningProfile['questions_seen'] === 0 ? ' is-empty' : ''; ?>"
+                 style="--accuracy: <?php echo esc((string) $learningProfile['overall_accuracy']); ?>"
+                 role="img"
+                 aria-label="Overall accuracy: <?php echo esc((string) $learningProfile['overall_accuracy']); ?> percent">
+                <span><strong><?php echo esc((string) $learningProfile['overall_accuracy']); ?>%</strong><small>Accuracy</small></span>
+            </div>
+            <div class="learning-summary-grid">
+                <article class="stat-card">
+                    <strong><?php echo esc((string) $learningProfile['questions_seen']); ?></strong>
+                    <span>Questions analyzed</span>
+                </article>
+                <article class="stat-card">
+                    <strong><?php echo esc((string) count($learningProfile['focus_items'])); ?></strong>
+                    <span>Focus items</span>
+                </article>
+            </div>
         </div>
 
         <?php if ($learningProfile['focus_items']): ?>
@@ -232,10 +237,42 @@ if ($user['role'] === 'teacher') {
                     <h2>Your latest runs</h2>
                 </div>
             </div>
+            <figure class="dashboard-score-chart<?php echo $recentAttempts ? '' : ' is-empty'; ?>" aria-labelledby="recent-score-chart-title">
+                <figcaption id="recent-score-chart-title">Score trend</figcaption>
+                <div class="dashboard-chart-plot">
+                    <span class="dashboard-chart-line line-100" aria-hidden="true"><small>100%</small></span>
+                    <span class="dashboard-chart-line line-50" aria-hidden="true"><small>50%</small></span>
+                    <span class="dashboard-chart-line line-0" aria-hidden="true"><small>0%</small></span>
+                    <div class="dashboard-chart-bars">
+                        <?php if ($recentAttempts): ?>
+                            <?php foreach (array_reverse($recentAttempts) as $index => $attempt): ?>
+                                <?php $scorePercent = percentage((int) $attempt['score'], (int) $attempt['max_score']); ?>
+                                <div class="dashboard-chart-column">
+                                    <span class="dashboard-chart-value" style="--score: <?php echo esc((string) $scorePercent); ?>" title="<?php echo esc($attempt['quiz_title'] . ': ' . $scorePercent . '%'); ?>"><i><?php echo esc((string) $scorePercent); ?>%</i></span>
+                                    <small>Run <?php echo esc((string) ($index + 1)); ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach ([28, 44, 35, 62, 48, 72] as $index => $placeholderHeight): ?>
+                                <div class="dashboard-chart-column" aria-hidden="true">
+                                    <span class="dashboard-chart-value" style="--score: <?php echo esc((string) $placeholderHeight); ?>"></span>
+                                    <small>Run <?php echo esc((string) ($index + 1)); ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!$recentAttempts): ?>
+                        <div class="dashboard-chart-empty">
+                            <span aria-hidden="true"><?php echo nav_icon('chart'); ?></span>
+                            <strong>Your score trend will appear here</strong>
+                            <small>Complete a quiz to plot your first result.</small>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </figure>
             <div class="recent-list">
-                <?php $recentAttempts = array_slice(student_attempts((int) $user['id']), 0, 4); ?>
                 <?php if ($recentAttempts): ?>
-                    <?php foreach ($recentAttempts as $attempt): ?>
+                    <?php foreach (array_slice($recentAttempts, 0, 4) as $attempt): ?>
                         <div class="recent-item">
                             <strong><?php echo esc($attempt['quiz_title']); ?></strong>
                             <span><?php echo esc(percentage((int) $attempt['score'], (int) $attempt['max_score']) . '% score'); ?></span>

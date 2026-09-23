@@ -33,7 +33,13 @@ render_header('Register', 'auth-page signup-page');
 ?>
 <section class="signup-layout">
     <aside class="signup-brand-panel">
-        <a class="signup-brand" href="/QuizWeb/login.php"><span class="brand-badge">CH</span><strong>CHALK</strong></a>
+        <a class="signup-brand" href="/QuizWeb/login.php" aria-label="<?php echo esc(APP_NAME); ?> home">
+            <span class="brand-badge brand-badge-minimal">CH</span>
+            <span class="brand-copy">
+                <strong>CHALK</strong>
+                <small>Classroom quiz space</small>
+            </span>
+        </a>
     </aside>
     <?php if ($createdName !== null): ?>
         <section class="signup-card signup-success" aria-labelledby="signup-success-title">
