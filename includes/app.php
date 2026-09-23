@@ -2217,16 +2217,16 @@ function student_dashboard_stats(int $studentId): array
 {
     $classrooms = student_classrooms($studentId);
     $attempts = student_attempts($studentId);
-    $bestScore = 0;
+    $scorePercentages = [];
 
     foreach ($attempts as $attempt) {
-        $bestScore = max($bestScore, percentage((int) $attempt['score'], (int) $attempt['max_score']));
+        $scorePercentages[] = percentage((int) $attempt['score'], (int) $attempt['max_score']);
     }
 
     return [
         'classrooms' => count($classrooms),
         'attempts' => count($attempts),
-        'best_score' => $bestScore,
+        'average_score' => average_percentage($scorePercentages),
     ];
 }
 

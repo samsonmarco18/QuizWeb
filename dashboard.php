@@ -75,9 +75,9 @@ if ($user['role'] === 'teacher') {
         <div class="stat-grid">
             <?php foreach ($stats as $label => $value): ?>
                 <article class="stat-card">
-                    <span class="dashboard-stat-icon" aria-hidden="true"><?php echo nav_icon($label === 'classrooms' ? 'Focus Practice' : ($label === 'best_score' ? 'trophy' : ($label === 'students' ? 'Join Class' : 'chart'))); ?></span>
-                    <strong><?php echo esc((string) $value . ($label === 'best_score' ? '%' : '')); ?></strong>
-                    <span><?php echo esc($user['role'] === 'student' ? ($label === 'classrooms' ? 'Enrolled Classes' : ($label === 'attempts' ? 'Quizzes Taken' : 'Best Score')) : ucwords(str_replace('_', ' ', $label))); ?></span>
+                    <span class="dashboard-stat-icon" aria-hidden="true"><?php echo nav_icon($label === 'classrooms' ? 'Focus Practice' : ($label === 'average_score' ? 'chart' : ($label === 'students' ? 'Join Class' : 'chart'))); ?></span>
+                    <strong><?php echo esc((string) $value . ($label === 'average_score' ? '%' : '')); ?></strong>
+                    <span><?php echo esc($user['role'] === 'student' ? ($label === 'classrooms' ? 'Enrolled Classes' : ($label === 'attempts' ? 'Quizzes Taken' : 'Average Score')) : ucwords(str_replace('_', ' ', $label))); ?></span>
                 </article>
             <?php endforeach; ?>
         </div>
