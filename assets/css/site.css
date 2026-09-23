@@ -2323,7 +2323,15 @@ textarea:focus {
     top: 1.5rem;
     right: 1.5rem;
     z-index: 1200;
-    width: min(390px, calc(100vw - 2rem));
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+    max-width: min(340px, calc(100vw - 2rem));
+    padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    line-height: 1.45;
     max-height: calc(100dvh - 3rem);
     overflow-y: auto;
     overflow-wrap: anywhere;
@@ -2331,6 +2339,38 @@ textarea:focus {
     box-shadow: 0 18px 45px rgba(0, 28, 15, 0.24);
     backdrop-filter: blur(14px);
     animation: toast-slide-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.flash-message {
+    min-width: 0;
+}
+
+.flash-close {
+    display: grid;
+    place-items: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.flash-close:hover {
+    background: rgba(127, 127, 127, 0.18);
+}
+
+.flash-close:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 1px;
+}
+
+.flash-close .nav-icon {
+    width: 16px;
+    height: 16px;
 }
 
 @keyframes toast-slide-in {
@@ -3206,7 +3246,7 @@ textarea:focus {
     .flash {
         top: 0.75rem;
         right: 0.75rem;
-        width: calc(100vw - 1.5rem);
+        max-width: min(340px, calc(100vw - 1.5rem));
     }
 
     .page-shell {

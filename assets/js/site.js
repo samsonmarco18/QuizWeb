@@ -12,6 +12,10 @@
     const classroomSidebar = document.getElementById("classroom-sidebar");
     const themeStorageKey = "quizweb-theme";
 
+    document.querySelectorAll('[data-flash-close]').forEach((button) => {
+        button.addEventListener('click', () => button.closest('.flash')?.remove());
+    });
+
     function setSidebarOpen(open) {
         body?.classList.toggle("sidebar-open", open);
         sidebarToggle?.setAttribute("aria-expanded", open ? "true" : "false");
