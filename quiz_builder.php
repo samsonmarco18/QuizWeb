@@ -23,6 +23,8 @@ $isChoosingGameType = !$editingQuiz && $_SERVER['REQUEST_METHOD'] !== 'POST' && 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
+    $dueAtInput = trim($_POST['due_at'] ?? '');
+    $dueAt = '';
     $gameType = $_POST['game_type'] ?? '';
     $payload = $_POST['questions_payload'] ?? '[]';
     $decodedQuestions = json_decode($payload, true);
@@ -34,6 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!isset($modes[$gameType])) {
         $errors[] = 'Please choose a valid game mode.';
+    }
+
+    if ($dueAtInput !== '') {
+        $dueTimestamp = strtotime($dueAtInput);
+        if ($dueTimestamp === false) {
+            $errors[] = 'Enter a valid quiz deadline.';
+        } else {
+            $dueAt = date(DATE_ATOM, $dueTimestamp);
+        }
     }
 
     if (!is_array($decodedQuestions) || count($decodedQuestions) < 1) {
@@ -162,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id' => $editingQuiz['id'] ?? next_id($classroom['quizzes'] ?? []),
             'title' => $title,
             'description' => $description,
+            'due_at' => $dueAt,
             'game_type' => $gameType,
             'mastery_threshold' => $editingQuiz['mastery_threshold'] ?? 75,
             'questions' => $questions,
@@ -269,6 +281,11 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
         <label>
             <span>Description</span>
             <textarea name="description" rows="3" placeholder="Give students a quick teaser about the game"><?php echo esc($_POST['description'] ?? ($editingQuiz['description'] ?? '')); ?></textarea>
+        </label>
+        <label>
+            <span>Deadline <small>(optional)</small></span>
+            <?php $deadlineValue = $_POST['due_at'] ?? (!empty($editingQuiz['due_at']) ? date('Y-m-d\TH:i', strtotime($editingQuiz['due_at'])) : ''); ?>
+            <input type="datetime-local" name="due_at" value="<?php echo esc($deadlineValue); ?>">
         </label>
 
         <div class="builder-mode-note" data-builder-mode-note>

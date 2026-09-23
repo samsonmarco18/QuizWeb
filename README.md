@@ -87,7 +87,7 @@ When using Docker, run it inside the web container so PostgreSQL support and dat
 docker compose exec web php scripts/seed_sample_data.php
 ```
 
-On Render, deploy the latest commit, sign in as a student, and use **Load Sample Classes** on an empty dashboard. This runs through the deployed web container and its managed PostgreSQL connection; it does not depend on the local XAMPP PHP installation. The signed-in student becomes one member of the five-student sample cohort.
+On Render, the web container runs the idempotent seeder during startup after PostgreSQL becomes available. The three teachers, five students, classrooms, quizzes, deadlines, and attempts are therefore real persisted PostgreSQL records—there is no dashboard load button. Redeploying does not duplicate the seeded attempts.
 
 All demo accounts use the password `Sample123!`. The script prints each demo email and is safe to rerun without duplicating its quiz attempts.
 

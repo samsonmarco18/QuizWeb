@@ -30,6 +30,23 @@ $studentSeeds = [
 
 if ($currentStudent && ($currentStudent['role'] ?? '') === 'student') {
     $studentSeeds[0] = [$currentStudent['name'], $currentStudent['email']];
+} elseif (!$currentStudent) {
+    foreach (classrooms() as $existingClassroom) {
+        if (($existingClassroom['name'] ?? '') !== 'Grade 10 Science' || count($existingClassroom['student_ids'] ?? []) !== 5) {
+            continue;
+        }
+        $existingCohort = [];
+        foreach ($existingClassroom['student_ids'] as $studentId) {
+            $existingStudent = find_user_by_id((int) $studentId);
+            if ($existingStudent && ($existingStudent['role'] ?? '') === 'student') {
+                $existingCohort[] = [$existingStudent['name'], $existingStudent['email']];
+            }
+        }
+        if (count($existingCohort) === 5) {
+            $studentSeeds = $existingCohort;
+        }
+        break;
+    }
 }
 
 foreach ($teacherSeeds as [$name, $email, $subject]) {
@@ -108,6 +125,7 @@ foreach ($teacherSeeds as $index => [$teacherName, $teacherEmail, $subject]) {
                 'description' => 'A four-question baseline quiz for dashboard analysis.',
                 'game_type' => 'time_attack',
                 'questions' => $questions,
+                'due_at' => date(DATE_ATOM, strtotime('+' . (3 + ($index * 3)) . ' days 17:00')),
                 'created_at' => now_iso(),
                 'updated_at' => now_iso(),
             ]],
@@ -118,7 +136,14 @@ foreach ($teacherSeeds as $index => [$teacherName, $teacherEmail, $subject]) {
         ];
         $records[] = $classroom;
     } else {
-        $classroom['student_ids'] = $studentIds;
+        if ($currentStudent || empty($classroom['student_ids'])) {
+            $classroom['student_ids'] = $studentIds;
+        }
+        foreach ($classroom['quizzes'] ?? [] as $quizIndex => $quiz) {
+            if (empty($quiz['due_at'])) {
+                $classroom['quizzes'][$quizIndex]['due_at'] = date(DATE_ATOM, strtotime('+' . (3 + ($index * 3)) . ' days 17:00'));
+            }
+        }
         foreach ($records as $recordIndex => $record) {
             if ((int) $record['id'] === (int) $classroom['id']) {
                 $records[$recordIndex] = $classroom;

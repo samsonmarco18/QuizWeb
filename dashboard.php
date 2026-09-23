@@ -6,17 +6,6 @@ require_once __DIR__ . '/scripts/seed_sample_data.php';
 $user = require_login();
 $errors = [];
 
-if ($user['role'] === 'student' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'load_sample_data') {
-    try {
-        seed_sample_data($user);
-        flash_set('success', 'Sample classes loaded with three teachers and a five-student cohort.');
-    } catch (Throwable $exception) {
-        error_log('Sample data load failed: ' . $exception->getMessage());
-        flash_set('danger', 'Sample data could not be loaded. Check the Render PostgreSQL connection and try again.');
-    }
-    redirect('/QuizWeb/dashboard.php');
-}
-
 if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_classroom') {
     $name = trim($_POST['name'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
@@ -69,6 +58,14 @@ if ($user['role'] === 'teacher') {
     $practiceQuestions = learning_practice_questions($learningProfile);
     $recentAttempts = array_slice(student_attempts((int) $user['id']), 0, 6);
     $dashboardLeaderboard = student_dashboard_leaderboard((int) $user['id']);
+    $upcomingDeadlines = [];
+    foreach ($myClassrooms as $classroom) {
+        foreach ($classroom['quizzes'] ?? [] as $quiz) {
+            if (empty($quiz['due_at'])) continue;
+            $upcomingDeadlines[] = ['classroom' => $classroom, 'quiz' => $quiz];
+        }
+    }
+    usort($upcomingDeadlines, fn(array $a, array $b) => strcmp($a['quiz']['due_at'], $b['quiz']['due_at']));
 }
 ?>
 
@@ -83,13 +80,6 @@ if ($user['role'] === 'teacher') {
                 Join classrooms, play quiz games, and keep improving your scores across every challenge.
             <?php endif; ?>
         </p>
-        <?php if ($user['role'] === 'student' && !$myClassrooms): ?>
-            <form method="post" class="dashboard-sample-action">
-                <input type="hidden" name="action" value="load_sample_data">
-                <button class="button button-primary" type="submit">Load Sample Classes</button>
-                <small>Add 3 subject teachers, 5 students including you, quizzes, and scores.</small>
-            </form>
-        <?php endif; ?>
     </div>
     <div class="hero-side-stack">
         <div class="stat-grid">
@@ -105,6 +95,23 @@ if ($user['role'] === 'teacher') {
 </section>
 
 <?php if ($user['role'] === 'student'): ?>
+    <section class="glass panel dashboard-deadlines-panel">
+        <div class="section-heading">
+            <div><span class="eyebrow">Schedule</span><h2>Upcoming deadlines</h2></div>
+            <a class="button button-secondary" href="#joined-classrooms">View Classes</a>
+        </div>
+        <div class="dashboard-deadline-list">
+            <?php foreach (array_slice($upcomingDeadlines, 0, 4) as $deadline): ?>
+                <?php $dueTime = strtotime($deadline['quiz']['due_at']); ?>
+                <article class="dashboard-deadline-row">
+                    <time datetime="<?php echo esc($deadline['quiz']['due_at']); ?>"><strong><?php echo esc(strtoupper(date('M', $dueTime))); ?></strong><span><?php echo esc(date('d', $dueTime)); ?></span></time>
+                    <div><strong><?php echo esc($deadline['quiz']['title']); ?></strong><span><?php echo esc($deadline['classroom']['subject'] . ' · ' . classroom_teacher_name($deadline['classroom'])); ?></span></div>
+                    <small><?php echo esc(date('D, g:i A', $dueTime)); ?></small>
+                </article>
+            <?php endforeach; ?>
+            <?php if (!$upcomingDeadlines): ?><p class="muted">No quiz or assignment deadlines have been posted yet.</p><?php endif; ?>
+        </div>
+    </section>
     <section class="dashboard-start">
         <div>
             <h2>Start Learning Today</h2>
@@ -371,18 +378,17 @@ if ($user['role'] === 'teacher') {
         <div class="classroom-grid">
             <?php foreach ($myClassrooms as $classroom): ?>
                 <article class="classroom-card glass">
-                    <div class="classroom-top">
-                        <div>
-                            <h3><?php echo esc($classroom['name']); ?></h3>
-                            <span><?php echo esc($classroom['subject']); ?></span>
+                    <?php if ($user['role'] === 'student'): ?>
+                        <div class="dashboard-class-summary">
+                            <span class="dashboard-class-icon" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span>
+                            <div><h3><?php echo esc($classroom['subject']); ?></h3><span><?php echo esc(classroom_teacher_name($classroom)); ?></span></div>
+                            <time datetime="<?php echo esc($classroom['updated_at']); ?>"><?php echo esc(date('M j, g:i A', strtotime($classroom['updated_at']))); ?></time>
                         </div>
-                        <span class="code-badge"><?php echo esc($classroom['code']); ?></span>
-                    </div>
-                    <p><?php echo esc($classroom['description'] ?: 'Interactive classroom ready for quizzes and game sessions.'); ?></p>
-                    <div class="card-meta">
-                        <span><?php echo esc(count($classroom['quizzes'] ?? []) . ' quizzes'); ?></span>
-                        <span><?php echo esc(count($classroom['student_ids'] ?? []) . ' students'); ?></span>
-                    </div>
+                    <?php else: ?>
+                        <div class="classroom-top"><div><h3><?php echo esc($classroom['name']); ?></h3><span><?php echo esc($classroom['subject']); ?></span></div><span class="code-badge"><?php echo esc($classroom['code']); ?></span></div>
+                        <p><?php echo esc($classroom['description'] ?: 'Interactive classroom ready for quizzes and game sessions.'); ?></p>
+                        <div class="card-meta"><span><?php echo esc(count($classroom['quizzes'] ?? []) . ' quizzes'); ?></span><span><?php echo esc(count($classroom['student_ids'] ?? []) . ' students'); ?></span></div>
+                    <?php endif; ?>
                     <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Open Classroom</a>
                 </article>
             <?php endforeach; ?>
