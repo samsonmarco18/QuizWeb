@@ -3478,12 +3478,12 @@ textarea:focus {
 /* Reference navbar and light palette. Existing dark-mode colors stay intact. */
 body:not(.theme-dark) {
     color-scheme: light;
-    --light-canvas: #f3efd9;
+    --light-canvas: #dfe8e2;
     --bg-1: var(--light-canvas);
     --bg-2: var(--light-canvas);
     --bg-3: var(--light-canvas);
-    --panel: #f0f4f1;
-    --panel-strong: #f3f6f4;
+    --panel: #e7eee9;
+    --panel-strong: #eaf0ec;
     --line: #c7d5cc;
     --text: #1d2b35;
     --muted: #667384;
@@ -3736,10 +3736,11 @@ body:not(.theme-dark) .signup-brand-panel { background: linear-gradient(160deg, 
     .signup-page .page-shell { width: calc(100% - 24px); padding: 20px 0; }
 }
 
-/* Compact signup with the shared cream backdrop. */
+/* Compact signup with a soft green backdrop. */
 body.auth-page:not(.theme-dark) {
-    background: var(--light-canvas);
+    background: url('/QuizWeb/assets/texture.svg') repeat, url('/QuizWeb/assets/auth-waves.svg') center bottom / 100% 32vh no-repeat, linear-gradient(145deg, #dfeae2, #cce0d3);
 }
+body.auth-page:not(.theme-dark) :is(.auth-card, .signup-card) { background: var(--panel); }
 body.auth-page.theme-dark {
     --panel: #243e36;
     --panel-strong: #284239;
@@ -3889,11 +3890,11 @@ body.auth-page.theme-dark :is(.auth-switch, .signup-login) a { color: var(--acce
 }
 body:not(.theme-dark) {
     --bg-primary: var(--light-canvas);
-    --bg-secondary: #f7faf8;
-    --surface: #ffffff;
-    --surface-hover: #edf6f2;
-    --surface-soft: #f3f8f5;
-    --border: #d1e0d8;
+    --bg-secondary: #e3ebe5;
+    --surface: var(--panel);
+    --surface-hover: #dce9e1;
+    --surface-soft: #e1eae4;
+    --border: #c3d2c8;
     --text-primary: #183129;
     --text-secondary: #62776f;
     --accent: #147c68;
@@ -4319,29 +4320,29 @@ body.signup-page:not(.theme-dark) .signup-brand .brand-copy small { color: #607c
 /* Matching light treatment: same hierarchy, warmer canvas, and stronger text contrast. */
 body.student-dashboard:not(.theme-dark) {
     --student-bg: var(--light-canvas);
-    --student-sidebar: #f8fbf9;
-    --student-panel: #ffffff;
-    --student-panel-2: #f3f8f5;
-    --student-border: #d4e1da;
+    --student-sidebar: var(--bg-secondary);
+    --student-panel: var(--surface);
+    --student-panel-2: var(--surface-soft);
+    --student-border: var(--border);
     --student-text: #17312b;
     --student-muted: #62776f;
     --student-teal: #147c68;
     --student-gold: #9a741c;
-    background: var(--student-bg);
+    background: radial-gradient(circle at 75% 0, rgba(38, 134, 104, .08), transparent 30%), var(--student-bg);
     color: var(--student-text);
 }
 body.student-dashboard:not(.theme-dark) .classroom-sidebar { background: var(--student-sidebar); color: var(--student-text); border-color: var(--student-border); box-shadow: 8px 0 28px rgba(33, 69, 55, .04); }
 body.student-dashboard:not(.theme-dark) .student-sidebar-heading { color: #17312b; background: linear-gradient(90deg, rgba(20, 124, 104, .14), rgba(20, 124, 104, .025)); }
 body.student-dashboard:not(.theme-dark) .classroom-sidebar-link { color: #526a62; }
 body.student-dashboard:not(.theme-dark) .classroom-sidebar-link:is(:hover, .is-active) { color: #0f5e50; background: #dceee7; }
-body.student-dashboard:not(.theme-dark) .dashboard-overview .stat-card { background: linear-gradient(105deg, #d8eee6, #fff 34%); }
-body.student-dashboard:not(.theme-dark) .account-toggle { color: var(--student-text); background: rgba(255, 255, 255, .94); }
-body.student-dashboard:not(.theme-dark) .site-header { background: rgba(248, 251, 249, .97); border-color: var(--student-border); }
+body.student-dashboard:not(.theme-dark) .dashboard-overview .stat-card { background: linear-gradient(105deg, #d1e5da, var(--student-panel) 34%); }
+body.student-dashboard:not(.theme-dark) .account-toggle { color: var(--student-text); background: var(--student-panel); }
+body.student-dashboard:not(.theme-dark) .site-header { background: var(--student-sidebar); border-color: var(--student-border); }
 body.student-dashboard:not(.theme-dark) .site-header .nav-link.is-active { color: #fff; background: #176b5c; border-color: #176b5c; }
-body.student-dashboard:not(.theme-dark) .dashboard-start { background: linear-gradient(100deg, #dbeee7, #fff); }
-body.student-dashboard:not(.theme-dark) .dashboard-chart-plot { background: #f7faf8; }
+body.student-dashboard:not(.theme-dark) .dashboard-start { background: linear-gradient(100deg, #d1e5da, var(--student-panel)); }
+body.student-dashboard:not(.theme-dark) .dashboard-chart-plot { background: var(--student-panel-2); }
 body.student-dashboard:not(.theme-dark) .dashboard-chart-line { border-color: #d5e1db; }
-body.student-dashboard:not(.theme-dark) .dashboard-chart-empty { background: radial-gradient(circle, rgba(255, 255, 255, .96) 0 20%, transparent 66%); }
+body.student-dashboard:not(.theme-dark) .dashboard-chart-empty { background: radial-gradient(circle, var(--student-panel) 0 20%, transparent 66%); }
 
 @media (max-width: 1050px) {
     .student-dashboard.has-classroom-sidebar { --sidebar-width: 168px; }
@@ -4401,7 +4402,7 @@ body.student-dashboard:not(.theme-dark) .dashboard-chart-empty { background: rad
 .chat-poll small { font-size: 10px; }
 .messenger-dock button:disabled { opacity: .6; cursor: wait; }
 .messenger-dock { --chat-bg: #0c1822; --chat-side: #111f2c; --chat-raised: #1b2b39; --chat-line: #283d4a; --chat-text: #edf5f8; --chat-muted: #a0b5c4; --chat-accent: #38d6bf; }
-body:not(.theme-dark) .messenger-dock { --chat-bg: #fff; --chat-side: #f2f7f6; --chat-raised: #e6efed; --chat-line: #cadbd5; --chat-text: #163a35; --chat-muted: #526e68; --chat-accent: #087b69; }
+body:not(.theme-dark) .messenger-dock { --chat-bg: var(--surface); --chat-side: var(--bg-secondary); --chat-raised: #dbe7e1; --chat-line: #c3d2c8; --chat-text: #163a35; --chat-muted: #526e68; --chat-accent: #087b69; }
 .messenger-dock .messenger-launcher { color: #fff; right: 0; bottom: 0; }
 .messenger-launcher-icon { display: grid; grid-template-columns: 1fr; background: transparent; box-shadow: none; border-radius: 0; }
 .messenger-panel { width: min(740px, calc(100vw - 32px)); height: min(470px, calc(100dvh - 110px)); right: 20px; left: auto; bottom: 84px; }
