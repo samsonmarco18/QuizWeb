@@ -785,7 +785,7 @@
             answerGrid.innerHTML = `
                 <div class="start-card">
                     <strong>${modeNotes[mode] || "Choose the best answer."}</strong>
-                    <p>${practiceMode ? "This focus round is for practice only, so it will not be saved to the scoreboard." : (isPreview ? "This is a teacher preview, so your run will not be saved." : "Your score, time, and accuracy will be saved when you finish.")}</p>
+            <p>${practiceMode ? "This focus round will be recorded in your training history without affecting the class leaderboard." : (isPreview ? "This is a teacher preview, so your run will not be saved." : "Your score, time, and accuracy will be saved when you finish.")}</p>
                     <p>Keyboard shortcuts: <span>1-4 to answer</span>, <span>Enter to continue</span>.</p>
                     ${integrityStartNotice()}
                 </div>
@@ -1026,7 +1026,7 @@
         `;
 
         if (isPreview) {
-            setNote(practiceMode ? "Practice complete. This run was not saved to the scoreboard." : "Preview complete. Teacher previews are not saved to the scoreboard.");
+            setNote(practiceMode ? "Practice complete. This training run was recorded outside the class leaderboard." : "Preview complete. Teacher previews are not saved to the scoreboard.");
             setControls([
                 button(practiceMode ? "Replay Practice" : "Replay Preview", "button button-primary", () => window.location.reload()),
                 button(practiceMode ? "Back to Dashboard" : "Back to Classroom", "button button-secondary", () => {

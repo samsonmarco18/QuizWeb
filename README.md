@@ -71,7 +71,23 @@ For a quick Mastery Ladder test, use `Create Sample Mastery Quiz` on the teacher
 - Results page shows a per-question learning review after each attempt.
 - Classroom page shows students their class-specific weak areas.
 - Teacher classroom page shows class-level weak questions and difficulty bands to reteach.
-- Focus Practice builds a no-grade mini game from the student's weakest multiple-choice items.
+- Focus Practice builds a no-grade mini game from the student's weakest multiple-choice items. Training runs are saved to the student's activity history but do not affect classroom leaderboards.
+
+### Sample dashboard data
+
+Seed five students, three subject teachers, three classrooms, quizzes, and varied scores with:
+
+```bash
+php scripts/seed_sample_data.php
+```
+
+When using Docker, run it inside the web container so PostgreSQL support and database environment variables are available:
+
+```bash
+docker compose exec web php scripts/seed_sample_data.php
+```
+
+All demo accounts use the password `Sample123!`. The script prints each demo email and is safe to rerun without duplicating its quiz attempts.
 
 ## Game Testing Checklist
 

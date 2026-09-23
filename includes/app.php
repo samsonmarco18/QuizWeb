@@ -1654,6 +1654,74 @@ function classroom_leaderboard(array $classroom): array
     return $rows;
 }
 
+function student_dashboard_leaderboard(int $studentId): array
+{
+    $studentClassrooms = student_classrooms($studentId);
+    $classroomIds = array_map(fn(array $classroom) => (int) $classroom['id'], $studentClassrooms);
+    $studentIds = [];
+
+    foreach ($studentClassrooms as $classroom) {
+        foreach ($classroom['student_ids'] ?? [] as $memberId) {
+            $studentIds[(int) $memberId] = true;
+        }
+    }
+
+    $rows = [];
+    foreach (array_keys($studentIds) as $memberId) {
+        $member = find_user_by_id((int) $memberId);
+        if (!$member || ($member['role'] ?? '') !== 'student') {
+            continue;
+        }
+        $rows[(int) $memberId] = [
+            'student' => $member,
+            'best_runs' => [],
+            'total_score' => 0,
+            'max_score' => 0,
+            'average_percent' => 0,
+            'quizzes_played' => 0,
+            'rank' => 0,
+        ];
+    }
+
+    foreach (attempts() as $attempt) {
+        $memberId = (int) ($attempt['student_id'] ?? 0);
+        $classroomId = (int) ($attempt['classroom_id'] ?? 0);
+        if (!isset($rows[$memberId]) || !in_array($classroomId, $classroomIds, true) || attempt_is_disqualified($attempt)) {
+            continue;
+        }
+
+        $key = $classroomId . ':' . (int) ($attempt['quiz_id'] ?? 0);
+        $percent = percentage((int) ($attempt['score'] ?? 0), (int) ($attempt['max_score'] ?? 0));
+        $current = $rows[$memberId]['best_runs'][$key] ?? null;
+        if (!$current || $percent > $current['percent'] || ($percent === $current['percent'] && (int) $attempt['elapsed_seconds'] < (int) $current['elapsed_seconds'])) {
+            $attempt['percent'] = $percent;
+            $rows[$memberId]['best_runs'][$key] = $attempt;
+        }
+    }
+
+    foreach ($rows as &$row) {
+        foreach ($row['best_runs'] as $attempt) {
+            $row['total_score'] += (int) $attempt['score'];
+            $row['max_score'] += (int) $attempt['max_score'];
+        }
+        $row['quizzes_played'] = count($row['best_runs']);
+        $row['average_percent'] = percentage($row['total_score'], $row['max_score']);
+        unset($row['best_runs']);
+    }
+    unset($row);
+
+    $rows = array_values($rows);
+    usort($rows, fn(array $a, array $b) => [$b['total_score'], $b['average_percent'], $b['quizzes_played'], $a['student']['name']]
+        <=> [$a['total_score'], $a['average_percent'], $a['quizzes_played'], $b['student']['name']]);
+
+    foreach ($rows as $index => &$row) {
+        $row['rank'] = $index + 1;
+    }
+    unset($row);
+
+    return $rows;
+}
+
 function percentage(int $value, int $max): int
 {
     if ($max <= 0) {
@@ -2216,7 +2284,9 @@ function teacher_dashboard_stats(int $teacherId): array
 function student_dashboard_stats(int $studentId): array
 {
     $classrooms = student_classrooms($studentId);
-    $attempts = student_attempts($studentId);
+    $attempts = array_values(array_filter(student_attempts($studentId), fn(array $attempt) =>
+        (int) ($attempt['classroom_id'] ?? 0) > 0 && ($attempt['game_type'] ?? '') !== 'focus_training'
+    ));
     $scorePercentages = [];
 
     foreach ($attempts as $attempt) {

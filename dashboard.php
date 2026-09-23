@@ -56,6 +56,7 @@ if ($user['role'] === 'teacher') {
     $learningProfile = student_learning_profile((int) $user['id']);
     $practiceQuestions = learning_practice_questions($learningProfile);
     $recentAttempts = array_slice(student_attempts((int) $user['id']), 0, 6);
+    $dashboardLeaderboard = student_dashboard_leaderboard((int) $user['id']);
 }
 ?>
 
@@ -172,6 +173,59 @@ if ($user['role'] === 'teacher') {
                     </div>
                 <?php endif; ?>
             </section>
+    </div>
+
+    <div class="dashboard-insights-grid">
+        <section class="glass panel dashboard-performance-panel">
+            <div class="section-heading">
+                <div>
+                    <span class="eyebrow">Performance insights</span>
+                    <h2>Strong and weak areas</h2>
+                    <p class="muted">Use your recorded answers to decide where to study next.</p>
+                </div>
+                <?php if ($practiceQuestions): ?><a class="button button-primary" href="/QuizWeb/practice.php">Start Focus Training</a><?php endif; ?>
+            </div>
+            <div class="dashboard-skill-columns">
+                <div class="dashboard-skill-group is-strong">
+                    <h3><?php echo nav_icon('trophy'); ?> You are doing well</h3>
+                    <?php if ($learningProfile['strong_levels']): ?>
+                        <?php foreach ($learningProfile['strong_levels'] as $level): ?>
+                            <div class="dashboard-skill-row"><span><?php echo esc($level['label']); ?></span><strong><?php echo esc((string) $level['accuracy']); ?>%</strong></div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="muted">Complete more quizzes to reveal your strongest levels.</p>
+                    <?php endif; ?>
+                </div>
+                <div class="dashboard-skill-group is-weak">
+                    <h3><?php echo nav_icon('Focus Practice'); ?> Study these next</h3>
+                    <?php if ($learningProfile['focus_items']): ?>
+                        <?php foreach (array_slice($learningProfile['focus_items'], 0, 3) as $item): ?>
+                            <article class="dashboard-weak-item">
+                                <div><strong><?php echo esc($item['quiz_title']); ?></strong><span><?php echo esc($item['level_label'] . ' - ' . $item['accuracy'] . '% accuracy'); ?></span></div>
+                                <a class="button button-secondary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $item['classroom_id']); ?>&quiz_id=<?php echo esc((string) $item['quiz_id']); ?>">Retake Quiz</a>
+                            </article>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="muted">No weak quiz area has been identified yet.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass panel dashboard-leaderboard-panel">
+            <div class="section-heading"><div><span class="eyebrow">Leaderboard</span><h2>Your class rankings</h2></div></div>
+            <div class="dashboard-leaderboard-list">
+                <?php foreach (array_slice($dashboardLeaderboard, 0, 5) as $row): ?>
+                    <?php $isCurrentStudent = (int) $row['student']['id'] === (int) $user['id']; ?>
+                    <article class="dashboard-leaderboard-row<?php echo $isCurrentStudent ? ' is-current' : ''; ?>">
+                        <span class="dashboard-rank">#<?php echo esc((string) $row['rank']); ?></span>
+                        <div><strong><?php echo esc($isCurrentStudent ? 'You' : $row['student']['name']); ?></strong><small><?php echo esc((string) $row['quizzes_played']); ?> quizzes</small></div>
+                        <strong><?php echo esc((string) $row['average_percent']); ?>%</strong>
+                    </article>
+                <?php endforeach; ?>
+                <?php if (!$dashboardLeaderboard): ?><p class="muted">Class rankings will appear once students complete quizzes.</p><?php endif; ?>
+            </div>
+        </section>
     </div>
 <?php endif; ?>
 

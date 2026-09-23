@@ -58,6 +58,7 @@ $quizData = [
         ];
     }, $practiceQuestions, array_keys($practiceQuestions)),
 ];
+$_SESSION['focus_training_quiz'] = $quizData;
 
 render_header('Focus Practice', 'game-page mode-time_attack practice-page');
 ?>
@@ -70,7 +71,7 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
             <p class="lead compact">A no-grade round built from your weakest recent multiple-choice items.</p>
             <div class="feature-pills">
                 <span><?php echo esc(count($practiceQuestions) . ' practice questions'); ?></span>
-                <span>No scoreboard save</span>
+                <span>Recorded as training</span>
                 <span><?php echo esc((string) $profile['overall_accuracy']); ?>% current accuracy</span>
             </div>
         </div>
@@ -87,8 +88,8 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
         data-game-root
         data-classroom-id="0"
         data-quiz='<?php echo esc(json_encode($quizData, JSON_UNESCAPED_SLASHES)); ?>'
-        data-submit-url="#"
-        data-is-preview="1"
+        data-submit-url="/QuizWeb/submit_focus.php"
+        data-is-preview="0"
         data-practice-mode="1"
         data-return-url="/QuizWeb/dashboard.php"
     >
