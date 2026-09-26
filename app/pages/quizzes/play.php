@@ -21,13 +21,26 @@ if (!$quiz) {
 
 $modes = game_modes();
 $isPreview = $user['role'] === 'teacher';
+$isTextActivity = activity_uses_text_answers($quiz['game_type']);
+$_SESSION['activity_csrf'] ??= bin2hex(random_bytes(32));
 $quizData = [
     'id' => $quiz['id'],
     'title' => $quiz['title'],
     'game_type' => $quiz['game_type'],
     'mastery_threshold' => mastery_threshold_for_quiz($quiz),
     'crossword_layout' => $quiz['crossword_layout'] ?? null,
-    'questions' => array_map(function (array $question) {
+    'questions' => array_map(function (array $question) use ($quiz, $isPreview) {
+        if (activity_uses_text_answers($quiz['game_type'])) {
+            $public = ['id' => (int) $question['id'], 'prompt' => $question['prompt'], 'points' => (int) $question['points'], 'hint' => $question['hint'] ?? ''];
+            // A matching game needs both card faces; written answers stay server-side.
+            if ($quiz['game_type'] === 'flip_match' || $isPreview) $public['answer'] = $question['answer'];
+            if ($isPreview) {
+                $public['accepted_answers'] = $question['accepted_answers'] ?? [];
+                $public['case_sensitive'] = $question['case_sensitive'] ?? false;
+                $public['explanation'] = $question['explanation'] ?? '';
+            }
+            return $public;
+        }
         return [
             'id' => (int) ($question['id'] ?? 0),
             'prompt' => $question['prompt'],
@@ -77,6 +90,7 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
         data-quiz='<?php echo esc(json_encode($quizData, JSON_UNESCAPED_SLASHES)); ?>'
         data-submit-url="/QuizWeb/submit_game.php"
         data-is-preview="<?php echo $isPreview ? '1' : '0'; ?>"
+        data-csrf="<?php echo esc($_SESSION['activity_csrf']); ?>"
         data-return-url="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>"
     >
         <div class="game-progress">
@@ -112,4 +126,4 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
     </div>
 </section>
 
-<?php render_footer(['/QuizWeb/assets/js/game.js']); ?>
+<?php render_footer([$isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>

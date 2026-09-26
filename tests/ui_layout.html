@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CHALK layout regression fixture</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+<link rel="stylesheet" href="../assets/css/refinements.css">
+<body class="ui-refined dashboard-page student-dashboard has-classroom-sidebar">
+<script>if (location.search.includes('dark')) document.body.classList.add('theme-dark');</script>
+<header class="site-header glass"><a class="brand" href="#">CHALK</a><span>Layout test fixture</span></header>
+<aside class="classroom-sidebar"><h2>Classrooms</h2><nav><a class="classroom-sidebar-link is-active">All Classes</a><a class="classroom-sidebar-link">Grade 10 Science</a></nav></aside>
+<main class="page-shell">
+<div class="dashboard-primary-grid">
+<section class="glass panel dashboard-deadlines-panel">
+<div class="section-heading"><div><span class="eyebrow">Schedule</span><h2>Upcoming deadlines</h2></div><a class="button button-secondary">View Classes</a></div>
+<div class="dashboard-deadline-list">
+<article class="dashboard-deadline-row"><time><strong>SEP</strong><span>26</span></time><div><strong>Science Foundations and Scientific Investigation</strong><span>Science · Dr. Elena Cruz</span></div><small>Sat, 5:00 PM</small><span class="deadline-status status-completed">Completed</span></article>
+<article class="dashboard-deadline-row"><time><strong>SEP</strong><span>29</span></time><div><strong>Mathematics Foundations</strong><span>Mathematics · Prof. Marco Reyes</span></div><small>Tue, 5:00 PM</small><span class="deadline-status status-upcoming">Upcoming</span></article>
+</div></section>
+<section class="glass panel"><div class="section-heading"><div><span class="eyebrow">Joined classrooms</span><h2>Your Classes</h2></div><a class="button button-secondary">Join Class</a></div>
+<div class="classroom-grid">
+<article class="classroom-card glass"><div class="dashboard-class-summary"><span class="dashboard-class-icon">S</span><div><h3>Science Foundations</h3><span>Dr. Elena Cruz</span></div><time>Sep 23, 7:49 PM</time></div><a class="button button-secondary">Open Classroom</a></article>
+<article class="classroom-card glass"><div class="dashboard-class-summary"><span class="dashboard-class-icon">M</span><div><h3>Mathematics</h3><span>Prof. Marco Reyes</span></div><time>Sep 23, 1:08 PM</time></div><a class="button button-secondary">Open Classroom</a></article>
+</div></section></div>
+<nav class="classroom-tabs"><a class="is-active" aria-current="page">Overview</a><a>Quizzes</a><a>Materials</a><a>Results</a></nav>
+<output id="checks"></output>
+</main>
+<script>
+window.addEventListener('load', () => {
+    const failures = [];
+    if (document.documentElement.scrollWidth > innerWidth) failures.push('Horizontal page overflow');
+    document.querySelectorAll('.dashboard-class-summary h3, .dashboard-deadline-row > div strong').forEach(element => {
+        if (getComputedStyle(element).whiteSpace === 'nowrap') failures.push('Title cannot wrap');
+        if (element.getBoundingClientRect().width < 130) failures.push('Title column is squeezed');
+    });
+    document.querySelectorAll('.classroom-card').forEach(card => {
+        const summary = card.querySelector('.dashboard-class-summary').getBoundingClientRect();
+        const button = card.querySelector('.button').getBoundingClientRect();
+        if (button.top < summary.bottom) failures.push('Class action competes with details');
+    });
+    document.getElementById('checks').textContent = failures.length ? 'FAIL: ' + failures.join('; ') : 'PASS: no page overflow, readable title widths, actions below class details';
+});
+</script>
+</body>
+</html>

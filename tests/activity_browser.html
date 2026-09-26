@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Activity browser regression checks</title>
+<link rel="stylesheet" href="../assets/css/site.css"><link rel="stylesheet" href="../assets/css/refinements.css">
+<body class="ui-refined game-page">
+<main class="page-shell">
+<div><strong data-progress-count></strong><strong data-score-value></strong><strong data-streak-value></strong><strong data-timer-value></strong></div>
+<section data-game-root data-is-preview="1" data-return-url="../classes.php" class="game-shell glass">
+<div data-progress-bar></div><div class="question-stage"><span data-question-points></span><h2 data-question-text></h2><p data-question-helper></p><div data-answer-grid class="answers-grid"></div><div data-game-controls class="game-controls"></div><p data-game-note></p></div>
+</section>
+<form id="quiz-builder-form"><input name="title" value="Grid preview"><button type="button" id="preview-quiz">Preview Activity</button></form>
+<dialog id="activity-preview" class="activity-preview"><h2 id="preview-title"></h2><p id="preview-status"></p><div id="preview-content"></div></dialog>
+<output id="checks">PENDING</output>
+</main>
+<script>
+const mode = location.search.includes('match') ? 'flip_match' : 'fill_blank';
+document.body.classList.add('mode-' + mode);
+if (location.search.includes('dark')) document.body.classList.add('theme-dark');
+document.querySelector('[data-game-root]').dataset.quiz = JSON.stringify({id: 1, title: 'Activity check', game_type: mode, questions: [
+    {id: 1, prompt: 'Styles a web page', answer: 'CSS', accepted_answers: ['Cascading Style Sheets'], points: 10},
+    {id: 2, prompt: 'Structures a web page', answer: 'HTML', points: 10}
+]});
+let previewRequests = 0;
+window.fetch = async (url, options) => {
+    if (options.body.get('action') !== 'preview') throw new Error('Expected preview action');
+    previewRequests++;
+    return {ok: true, headers: new Headers({'content-type': 'application/json'}), json: async () => ({title: 'Crossword <script>safe text<\/script>', game_type: 'crossword', errors: [], questions: [{id: 1, prompt: 'A pet', answer: 'CAT'}], crossword_layout: {cols: 3, rows: 1, cells: [['C','A','T']], placements: [{question_id: 1, row: 0, col: 0, direction: 'across', number: 1}]}})};
+};
+</script>
+<script src="../assets/js/activity-game.js"></script><script src="../assets/js/builder-preview.js"></script>
+<script>
+window.addEventListener('load', async () => {
+    const output = document.getElementById('checks');
+    function check(condition, message) { if (!condition) throw new Error(message); }
+    try {
+        const controls = document.querySelector('[data-game-controls]');
+        if (location.search.includes('preview')) {
+            document.getElementById('preview-quiz').click();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            check(previewRequests === 1, 'One preview request');
+            check(document.querySelectorAll('.preview-cell input').length === 3, 'Grid rendered');
+            check(document.getElementById('preview-title').textContent.includes('<script>'), 'Title safely rendered as text');
+            const toggle = document.querySelector('#preview-content > button');
+            toggle.click();
+            check([...document.querySelectorAll('.preview-cell input')].map(input => input.value).join('') === 'CAT', 'Answer key shown');
+            toggle.click();
+            check([...document.querySelectorAll('.preview-cell input')].every(input => input.value === ''), 'Answer key hidden');
+            output.textContent = 'PASS: unsaved preview request, grid, clues, safe text, answer-key toggle';
+            return;
+        }
+        controls.querySelector('button').click();
+        if (mode === 'flip_match') {
+            const tiles = [...document.querySelectorAll('.match-card')];
+            for (let i = 0; i < tiles.length; i++) for (let j = i + 1; j < tiles.length; j++) {
+                if (tiles[i].disabled || tiles[j].disabled) continue;
+                tiles[i].click(); tiles[j].click();
+                const turnBack = [...controls.querySelectorAll('button')].find(button => button.textContent === 'Turn Cards Back');
+                if (turnBack) turnBack.click();
+            }
+            check(tiles.every(tile => tile.disabled), 'All pairs matched');
+        } else {
+            const answer = value => { const input = document.querySelector('.activity-answer input'); input.value = value; input.dispatchEvent(new Event('input')); };
+            answer('cascading style sheets'); controls.lastElementChild.click();
+            answer('html'); controls.lastElementChild.click();
+            check(document.querySelectorAll('.activity-review-row').length === 2, 'Review contains all answers');
+            document.querySelector('.activity-review-row button').click();
+            check(document.querySelector('.activity-answer input').value === 'cascading style sheets', 'Edit preserves response');
+            controls.lastElementChild.click(); controls.lastElementChild.click();
+        }
+        controls.lastElementChild.click();
+        check(document.querySelector('[data-question-helper]').textContent.includes('20 / 20'), 'Correct preview score');
+        check(document.querySelector('[data-game-note]').textContent === 'No score or attempt was saved.', 'Preview does not submit');
+        output.textContent = 'PASS: ' + mode + ' interaction, navigation, scoring, and preview isolation';
+    } catch (error) { output.textContent = 'FAIL: ' + error.message; }
+});
+</script>
+</body></html>

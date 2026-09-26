@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/activity.php';
+
 session_start();
 
 date_default_timezone_set('Asia/Manila');
@@ -862,6 +864,10 @@ function logout_user(): void
 function game_modes(): array
 {
     return [
+        'standard' => ['label' => 'Standard Quiz', 'icon' => 'Q', 'description' => 'A clear multiple-choice assessment, one question at a time.'],
+        'fill_blank' => ['label' => 'Fill in the Blank', 'icon' => 'Aa', 'description' => 'Complete missing words using teacher-defined accepted answers.'],
+        'emoji_quiz' => ['label' => 'Emoji Quiz', 'icon' => '☺', 'description' => 'Decode an emoji clue and type the concept it represents.'],
+        'flip_match' => ['label' => 'Flip Match', 'icon' => '↔', 'description' => 'Flip cards and match terms with their definitions.'],
         'time_attack' => [
             'label' => 'Time Attack',
             'icon' => 'T',
@@ -1532,6 +1538,13 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
             continue;
         }
 
+        if (activity_uses_text_answers($quiz['game_type'] ?? '')) {
+            $points = (int) ($question['points'] ?? 10);
+            $maxScore += $points;
+            if (activity_answer_is_correct($question, $answers[$index] ?? null)) $score += $points;
+            continue;
+        }
+
         if (($quiz['game_type'] ?? '') === 'crossword') {
             $points = (int) ($question['points'] ?? 10);
             $expected = crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? '')));
@@ -1793,6 +1806,7 @@ function option_answer_label(array $question, $selected): string
 
 function correct_answer_label(array $question, string $gameType): string
 {
+    if (activity_uses_text_answers($gameType)) return (string) ($question['answer'] ?? '');
     if ($gameType === 'crossword') {
         return crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? '')));
     }
@@ -1840,7 +1854,11 @@ function attempt_question_review_rows(array $quiz, array $attempt): array
         $level = (string) ($question['level'] ?? 'easy');
         $countsForLearning = $gameType === 'master_ladder' ? $answerExists : true;
 
-        if ($gameType === 'crossword') {
+        if (activity_uses_text_answers($gameType)) {
+            $attempted = is_string($selected) && trim($selected) !== '';
+            $isCorrect = activity_answer_is_correct($question, $selected);
+            $submittedLabel = $attempted ? $selected : 'No answer';
+        } elseif ($gameType === 'crossword') {
             $expected = crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? '')));
             $submitted = crossword_normalize_answer((string) ($selected ?? ''));
             $attempted = $submitted !== '';
@@ -1866,7 +1884,7 @@ function attempt_question_review_rows(array $quiz, array $attempt): array
             'is_correct' => $isCorrect,
             'submitted_answer' => $submittedLabel,
             'correct_answer' => correct_answer_label($question, $gameType),
-            'guidance' => learning_guidance($question, $isCorrect, $attempted, $gameType),
+            'guidance' => ($question['explanation'] ?? '') ?: learning_guidance($question, $isCorrect, $attempted, $gameType),
             'game_type' => $gameType,
             'options' => array_values($question['options'] ?? []),
             'correct_index' => (int) ($question['correct_index'] ?? 0),

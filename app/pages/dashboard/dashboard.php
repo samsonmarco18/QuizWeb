@@ -99,7 +99,7 @@ if ($user['role'] === 'teacher') {
     <section class="glass panel dashboard-deadlines-panel">
         <div class="section-heading">
             <div><span class="eyebrow">Schedule</span><h2>Upcoming deadlines</h2></div>
-            <a class="button button-secondary" href="#joined-classrooms">View Classes</a>
+            <a class="button button-secondary" href="/QuizWeb/classes.php">View Classes</a>
         </div>
         <div class="dashboard-deadline-list">
             <?php foreach (array_slice($upcomingDeadlines, 0, 4) as $deadline): ?>
@@ -142,8 +142,8 @@ if ($user['role'] === 'teacher') {
             <p>Join a class, take quizzes, and track your progress.</p>
             <div class="dashboard-shortcuts">
                 <a class="button button-primary" href="/QuizWeb/join.php"><?php echo nav_icon('Join Class'); ?>Join Class</a>
-                <a class="button button-secondary" href="#recent-progress"><?php echo nav_icon('Dashboard'); ?>Track Scores</a>
-                <a class="button button-secondary" href="#joined-classrooms"><?php echo nav_icon('Focus Practice'); ?>Play Game Modes</a>
+                <a class="button button-secondary" href="/QuizWeb/student_results.php"><?php echo nav_icon('Dashboard'); ?>Track Scores</a>
+                <a class="button button-secondary" href="/QuizWeb/game_modes.php"><?php echo nav_icon('Focus Practice'); ?>Play Game Modes</a>
             </div>
         </div>
         <span class="dashboard-book" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span>

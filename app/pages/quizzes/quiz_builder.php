@@ -14,24 +14,28 @@ if (!$classroom || (int) $classroom['teacher_id'] !== (int) $user['id']) {
 
 $editingQuiz = $quizId ? classroom_quiz($classroom, $quizId) : null;
 $errors = [];
+$_SESSION['quiz_builder_csrf'] ??= bin2hex(random_bytes(32));
 $modes = game_modes();
 $masteryLevels = mastery_levels();
-$requestedGameType = $_GET['game_type'] ?? '';
-$selectedGameType = $_POST['game_type'] ?? ($editingQuiz['game_type'] ?? $requestedGameType);
+$requestedGameType = is_string($_GET['game_type'] ?? null) ? $_GET['game_type'] : '';
+$selectedGameType = is_string($_POST['game_type'] ?? null) ? $_POST['game_type'] : ($editingQuiz['game_type'] ?? $requestedGameType);
 $isChoosingGameType = !$editingQuiz && $_SERVER['REQUEST_METHOD'] !== 'POST' && !isset($modes[$selectedGameType]);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim($_POST['title'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $dueAtInput = trim($_POST['due_at'] ?? '');
+    if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['quiz_builder_csrf'], $_POST['csrf'])) {
+        $errors[] = 'Your form expired. Reload the editor and try again.';
+    }
+    $title = is_string($_POST['title'] ?? null) ? trim($_POST['title']) : '';
+    $description = is_string($_POST['description'] ?? null) ? trim($_POST['description']) : '';
+    $dueAtInput = is_string($_POST['due_at'] ?? null) ? trim($_POST['due_at']) : '';
     $dueAt = '';
-    $gameType = $_POST['game_type'] ?? '';
-    $payload = $_POST['questions_payload'] ?? '[]';
+    $gameType = $selectedGameType;
+    $payload = is_string($_POST['questions_payload'] ?? null) && strlen($_POST['questions_payload']) <= 250000 ? $_POST['questions_payload'] : '[]';
     $decodedQuestions = json_decode($payload, true);
     $questions = [];
 
-    if ($title === '') {
-        $errors[] = 'Quiz title is required.';
+    if ($title === '' || strlen($title) > 255) {
+        $errors[] = 'Enter a quiz title of up to 255 characters.';
     }
 
     if (!isset($modes[$gameType])) {
@@ -47,127 +51,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (!is_array($decodedQuestions) || count($decodedQuestions) < 1) {
-        $errors[] = 'Add at least one question to the quiz.';
-    } else {
-        $levelCounts = array_fill_keys(array_keys($masteryLevels), 0);
-        $answerLengths = [];
-        $levelsUsed = [];
-        $answersUsed = [];
+    $prepared = prepare_activity_questions($gameType, $decodedQuestions);
+    $questions = $prepared['questions'];
+    $crosswordLayout = $prepared['layout'];
+    $errors = array_merge($errors, $prepared['errors']);
 
-        foreach ($decodedQuestions as $index => $question) {
-            $prompt = trim($question['prompt'] ?? '');
-            $options = array_map('trim', $question['options'] ?? []);
-            $correctIndex = (int) ($question['correct_index'] ?? 0);
-            $points = max(5, (int) ($question['points'] ?? 10));
-            $level = strtolower(trim((string) ($question['level'] ?? 'easy')));
-
-            if (!isset($masteryLevels[$level])) {
-                $level = 'easy';
-            }
-
-            if ($gameType === 'crossword') {
-                $answer = crossword_normalize_answer((string) ($question['answer'] ?? ''));
-
-                if ($prompt === '' || $answer === '') {
-                    $errors[] = 'Crossword word ' . ($index + 1) . ' needs both an answer and a clear clue.';
-                    continue;
-                }
-
-                if (strlen($answer) < 3 || strlen($answer) > 15) {
-                    $errors[] = 'Crossword word ' . ($index + 1) . ' must be 3 to 15 letters long.';
-                    continue;
-                }
-
-                if (isset($answersUsed[$answer])) {
-                    $errors[] = 'Crossword word ' . ($index + 1) . ' duplicates another answer.';
-                    continue;
-                }
-
-                $answersUsed[$answer] = true;
-                $answerLengths[strlen($answer)] = true;
-                $levelsUsed[$level] = true;
-                $questions[] = [
-                    'id' => $index + 1,
-                    'prompt' => $prompt,
-                    'answer' => $answer,
-                    'preferred_direction' => in_array(($question['preferred_direction'] ?? ''), ['across', 'down'], true)
-                        ? $question['preferred_direction']
-                        : 'across',
-                    'options' => [$answer],
-                    'correct_index' => 0,
-                    'points' => $points,
-                    'level' => $level,
-                ];
-                continue;
-            }
-
-            if ($prompt === '' || count($options) < 4 || in_array('', $options, true)) {
-                $errors[] = 'Question ' . ($index + 1) . ' is incomplete.';
-                continue;
-            }
-
-            if ($correctIndex < 0 || $correctIndex > 3) {
-                $errors[] = 'Question ' . ($index + 1) . ' must have one correct answer selected.';
-                continue;
-            }
-
-            $questions[] = [
-                'id' => $index + 1,
-                'prompt' => $prompt,
-                'options' => array_values(array_slice($options, 0, 4)),
-                'correct_index' => $correctIndex,
-                'points' => $points,
-                'level' => $level,
-            ];
-
-            $levelCounts[$level] += 1;
-        }
-
-        if ($gameType === 'master_ladder') {
-            foreach ($masteryLevels as $key => $label) {
-                if (($levelCounts[$key] ?? 0) < 1) {
-                    $errors[] = 'Mastery Ladder quizzes need at least one ' . $label . ' question.';
-                }
-            }
-        }
-
-        if ($gameType === 'crossword') {
-            if (count($questions) < 3) {
-                $errors[] = 'Crossword puzzles need at least three words.';
-            }
-
-            if (count($answerLengths) < 2) {
-                $errors[] = 'Crossword puzzles need words with varied lengths.';
-            }
-
-            if (count($levelsUsed) < 2) {
-                $errors[] = 'Crossword puzzles need a mix of difficulty levels.';
-            }
-
-            $crosswordLayout = $errors ? null : build_crossword_layout($questions);
-
-            if (!$crosswordLayout) {
-                $errors[] = 'Crossword words must intersect through matching letters using the selected Horizontal/Vertical directions. Revise the words or directions so every word connects.';
-            } else {
-                foreach ($questions as &$question) {
-                    foreach ($crosswordLayout['placements'] as $placement) {
-                        if ((int) $placement['question_id'] === (int) $question['id']) {
-                            $question['crossword'] = [
-                                'row' => $placement['row'],
-                                'col' => $placement['col'],
-                                'direction' => $placement['direction'],
-                                'number' => $placement['number'],
-                            ];
-                            break;
-                        }
-                    }
-                }
-                unset($question);
-            }
-        }
+    if (($_POST['action'] ?? '') === 'preview') {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        http_response_code($errors ? 422 : 200);
+        echo json_encode(['errors' => $errors, 'title' => $title, 'game_type' => $gameType, 'questions' => $questions, 'crossword_layout' => $crosswordLayout]);
+        exit;
     }
-
     if (!$errors) {
         $quiz = [
             'id' => $editingQuiz['id'] ?? next_id($classroom['quizzes'] ?? []),
@@ -187,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         save_classroom($classroom);
 
         flash_set('success', $editingQuiz ? 'Quiz updated successfully.' : 'Quiz created successfully.');
-        redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
+        redirect('/QuizWeb/classroom.php?id=' . $classroom['id'] . '&tab=quizzes');
     }
 }
 
@@ -209,8 +104,10 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
 </section>
 
 <section class="glass panel">
+    <div class="section-heading"><div><span class="eyebrow">Activity templates</span><h2>Choose how students learn</h2><p>Build your content, preview the activity, then save it to this class.</p></div></div>
+    <?php $templateKeys = ['standard', 'crossword', 'flip_match', 'fill_blank', 'emoji_quiz', 'master_ladder']; ?>
     <div class="quiz-grid">
-        <?php foreach ($modes as $key => $mode): ?>
+        <?php foreach ($templateKeys as $key): $mode = $modes[$key]; ?>
             <article class="quiz-card mode-<?php echo esc($key); ?>">
                 <div class="quiz-card-head">
                     <span class="mode-badge"><?php echo esc($mode['icon']); ?></span>
@@ -227,6 +124,11 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             </article>
         <?php endforeach; ?>
     </div>
+    <details class="additional-modes"><summary>More game styles</summary><div class="quiz-grid">
+        <?php foreach (array_diff(array_keys($modes), $templateKeys) as $key): $mode = $modes[$key]; ?>
+            <article class="quiz-card"><h3><?php echo esc($mode['label']); ?></h3><p><?php echo esc($mode['description']); ?></p><a class="button button-secondary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo (int) $classroom['id']; ?>&amp;game_type=<?php echo esc($key); ?>">Choose <?php echo esc($mode['label']); ?></a></article>
+        <?php endforeach; ?>
+    </div></details>
     <div class="action-row">
         <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
     </div>
@@ -247,17 +149,11 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <span>Mode-based play</span>
         </div>
     </div>
-    <div class="hero-side-stack">
-        <article class="hero-note-card">
-            <span class="eyebrow">Builder focus</span>
-            <h3><?php echo esc($editingQuiz ? 'Refine the challenge' : 'Design your next class game'); ?></h3>
-            <p>This page is where you shape the learning experience: write the prompts, tune the scoring, and choose the vibe students will play through.</p>
-        </article>
-    </div>
 </section>
 
 <section class="glass panel builder-panel">
     <form method="post" id="quiz-builder-form" class="stack-form">
+        <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['quiz_builder_csrf']); ?>">
         <?php foreach ($errors as $error): ?>
             <div class="inline-error"><?php echo esc($error); ?></div>
         <?php endforeach; ?>
@@ -269,7 +165,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <label>
                 <span>Game Mode</span>
                 <select name="game_type">
-                    <?php $selectedMode = $_POST['game_type'] ?? ($editingQuiz['game_type'] ?? $selectedGameType); ?>
+                    <?php $selectedMode = $selectedGameType; ?>
                     <?php foreach ($modes as $key => $mode): ?>
                         <option value="<?php echo esc($key); ?>" <?php echo $selectedMode === $key ? 'selected' : ''; ?>>
                             <?php echo esc($mode['label']); ?>
@@ -291,7 +187,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
         <div class="builder-mode-note" data-builder-mode-note>
             <strong><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Crossword checklist' : 'Quiz checklist'); ?></strong>
             <span><?php echo esc(($selectedMode ?? '') === 'crossword'
-                ? 'Use 3+ unique words, varied lengths and difficulty, clear clues, and answers that can intersect through matching letters.'
+                ? 'Use 3+ unique words, varied lengths, clear clues, and answers that can intersect through matching letters.'
                 : 'Write complete prompts, four options, one correct answer, and points for each question.'); ?></span>
         </div>
 
@@ -300,7 +196,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
                 <span class="eyebrow">Questions</span>
                 <h2><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Word and clue editor' : 'Question editor'); ?></h2>
             </div>
-            <button class="button button-secondary" type="button" id="add-question-button"><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Add Word' : 'Add Question'); ?></button>
+            <div class="action-row"><button class="button button-secondary" type="button" id="preview-quiz">Preview Activity</button><button class="button button-primary" type="button" id="add-question-button"><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Add Word' : 'Add Question'); ?></button></div>
         </div>
 
         <div id="question-list" class="question-list"></div>
@@ -323,10 +219,16 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <span data-prompt-label>Prompt</span>
             <textarea data-field="prompt" rows="3" placeholder="Type the question here"></textarea>
         </label>
-        <label data-crossword-only>
-            <span>Crossword Answer</span>
+        <label data-answer-field>
+            <span data-answer-label>Answer</span>
             <input type="text" data-field="answer" placeholder="Single word, letters only">
         </label>
+        <div data-text-only class="stack-form">
+            <label><span>Alternative answers (one per line)</span><textarea data-field="accepted_answers" rows="2"></textarea></label>
+            <label><span><input type="checkbox" data-field="case_sensitive"> Match capitalization exactly</span></label>
+            <label><span>Hint (optional)</span><input type="text" data-field="hint" maxlength="500"></label>
+            <label><span>Explanation after submission (optional)</span><textarea data-field="explanation" rows="2" maxlength="2000"></textarea></label>
+        </div>
         <label data-crossword-only>
             <span>Direction</span>
             <select data-field="preferred_direction">
@@ -381,9 +283,14 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
 <script>
 window.quizBuilderSeed = <?php echo json_encode(
     !empty($_POST['questions_payload']) ? json_decode($_POST['questions_payload'], true) : ($editingQuiz['questions'] ?? []),
-    JSON_UNESCAPED_SLASHES
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 ); ?>;
 window.quizBuilderMode = <?php echo json_encode($selectedMode ?? 'time_attack'); ?>;
 </script>
 
-<?php render_footer(); ?>
+<dialog id="activity-preview" class="activity-preview" aria-labelledby="preview-title">
+    <header class="section-heading"><div><span class="eyebrow">Unsaved preview</span><h2 id="preview-title">Activity Preview</h2><p>Check your activity before saving. Preview responses are not recorded.</p></div><form method="dialog"><button class="button button-secondary">Close</button></form></header>
+    <p id="preview-status" role="status"></p>
+    <div id="preview-content"></div>
+</dialog>
+<?php render_footer(['/QuizWeb/assets/js/builder-preview.js']); ?>

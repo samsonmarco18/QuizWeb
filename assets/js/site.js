@@ -128,6 +128,10 @@
         card.querySelector('[data-field="correct_index"]').value = String(seed.correct_index ?? 0);
         card.querySelector('[data-field="points"]').value = String(seed.points ?? 10);
         card.querySelector('[data-field="level"]').value = seed.level || "easy";
+        card.querySelector('[data-field="accepted_answers"]').value = (seed.accepted_answers || []).join('\n');
+        card.querySelector('[data-field="case_sensitive"]').checked = Boolean(seed.case_sensitive);
+        card.querySelector('[data-field="hint"]').value = seed.hint || '';
+        card.querySelector('[data-field="explanation"]').value = seed.explanation || '';
 
         card.querySelector(".remove-question").addEventListener("click", () => {
             card.remove();
@@ -147,17 +151,22 @@
 
     function applyBuilderModeToCard(card) {
         const isCrossword = currentBuilderMode() === "crossword";
+        const textMode = ['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode());
+        card.querySelector('[data-answer-field]').hidden = !(isCrossword || textMode);
+        card.querySelector('[data-answer-label]').textContent = currentBuilderMode() === 'flip_match' ? 'Matching definition / answer' : 'Correct answer';
+        card.querySelector('[data-field="answer"]').placeholder = isCrossword ? '3–15 letters' : 'Enter the expected answer';
+        card.querySelectorAll('[data-text-only]').forEach(element => { element.hidden = !textMode; });
         card.querySelectorAll("[data-crossword-only]").forEach((element) => {
             element.hidden = !isCrossword;
         });
         card.querySelectorAll("[data-choice-only]").forEach((element) => {
-            element.hidden = isCrossword;
+            element.hidden = isCrossword || textMode;
         });
 
         const promptLabel = card.querySelector("[data-prompt-label]");
         const promptInput = card.querySelector('[data-field="prompt"]');
         if (promptLabel) {
-            promptLabel.textContent = isCrossword ? "Clue" : "Prompt";
+            promptLabel.textContent = isCrossword ? 'Clue' : ({fill_blank: 'Sentence with a blank (_____)', emoji_quiz: 'Emoji clue', flip_match: 'Term / question'}[currentBuilderMode()] || 'Prompt');
         }
         if (promptInput) {
             promptInput.placeholder = isCrossword ? "Write a clear clue for this word" : "Type the question here";
@@ -172,6 +181,15 @@
         const isCrossword = currentBuilderMode() === "crossword";
         if (addQuestionButton) {
             addQuestionButton.textContent = isCrossword ? "Add Word" : "Add Question";
+        }
+        const modeNote = document.querySelector('[data-builder-mode-note]');
+        if (modeNote) {
+            modeNote.querySelector('strong').textContent = isCrossword ? 'Crossword checklist' : 'Activity checklist';
+            modeNote.querySelector('span').textContent = isCrossword
+                ? 'Use at least 3 unique words with varied lengths. Choose across/down directions that connect, then preview the grid.'
+                : currentBuilderMode() === 'flip_match' ? 'Add 2–12 distinct pairs. Students flip cards to match each term with its definition.'
+                : ['fill_blank', 'emoji_quiz'].includes(currentBuilderMode()) ? 'Add a prompt, expected answer, and optional alternatives. Answers are graded after submission.'
+                : 'Add four options and select one correct answer per question. Preview before saving.';
         }
         [...questionList.querySelectorAll(".question-card")].forEach((card) => applyBuilderModeToCard(card));
         refreshQuestionLabels();
@@ -200,6 +218,16 @@
         return [...questionList.querySelectorAll(".question-card")].map((card) => {
             const prompt = card.querySelector('[data-field="prompt"]').value.trim();
             const answer = card.querySelector('[data-field="answer"]').value.trim();
+
+            if (['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode())) {
+                return { prompt, answer, options: [], correct_index: 0,
+                    accepted_answers: card.querySelector('[data-field="accepted_answers"]').value.split('\n').map(value => value.trim()).filter(Boolean),
+                    case_sensitive: card.querySelector('[data-field="case_sensitive"]').checked,
+                    hint: card.querySelector('[data-field="hint"]').value.trim(),
+                    explanation: card.querySelector('[data-field="explanation"]').value.trim(),
+                    points: Number(card.querySelector('[data-field="points"]').value || 10),
+                    level: card.querySelector('[data-field="level"]').value || 'easy' };
+            }
 
             if (isCrossword) {
                 return {
@@ -239,11 +267,12 @@
         addQuestionButton?.addEventListener("click", () => buildQuestionCard());
         gameTypeSelect?.addEventListener("change", applyBuilderMode);
         applyBuilderMode();
+        builderForm.addEventListener('activity:collect', () => { payloadInput.value = JSON.stringify(collectQuestions()); });
 
         builderForm.addEventListener("submit", (event) => {
             const questions = collectQuestions();
             const isCrossword = currentBuilderMode() === "crossword";
-            const incomplete = isCrossword
+            const incomplete = (isCrossword || ['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode()))
                 ? questions.some((question) => !question.prompt || !question.answer)
                 : questions.some((question) => !question.prompt || question.options.some((option) => !option));
 

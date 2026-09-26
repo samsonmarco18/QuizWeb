@@ -31,6 +31,18 @@ if (!is_array($answers)) {
     $answers = [];
 }
 
+if (activity_uses_text_answers($quiz['game_type'])) {
+    if (!is_string($_POST['csrf'] ?? null) || !isset($_SESSION['activity_csrf']) || !hash_equals($_SESSION['activity_csrf'], $_POST['csrf'])) {
+        http_response_code(403);
+        exit('Your activity session expired. Return to the classroom and start again.');
+    }
+    foreach ($quiz['questions'] as $index => $question) {
+        $answers[$index] = is_string($answers[$index] ?? null) && strlen($answers[$index]) <= 2000 ? $answers[$index] : '';
+    }
+    $answers = array_intersect_key($answers, array_flip(array_merge(array_keys($quiz['questions']), ['_moves'])));
+    if (isset($answers['_moves'])) $answers['_moves'] = max(0, min(100000, (int) $answers['_moves']));
+}
+
 if ($disqualified) {
     $answers = [
         '_disqualified' => true,

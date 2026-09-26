@@ -14,6 +14,7 @@ function nav_links(?array $user): array
 
     $links = [
         ['/QuizWeb/dashboard.php', 'Dashboard'],
+        ['/QuizWeb/classes.php', 'My Classes'],
     ];
 
     if ($user['role'] === 'student') {
@@ -27,6 +28,7 @@ function nav_links(?array $user): array
 
 function nav_icon(string $name): string
 {
+    if ($name === 'My Classes') $name = 'Focus Practice';
     $paths = [
         'Dashboard' => '<path d="m3 10 9-7 9 7v10H14v-6h-4v6H5V10"/>',
         'Join Class' => '<circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6m3 4a6 6 0 0 1 3 5v2"/>',
@@ -159,9 +161,10 @@ function render_header(string $title, string $pageClass = ''): void
                 <details class="student-classes-dropdown" open>
                     <summary class="student-sidebar-heading"><?php echo nav_icon('Focus Practice'); ?><strong>My Classes</strong><?php echo nav_icon('chevron'); ?></summary>
                     <nav class="student-classroom-nav" aria-label="Your classrooms">
-                        <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/dashboard.php' ? ' is-active' : ''; ?>" href="/QuizWeb/dashboard.php#joined-classrooms"><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
+                        <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/classes.php' ? ' is-active' : ''; ?>" href="/QuizWeb/classes.php" <?php echo current_path() === '/QuizWeb/classes.php' ? 'aria-current="page"' : ''; ?>><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
                         <?php foreach ($sidebarClassrooms as $sidebarIndex => $sidebarClassroom): ?>
-                            <a class="classroom-sidebar-link student-class-link" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>">
+                            <?php $isCurrentClassroom = current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']; ?>
+                            <a class="classroom-sidebar-link student-class-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
                                 <i class="student-class-dot dot-<?php echo esc((string) (($sidebarIndex % 3) + 1)); ?>" aria-hidden="true"></i><span><?php echo esc($sidebarClassroom['name']); ?></span>
                             </a>
                         <?php endforeach; ?>

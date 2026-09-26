@@ -8,6 +8,9 @@ $classroom = find_classroom($classroomId);
 $announcementErrors = [];
 $chatErrors = [];
 $GLOBALS['quizweb_current_classroom_id'] = $classroomId;
+$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Quizzes', 'materials' => 'Materials', 'results' => 'Results'];
+$requestedView = $_GET['tab'] ?? 'overview';
+$activeView = is_string($requestedView) && isset($classroomViews[$requestedView]) ? $requestedView : 'overview';
 
 if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
     flash_set('danger', 'Classroom not found or access denied.');
@@ -15,6 +18,7 @@ if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
 }
 
 if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_announcement') {
+    $activeView = 'materials';
     $title = trim($_POST['title'] ?? '');
     $body = trim($_POST['body'] ?? '');
     $hasUploads = uploaded_files_present($_FILES['attachments'] ?? []);
@@ -43,7 +47,7 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
             $classroom = create_classroom_announcement($classroom, $user, $title, $body, $uploadResult['attachments']);
             save_classroom($classroom);
             flash_set('success', 'Announcement posted to the classroom newsfeed.');
-            redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
+            redirect('/QuizWeb/classroom.php?id=' . $classroom['id'] . '&tab=materials');
         }
     }
 }
@@ -116,23 +120,16 @@ render_header($classroom['name'], 'classroom-page');
                 <a class="button button-primary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>">Create Quiz Game</a>
             <?php endif; ?>
         </div>
-        <article class="hero-note-card">
-            <span class="eyebrow">Page focus</span>
-            <h3><?php echo esc($user['role'] === 'teacher' ? 'Guide the whole classroom flow' : 'Stay synced with your class'); ?></h3>
-            <p><?php echo esc($user['role'] === 'teacher'
-                ? 'Post announcements, attach modules, manage quizzes, and watch activity from one classroom home.'
-                : 'Catch announcements, open files, and jump into the right quiz experience from a single page.'); ?></p>
-        </article>
     </div>
 </section>
 
 <nav class="classroom-tabs" aria-label="Classroom sections">
-    <a href="#overview">Overview</a>
-    <a href="#quizzes">Quizzes</a>
-    <a href="#materials">Materials</a>
-    <a href="#results">Results</a>
+    <?php foreach ($classroomViews as $view => $label): ?>
+        <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=<?php echo esc($view); ?>" <?php echo $activeView === $view ? 'class="is-active" aria-current="page"' : ''; ?>><?php echo esc($label); ?></a>
+    <?php endforeach; ?>
 </nav>
 
+<?php if ($activeView === 'overview'): ?>
 <?php if ($user['role'] === 'teacher'): ?>
     <section class="glass panel learning-coach-panel" id="overview">
         <div class="section-heading">
@@ -240,11 +237,14 @@ render_header($classroom['name'], 'classroom-page');
     </section>
 <?php endif; ?>
 
+<?php endif; ?>
+
+<?php if ($activeView === 'materials'): ?>
 <section class="glass panel newsfeed-panel" id="materials">
     <div class="section-heading">
         <div>
             <span class="eyebrow"><?php echo esc($user['role'] === 'teacher' ? 'Class updates' : 'Newsfeed'); ?></span>
-            <h2>Announcements</h2>
+            <h2>Materials &amp; announcements</h2>
         </div>
     </div>
 
@@ -318,7 +318,10 @@ render_header($classroom['name'], 'classroom-page');
     </div>
 </section>
 
-<section class="glass panel chat-panel">
+<?php endif; ?>
+
+<?php if ($chatErrors): ?>
+<section class="glass panel chat-panel has-errors">
     <div class="chat-header">
         <div>
             <span class="eyebrow">Group chat</span>
@@ -395,6 +398,9 @@ render_header($classroom['name'], 'classroom-page');
     </div>
 </section>
 
+<?php endif; ?>
+
+<?php if ($activeView === 'quizzes'): ?>
 <section class="panel-grid" id="quizzes">
     <article class="glass panel">
         <div class="section-heading">
@@ -472,6 +478,9 @@ render_header($classroom['name'], 'classroom-page');
     </article>
 </section>
 
+<?php endif; ?>
+
+<?php if ($activeView === 'results'): ?>
 <section class="glass panel leaderboard-panel" id="results">
     <div class="section-heading">
         <div>
@@ -531,4 +540,5 @@ render_header($classroom['name'], 'classroom-page');
     </div>
 </section>
 
+<?php endif; ?>
 <?php render_footer(); ?>
