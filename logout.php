@@ -1,7 +1,4 @@
 <?php
 
-require_once __DIR__ . '/includes/app.php';
-
-unset($_SESSION['user_id']);
-flash_set('success', 'You have been logged out.');
-redirect('/QuizWeb/login.php');
+// Stable public entry point; implementation is grouped by feature.
+require __DIR__ . '/app/pages/auth/logout.php';

@@ -82,8 +82,9 @@ function render_header(string $title, string $pageClass = ''): void
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/QuizWeb/assets/css/site.css">
+        <link rel="stylesheet" href="/QuizWeb/assets/css/refinements.css">
     </head>
-    <body class="<?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
+    <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>
         <div class="ambient ambient-one"></div>
         <div class="ambient ambient-two"></div>

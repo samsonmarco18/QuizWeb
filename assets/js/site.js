@@ -29,15 +29,22 @@
         if (body.classList.contains("sidebar-open") && !event.target.closest("#classroom-sidebar, .sidebar-toggle")) setSidebarOpen(false);
     });
 
-    function setTheme(isDark) {
+    let themeTransitionTimer;
+    function setTheme(isDark, animate = false) {
         if (!body) {
             return;
         }
 
+        if (animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            clearTimeout(themeTransitionTimer);
+            body.classList.add('theme-transitioning');
+            themeTransitionTimer = setTimeout(() => body.classList.remove('theme-transitioning'), 360);
+        }
         body.classList.toggle("theme-dark", isDark);
 
         if (themeToggle) {
             themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
+            themeToggle.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
             themeToggle.querySelector(".theme-toggle-label").textContent = "Dark Mode";
             if (themeToggle.classList.contains("auth-theme-toggle")) {
                 themeToggle.querySelector(".theme-toggle-label").textContent = isDark ? "Light" : "Dark";
@@ -64,9 +71,13 @@
         setTheme(savedTheme === "dark");
 
         themeToggle?.addEventListener("click", () => {
-            setTheme(!body.classList.contains("theme-dark"));
+            setTheme(!body.classList.contains("theme-dark"), true);
         });
     }
+
+    window.addEventListener('storage', (event) => {
+        if (event.key === themeStorageKey) setTheme(event.newValue === 'dark', true);
+    });
 
     const accountToggle = document.querySelector(".account-toggle");
     const accountDropdown = document.getElementById("account-dropdown");

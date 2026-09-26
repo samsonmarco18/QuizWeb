@@ -1,5 +1,9 @@
 # QuizWeb / CHALK
 
+Source files are grouped by feature under app/pages/; root PHP files preserve the
+existing public URLs. See [Project structure](docs/PROJECT_STRUCTURE.md) for the
+folder map, editing conventions, and verification commands.
+
 CHALK is a PHP classroom quiz system for teachers and students. Teachers create classrooms, post announcements, build quiz games, and review class performance. Students join with a code, play quiz games, see results, and get a self-learning coach that points out weak areas.
 
 ## Local Docker setup (PostgreSQL)
