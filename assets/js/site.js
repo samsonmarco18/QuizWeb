@@ -120,7 +120,7 @@
 
         card.querySelector('[data-field="prompt"]').value = seed.prompt || "";
         card.querySelector('[data-field="answer"]').value = seed.answer || seed.options?.[0] || "";
-        card.querySelector('[data-field="preferred_direction"]').value = seed.preferred_direction || seed.crossword?.direction || "across";
+        card.querySelector('[data-field="preferred_direction"]').value = seed.preferred_direction || seed.crossword?.direction || "auto";
         card.querySelector('[data-field="option-0"]').value = seed.options?.[0] || "";
         card.querySelector('[data-field="option-1"]').value = seed.options?.[1] || "";
         card.querySelector('[data-field="option-2"]').value = seed.options?.[2] || "";
@@ -186,7 +186,7 @@
         if (modeNote) {
             modeNote.querySelector('strong').textContent = isCrossword ? 'Crossword checklist' : 'Activity checklist';
             modeNote.querySelector('span').textContent = isCrossword
-                ? 'Use at least 3 unique words with varied lengths. Choose across/down directions that connect, then preview the grid.'
+                ? 'Add at least 3 unique words with shared letters. Automatic direction helps connect them; preview the grid before saving.'
                 : currentBuilderMode() === 'flip_match' ? 'Add 2–12 distinct pairs. Students flip cards to match each term with its definition.'
                 : ['fill_blank', 'emoji_quiz'].includes(currentBuilderMode()) ? 'Add a prompt, expected answer, and optional alternatives. Answers are graded after submission.'
                 : 'Add four options and select one correct answer per question. Preview before saving.';
@@ -233,7 +233,7 @@
                 return {
                     prompt,
                     answer,
-                    preferred_direction: card.querySelector('[data-field="preferred_direction"]').value || "across",
+                    preferred_direction: card.querySelector('[data-field="preferred_direction"]').value || "auto",
                     options: [answer],
                     correct_index: 0,
                     points: Number(card.querySelector('[data-field="points"]').value || 10),

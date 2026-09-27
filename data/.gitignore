@@ -1,4 +1,7 @@
 *.json
 uploads/
+ui-layout-browser/
+ui-*.png
+sess_*
 !.gitignore
 !.htaccess

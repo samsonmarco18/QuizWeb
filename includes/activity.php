@@ -91,9 +91,9 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
                     'id' => $index + 1,
                     'prompt' => $prompt,
                     'answer' => $answer,
-                    'preferred_direction' => in_array(($question['preferred_direction'] ?? ''), ['across', 'down'], true)
+                    'preferred_direction' => in_array(($question['preferred_direction'] ?? ''), ['auto', 'across', 'down'], true)
                         ? $question['preferred_direction']
-                        : 'across',
+                        : 'auto',
                     'options' => [$answer],
                     'correct_index' => 0,
                     'points' => $points,
@@ -135,10 +135,6 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
         if ($gameType === 'crossword') {
             if (count($questions) < 3) {
                 $errors[] = 'Crossword puzzles need at least three words.';
-            }
-
-            if (count($answerLengths) < 2) {
-                $errors[] = 'Crossword puzzles need words with varied lengths.';
             }
 
             $crosswordLayout = $errors ? null : build_crossword_layout($questions);
