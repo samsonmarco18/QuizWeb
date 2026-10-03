@@ -9,7 +9,7 @@
 <section data-game-root data-is-preview="1" data-return-url="../classes.php" class="game-shell glass">
 <div data-progress-bar></div><div class="question-stage"><span data-question-points></span><h2 data-question-text></h2><p data-question-helper></p><div data-answer-grid class="answers-grid"></div><div data-game-controls class="game-controls"></div><p data-game-note></p></div>
 </section>
-<form id="quiz-builder-form"><input name="title" value="Grid preview"><button type="button" id="preview-quiz">Preview Activity</button></form>
+<form id="quiz-builder-form"><input name="title" value="Grid preview"><input type="hidden" name="mastery_threshold" value="75"><button type="button" id="preview-quiz">Preview Activity</button></form>
 <dialog id="activity-preview" class="activity-preview"><h2 id="preview-title"></h2><p id="preview-status"></p><div id="preview-content"></div></dialog>
 <output id="checks">PENDING</output>
 </main>
@@ -39,14 +39,12 @@ window.addEventListener('load', async () => {
             document.getElementById('preview-quiz').click();
             await new Promise(resolve => setTimeout(resolve, 100));
             check(previewRequests === 1, 'One preview request');
-            check(document.querySelectorAll('.preview-cell input').length === 3, 'Grid rendered');
+            const frame = document.querySelector('#preview-content iframe');
+            check(frame && frame.getAttribute('sandbox') === 'allow-scripts', 'Isolated game frame rendered');
             check(document.getElementById('preview-title').textContent.includes('<script>'), 'Title safely rendered as text');
-            const toggle = document.querySelector('#preview-content > button');
-            toggle.click();
-            check([...document.querySelectorAll('.preview-cell input')].map(input => input.value).join('') === 'CAT', 'Answer key shown');
-            toggle.click();
-            check([...document.querySelectorAll('.preview-cell input')].every(input => input.value === ''), 'Answer key hidden');
-            output.textContent = 'PASS: unsaved preview request, grid, clues, safe text, answer-key toggle';
+            check(frame.srcdoc.includes('data-is-preview="1"'), 'Actual renderer receives preview flag');
+            check(frame.srcdoc.includes("connect-src 'none'") && frame.srcdoc.includes("form-action 'none'"), 'Network writes and forms blocked');
+            output.textContent = 'PASS: unsaved preview request, isolated game frame, safe title, blocked writes';
             return;
         }
         controls.querySelector('button').click();

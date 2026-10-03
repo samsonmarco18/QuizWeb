@@ -5,6 +5,48 @@ function activity_uses_text_answers(string $mode): bool
     return in_array($mode, ['fill_blank', 'emoji_quiz', 'flip_match'], true);
 }
 
+function attempt_quiz_version(array $quiz, array $attempt): array
+{
+    $snapshot = $attempt['answers']['_quiz_snapshot'] ?? null;
+    return is_array($snapshot) && is_array($snapshot['questions'] ?? null) ? $snapshot : $quiz;
+}
+
+// Save only this classroom and preserve the interpretation of prior attempts.
+function persist_builder_quiz(PDO $pdo, int $classroomId, int $teacherId, array $quiz, bool $isNew): void
+{
+    $pdo->beginTransaction();
+    try {
+        $select = $pdo->prepare('SELECT * FROM classrooms WHERE id = ? FOR UPDATE');
+        $select->execute([$classroomId]);
+        $record = $select->fetch();
+        if (!$record || (int) $record['teacher_id'] !== $teacherId) throw new RuntimeException('Classroom access denied.');
+        $classroom = hydrate_classroom($record);
+        if ($isNew) {
+            $quiz['id'] = next_id($classroom['quizzes']);
+        } else {
+            $oldQuiz = classroom_quiz($classroom, (int) $quiz['id']);
+            if (!$oldQuiz) throw new RuntimeException('Quiz not found.');
+            $attempts = $pdo->prepare('SELECT id, answers FROM attempts WHERE classroom_id = ? AND quiz_id = ?');
+            $attempts->execute([$classroomId, (int) $quiz['id']]);
+            $update = $pdo->prepare('UPDATE attempts SET answers = ? WHERE id = ?');
+            foreach ($attempts->fetchAll() as $attempt) {
+                $answers = db_json_decode($attempt['answers']);
+                if (!isset($answers['_quiz_snapshot'])) {
+                    $answers['_quiz_snapshot'] = $oldQuiz;
+                    $update->execute([db_json_encode($answers), (int) $attempt['id']]);
+                }
+            }
+        }
+        $classroom = update_quiz_in_classroom($classroom, $quiz);
+        insert_classroom_record($pdo, $classroom);
+        grading_sync_quiz($pdo, $classroomId, $teacherId, $quiz);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
+}
+
 function activity_answer_is_correct(array $question, $answer): bool
 {
     if (!is_string($answer) || trim($answer) === '') return false;

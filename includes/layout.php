@@ -12,6 +12,12 @@ function nav_links(?array $user): array
         ];
     }
 
+    if ($user['role'] === 'admin') return [
+        ['/QuizWeb/admin.php', 'Administration'],
+        ['/QuizWeb/admin.php?tab=users', 'Users'],
+        ['/QuizWeb/admin.php?tab=security', 'Security'],
+    ];
+
     $links = [
         ['/QuizWeb/dashboard.php', 'Dashboard'],
         ['/QuizWeb/classes.php', 'My Classes'],
@@ -20,6 +26,7 @@ function nav_links(?array $user): array
     if ($user['role'] === 'student') {
         $links[] = ['/QuizWeb/join.php', 'Join Class'];
         $links[] = ['/QuizWeb/student_results.php', 'Track Scores'];
+        $links[] = ['/QuizWeb/grades.php', 'My Grades'];
         $links[] = ['/QuizWeb/game_modes.php', 'Play Game Modes'];
     }
 
@@ -28,6 +35,7 @@ function nav_links(?array $user): array
 
 function nav_icon(string $name): string
 {
+    if ($name === 'My Grades') $name = 'chart';
     if ($name === 'My Classes') $name = 'Focus Practice';
     $paths = [
         'Dashboard' => '<path d="m3 10 9-7 9 7v10H14v-6h-4v6H5V10"/>',
@@ -70,7 +78,8 @@ function nav_link_class(string $href): string
     $currentPath = current_path();
     $targetPath = parse_url($href, PHP_URL_PATH) ?: $href;
 
-    if ($currentPath === $targetPath) {
+    $matchesView = $targetPath !== '/QuizWeb/admin.php' || (parse_url($href, PHP_URL_QUERY) ?: 'tab=overview') === ('tab=' . ($_GET['tab'] ?? 'overview'));
+    if ($currentPath === $targetPath && $matchesView) {
         $classes[] = 'is-active';
     }
 
@@ -118,7 +127,7 @@ function render_header(string $title, string $pageClass = ''): void
             <div class="header-actions">
                 <nav class="top-nav" aria-label="Main navigation">
                     <?php foreach (nav_links($user) as [$href, $label]): ?>
-                        <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>" <?php echo current_path() === $href ? 'aria-current="page"' : ''; ?>><?php echo nav_icon($label); ?><span><?php echo esc($label); ?></span></a>
+                            <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>" <?php echo str_contains(nav_link_class($href), 'is-active') ? 'aria-current="page"' : ''; ?>><?php echo nav_icon($label); ?><span><?php echo esc($label); ?></span></a>
                     <?php endforeach; ?>
                 </nav>
                 <?php if ($user): ?>
@@ -155,8 +164,10 @@ function render_header(string $title, string $pageClass = ''): void
         <?php endif; ?>
         <?php if ($user && $showHeader && !str_contains($pageClass, 'game-page')): ?>
         <aside class="classroom-sidebar" id="classroom-sidebar" aria-label="Classrooms">
-            <?php $sidebarClassrooms = user_classrooms($user); ?>
-            <?php if (($user['role'] ?? '') === 'student'): ?>
+            <?php $sidebarClassrooms = $user['role'] === 'admin' ? [] : user_classrooms($user); ?>
+            <?php if ($user['role'] === 'admin'): ?>
+                <h2>Administration</h2><nav aria-label="System navigation"><?php foreach (['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit'] as $key => $label): ?><a class="classroom-sidebar-link<?php echo ($_GET['tab'] ?? 'overview') === $key ? ' is-active' : ''; ?>" href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>"><?php echo esc($label); ?></a><?php endforeach; ?></nav>
+            <?php elseif (($user['role'] ?? '') === 'student'): ?>
                 <h2>Classrooms</h2>
                 <details class="student-classes-dropdown" open>
                     <summary class="student-sidebar-heading"><?php echo nav_icon('Focus Practice'); ?><strong>My Classes</strong><?php echo nav_icon('chevron'); ?></summary>
@@ -175,12 +186,13 @@ function render_header(string $title, string $pageClass = ''): void
                     <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/archive.php' ? ' is-active' : ''; ?>" href="/QuizWeb/archive.php"><?php echo nav_icon('archive'); ?><span>Archive</span></a>
                     <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/saved.php' ? ' is-active' : ''; ?>" href="/QuizWeb/saved.php"><?php echo nav_icon('bookmark'); ?><span>Saved</span></a>
                     <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/student_results.php' ? ' is-active' : ''; ?>" href="/QuizWeb/student_results.php"><?php echo nav_icon('chart'); ?><span>Results</span></a>
+                    <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/grades.php' ? ' is-active' : ''; ?>" href="/QuizWeb/grades.php"><?php echo nav_icon('chart'); ?><span>My Grades</span></a>
                 </nav>
             <?php else: ?>
             <h2>Classrooms</h2>
             <nav aria-label="Your classrooms">
                 <?php foreach ($sidebarClassrooms as $sidebarClassroom): ?>
-                    <?php $isCurrentClassroom = current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']; ?>
+                    <?php $isCurrentClassroom = (current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']) || (current_path() === '/QuizWeb/quiz_builder.php' && (int) ($_GET['classroom_id'] ?? 0) === (int) $sidebarClassroom['id']); ?>
                     <a class="classroom-sidebar-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
                         <?php echo nav_icon('Join Class'); ?><span><?php echo esc($sidebarClassroom['name']); ?></span>
                     </a>
@@ -203,7 +215,7 @@ function render_messenger_dock(): void
 {
     $user = current_user();
 
-    if (!$user) {
+    if (!$user || $user['role'] === 'admin') {
         return;
     }
 
@@ -381,5 +393,26 @@ function render_footer(array $scripts = []): void
     </body>
     </html>
     <?php
+}
+
+function page_records(array $records, string $key = 'page', int $size = 12): array
+{
+    $pages = max(1, (int) ceil(count($records) / $size));
+    $page = min($pages, max(1, (int) ($_GET[$key] ?? 1)));
+    return ['items' => array_slice($records, ($page - 1) * $size, $size), 'page' => $page, 'pages' => $pages, 'total' => count($records), 'key' => $key];
+}
+
+function render_pagination(array $pagination): void
+{
+    if ($pagination['pages'] < 2) return;
+    echo '<nav class="action-row list-pagination" aria-label="List pagination"><span>Page ' . $pagination['page'] . ' of ' . $pagination['pages'] . '</span>';
+    foreach ([-1 => 'Previous', 1 => 'Next'] as $delta => $label) {
+        $page = $pagination['page'] + $delta;
+        if ($page < 1 || $page > $pagination['pages']) continue;
+        $query = $_GET;
+        $query[$pagination['key']] = $page;
+        echo '<a class="button button-secondary" href="?' . esc(http_build_query($query)) . '">' . $label . '</a>';
+    }
+    echo '</nav>';
 }
 

@@ -8,7 +8,7 @@ $classroom = find_classroom($classroomId);
 $announcementErrors = [];
 $chatErrors = [];
 $GLOBALS['quizweb_current_classroom_id'] = $classroomId;
-$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Quizzes', 'materials' => 'Materials', 'results' => 'Results'];
+$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Quizzes', 'materials' => 'Materials', 'results' => 'Results', 'grades' => 'Grades'];
 $requestedView = $_GET['tab'] ?? 'overview';
 $activeView = is_string($requestedView) && isset($classroomViews[$requestedView]) ? $requestedView : 'overview';
 
@@ -16,11 +16,13 @@ if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
     flash_set('danger', 'Classroom not found or access denied.');
     redirect('/QuizWeb/dashboard.php');
 }
+if ($activeView === 'grades') redirect('/QuizWeb/' . ($user['role'] === 'teacher' ? 'gradebook.php' : 'grades.php') . '?classroom_id=' . $classroomId);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') require_form_csrf();
 
 if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_announcement') {
     $activeView = 'materials';
-    $title = trim($_POST['title'] ?? '');
-    $body = trim($_POST['body'] ?? '');
+    $title = is_string($_POST['title'] ?? null) ? trim($_POST['title']) : '';
+    $body = is_string($_POST['body'] ?? null) ? trim($_POST['body']) : '';
     $hasUploads = uploaded_files_present($_FILES['attachments'] ?? []);
 
     if ($title === '') {
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_
         redirect('/QuizWeb/dashboard.php');
     }
 
-    $chatBody = trim($_POST['chat_body'] ?? '');
+    $chatBody = is_string($_POST['chat_body'] ?? null) ? trim($_POST['chat_body']) : '';
 
     if ($chatBody === '') {
         $chatErrors[] = 'Message cannot be empty.';
@@ -78,7 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_
 }
 
 $modes = game_modes();
+$quizPage = page_records($classroom['quizzes'] ?? [], 'quiz_page', 6);
 $attemptsList = classroom_attempts((int) $classroom['id']);
+if ($user['role'] === 'student') {
+    $attemptsList = array_values(array_filter($attemptsList, fn(array $attempt): bool => (int) $attempt['student_id'] === (int) $user['id']));
+}
+$attemptPage = page_records($attemptsList, 'attempt_page', 10);
 $leaderboard = classroom_leaderboard($classroom);
 $classLearningProfile = classroom_learning_profile($classroom);
 $studentClassProfile = $user['role'] === 'student'
@@ -250,6 +257,7 @@ render_header($classroom['name'], 'classroom-page');
 
     <?php if ($user['role'] === 'teacher'): ?>
         <form method="post" enctype="multipart/form-data" class="stack-form announcement-form">
+            <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
             <input type="hidden" name="action" value="post_announcement">
             <?php foreach ($announcementErrors as $error): ?>
                 <div class="inline-error"><?php echo esc($error); ?></div>
@@ -379,6 +387,7 @@ render_header($classroom['name'], 'classroom-page');
 
     <div class="chat-composer-shell">
         <form method="post" class="stack-form chat-form">
+            <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
             <input type="hidden" name="action" value="post_chat_message">
             <?php foreach ($chatErrors as $error): ?>
                 <div class="inline-error"><?php echo esc($error); ?></div>
@@ -411,7 +420,7 @@ render_header($classroom['name'], 'classroom-page');
         </div>
         <div class="quiz-grid">
             <?php if (!empty($classroom['quizzes'])): ?>
-                <?php foreach ($classroom['quizzes'] as $quiz): ?>
+                <?php foreach ($quizPage['items'] as $quiz): ?>
                     <?php $latest = latest_attempt_for_quiz((int) $user['id'], (int) $classroom['id'], (int) $quiz['id']); ?>
                     <article class="quiz-card mode-<?php echo esc($quiz['game_type']); ?>">
                         <div class="quiz-card-head">
@@ -445,6 +454,7 @@ render_header($classroom['name'], 'classroom-page');
                 <p class="muted"><?php echo esc($user['role'] === 'teacher' ? 'No quizzes yet. Create your first game for this classroom.' : 'Your teacher has not published any quiz games yet.'); ?></p>
             <?php endif; ?>
         </div>
+        <?php render_pagination($quizPage); ?>
     </article>
 
     <article class="glass panel">
@@ -527,17 +537,19 @@ render_header($classroom['name'], 'classroom-page');
     </div>
     <div class="recent-list">
         <?php if ($attemptsList): ?>
-            <?php foreach (array_slice($attemptsList, 0, 8) as $attempt): ?>
+            <?php foreach ($attemptPage['items'] as $attempt): ?>
                 <?php $student = find_user_by_id((int) $attempt['student_id']); ?>
                 <div class="recent-item">
                     <strong><?php echo esc(($student['name'] ?? 'Student') . ' - ' . $attempt['quiz_title']); ?></strong>
                     <span><?php echo esc($attempt['score'] . '/' . $attempt['max_score'] . ' in ' . max(1, (int) $attempt['elapsed_seconds']) . 's'); ?></span>
+                    <a class="button button-secondary" href="/QuizWeb/results.php?id=<?php echo (int) $attempt['id']; ?>">Review result</a>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
             <p class="muted">No quiz attempts yet for this classroom.</p>
         <?php endif; ?>
     </div>
+    <?php render_pagination($attemptPage); ?>
 </section>
 
 <?php endif; ?>

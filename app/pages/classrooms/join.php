@@ -6,7 +6,8 @@ $user = require_role('student');
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $code = strtoupper(trim($_POST['code'] ?? ''));
+    require_form_csrf();
+    $code = is_string($_POST['code'] ?? null) ? strtoupper(trim($_POST['code'])) : '';
     $classroom = find_classroom_by_code($code);
 
     if (!$classroom) {
@@ -37,6 +38,7 @@ render_header('Join Classroom', 'join-page');
         </div>
     </div>
     <form method="post" class="stack-form">
+        <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
         <?php foreach ($errors as $error): ?>
             <div class="inline-error"><?php echo esc($error); ?></div>
         <?php endforeach; ?>

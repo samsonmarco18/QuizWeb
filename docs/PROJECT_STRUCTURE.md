@@ -6,6 +6,7 @@ under /QuizWeb/. Each root page loads its implementation from app/pages/.
 | Location | Responsibility |
 | --- | --- |
 | app/pages/auth/ | Login, registration, logout |
+| app/pages/admin/ | Administrator overview, users, class summaries, security and audit logs |
 | app/pages/account/ | Profile settings |
 | app/pages/dashboard/ | Shared role-aware dashboard |
 | app/pages/classrooms/ | Classroom management, joining, protected announcement downloads |
@@ -44,7 +45,14 @@ workflow checks still require a running PostgreSQL application environment.
 ## Remaining extension work
 
 This organization keeps the existing application behavior and database format.
-The broader requirements for administrator tools, security auditing, password
-reset approval, OAuth mail, notifications, and expanded activity settings require
-separate implementation and testing. Existing classroom quizzes and announcements
+Administrator account status management and authentication auditing are now implemented.
+Password reset approval, OAuth mail, notifications, and additional activity settings
+remain unsupported and are not presented as working controls. Existing quizzes and announcements
 are stored in JSONB columns; inspect that structure before introducing new tables.
+
+See [UI and workflow enhancements](UI_WORKFLOW_ENHANCEMENTS.md) for implementation,
+administrator provisioning, verification, and the remaining live QA checklist.
+
+Classroom gradebooks use `gradebook.php` (teacher) and `grades.php` (student), backed
+by `app/pages/grading/`, `includes/grading.php`, and the additional gradebook/audit
+tables. See [Classroom grading](GRADING.md) for rules, integrity, and verification.

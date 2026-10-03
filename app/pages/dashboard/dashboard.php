@@ -4,21 +4,23 @@ require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/scripts/seed_sample_data.php';
 
 $user = require_login();
+if ($user['role'] === 'admin') redirect('/QuizWeb/admin.php');
+$showProgress = $user['role'] === 'student' && ($_GET['view'] ?? '') === 'progress';
 $errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') require_form_csrf();
 
 if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_classroom') {
-    $name = trim($_POST['name'] ?? '');
-    $subject = trim($_POST['subject'] ?? '');
-    $description = trim($_POST['description'] ?? '');
+    $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
+    $subject = is_string($_POST['subject'] ?? null) ? trim($_POST['subject']) : '';
+    $description = is_string($_POST['description'] ?? null) ? trim($_POST['description']) : '';
 
     if ($name === '' || $subject === '') {
         $errors[] = 'Classroom name and subject are required.';
     }
 
     if (!$errors) {
-        $records = classrooms();
         $classroom = [
-            'id' => next_id($records),
+            'id' => 0,
             'teacher_id' => $user['id'],
             'name' => $name,
             'subject' => $subject,
@@ -31,10 +33,19 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
             'created_at' => now_iso(),
             'updated_at' => now_iso(),
         ];
-        $records[] = $classroom;
-        save_classrooms($records);
-        flash_set('success', 'Classroom created. Share the join code with your students.');
-        redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->exec('LOCK TABLE classrooms IN EXCLUSIVE MODE');
+            $classroom['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM classrooms')->fetchColumn();
+            insert_classroom_record($pdo, $classroom);
+            $pdo->commit();
+            flash_set('success', 'Classroom created. Share the join code with your students.');
+            redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
+        } catch (Throwable $exception) {
+            $pdo->rollBack(); error_log('Classroom creation failed: ' . $exception->getMessage());
+            $errors[] = 'Could not create this classroom. Please try again.';
+        }
     }
 }
 
@@ -44,7 +55,7 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
     redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
 }
 
-render_header('Dashboard', 'dashboard-page ' . ($user['role'] === 'student' ? 'student-dashboard' : 'teacher-dashboard'));
+render_header('Dashboard', 'dashboard-page ' . ($user['role'] === 'student' ? 'student-dashboard' : 'teacher-dashboard') . ($showProgress ? ' student-progress' : ''));
 
 if ($user['role'] === 'teacher') {
     $stats = teacher_dashboard_stats((int) $user['id']);
@@ -95,6 +106,8 @@ if ($user['role'] === 'teacher') {
 </section>
 
 <?php if ($user['role'] === 'student'): ?>
+    <nav class="classroom-tabs" aria-label="Dashboard views"><a href="/QuizWeb/dashboard.php" <?php echo !$showProgress ? 'class="is-active" aria-current="page"' : ''; ?>>What’s next</a><a href="/QuizWeb/dashboard.php?view=progress" <?php echo $showProgress ? 'class="is-active" aria-current="page"' : ''; ?>>Progress &amp; study plan</a><a href="/QuizWeb/student_results.php">All results</a></nav>
+    <?php if (!$showProgress): ?>
     <div class="dashboard-primary-grid">
     <section class="glass panel dashboard-deadlines-panel">
         <div class="section-heading">
@@ -113,7 +126,7 @@ if ($user['role'] === 'teacher') {
                     <time datetime="<?php echo esc($deadline['quiz']['due_at']); ?>"><strong><?php echo esc(strtoupper(date('M', $dueTime))); ?></strong><span><?php echo esc(date('d', $dueTime)); ?></span></time>
                     <div><strong><?php echo esc($deadline['quiz']['title']); ?></strong><span><?php echo esc($deadline['classroom']['subject'] . ' · ' . classroom_teacher_name($deadline['classroom'])); ?></span></div>
                     <small><?php echo esc(date('D, g:i A', $dueTime)); ?></small>
-                    <span class="deadline-status status-<?php echo esc($deadlineStatus); ?>"><?php echo esc($deadlineLabel); ?></span>
+                    <a class="deadline-status status-<?php echo esc($deadlineStatus); ?>" href="/QuizWeb/<?php echo $deadlineAttempt ? 'results.php?id=' . (int) $deadlineAttempt['id'] : 'play.php?classroom_id=' . (int) $deadline['classroom']['id'] . '&amp;quiz_id=' . (int) $deadline['quiz']['id']; ?>"><?php echo esc($deadlineLabel); ?> →</a>
                 </article>
             <?php endforeach; ?>
             <?php if (!$upcomingDeadlines): ?><p class="muted">No quiz or assignment deadlines have been posted yet.</p><?php endif; ?>
@@ -148,6 +161,8 @@ if ($user['role'] === 'teacher') {
         </div>
         <span class="dashboard-book" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span>
     </section>
+    <?php endif; ?>
+    <?php if ($showProgress): ?>
     <div class="dashboard-coach-grid">
     <section class="glass panel learning-coach-panel">
         <div class="section-heading">
@@ -278,6 +293,7 @@ if ($user['role'] === 'teacher') {
         </section>
     </div>
 <?php endif; ?>
+<?php endif; ?>
 
 <?php if ($user['role'] === 'teacher'): ?>
     <section class="panel-grid">
@@ -289,6 +305,7 @@ if ($user['role'] === 'teacher') {
                 </div>
             </div>
             <form method="post" class="stack-form">
+                <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
                 <input type="hidden" name="action" value="create_classroom">
                 <?php foreach ($errors as $error): ?>
                     <div class="inline-error"><?php echo esc($error); ?></div>
@@ -312,10 +329,10 @@ if ($user['role'] === 'teacher') {
             <div class="section-heading">
                 <div>
                     <span class="eyebrow">Game modes</span>
-                    <h2>Seven editable formats</h2>
+                    <h2>Activity formats</h2>
                 </div>
             </div>
-            <div class="mode-list">
+            <details><summary>Browse available game modes</summary><div class="mode-list">
                 <?php foreach (game_modes() as $mode): ?>
                     <div class="mode-chip">
                         <span class="mode-icon"><?php echo esc($mode['icon']); ?></span>
@@ -325,8 +342,9 @@ if ($user['role'] === 'teacher') {
                         </div>
                     </div>
                 <?php endforeach; ?>
-            </div>
+            </div></details>
             <form method="post" class="stack-form demo-form">
+                <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
                 <input type="hidden" name="action" value="create_mastery_demo">
                 <button class="button button-secondary" type="submit">Create Sample Mastery Quiz</button>
             </form>
@@ -389,18 +407,19 @@ if ($user['role'] === 'teacher') {
         </section>
 <?php endif; ?>
 
+<?php if ($user['role'] === 'teacher'): ?>
 <section class="glass panel" id="joined-classrooms">
     <div class="section-heading">
         <div>
             <span class="eyebrow"><?php echo esc($user['role'] === 'teacher' ? 'Your classrooms' : 'Joined classrooms'); ?></span>
             <h2><?php echo esc($user['role'] === 'teacher' ? 'Manage your spaces' : 'Your Classes'); ?></h2>
         </div>
-        <?php if ($user['role'] === 'student'): ?><a class="button button-secondary" href="/QuizWeb/join.php">Join Class</a><?php endif; ?>
+        <a class="button button-secondary" href="/QuizWeb/classes.php">All classes</a>
     </div>
 
     <?php if ($myClassrooms): ?>
         <div class="classroom-grid">
-            <?php foreach ($myClassrooms as $classroom): ?>
+            <?php foreach (array_slice($myClassrooms, 0, 4) as $classroom): ?>
                 <article class="classroom-card glass">
                     <?php if ($user['role'] === 'student'): ?>
                         <div class="dashboard-class-summary">
@@ -421,6 +440,7 @@ if ($user['role'] === 'teacher') {
         <p class="muted"><?php echo esc($user['role'] === 'teacher' ? 'No classrooms yet. Create your first one above.' : 'You have not joined any classrooms yet.'); ?></p>
     <?php endif; ?>
 </section>
+<?php endif; ?>
 <?php if ($user['role'] === 'student'): ?></div><?php endif; ?>
 
 <?php render_footer(); ?>

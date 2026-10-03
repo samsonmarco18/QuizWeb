@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/activity.php';
+require_once __DIR__ . '/admin.php';
+require_once __DIR__ . '/grading.php';
 
 session_start();
 
@@ -92,6 +94,8 @@ function db(): PDO
     ]);
 
     ensure_database_schema($pdo);
+    ensure_admin_schema($pdo);
+    ensure_grading_schema($pdo);
     migrate_legacy_json_data($pdo);
 
     return $pdo;
@@ -189,15 +193,16 @@ function table_is_empty(PDO $pdo, string $table): bool
 function insert_user_record(PDO $pdo, array $user): void
 {
     $statement = $pdo->prepare('
-        INSERT INTO users (id, name, email, password, role, created_at, profile)
-        VALUES (:id, :name, :email, :password, :role, :created_at, :profile)
+        INSERT INTO users (id, name, email, password, role, created_at, profile, account_status)
+        VALUES (:id, :name, :email, :password, :role, :created_at, :profile, :account_status)
         ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             email = EXCLUDED.email,
             password = EXCLUDED.password,
             role = EXCLUDED.role,
             created_at = EXCLUDED.created_at,
-            profile = EXCLUDED.profile
+            profile = EXCLUDED.profile,
+            account_status = EXCLUDED.account_status
     ');
     $statement->execute([
         'id' => (int) $user['id'],
@@ -205,6 +210,7 @@ function insert_user_record(PDO $pdo, array $user): void
         'email' => strtolower($user['email']),
         'password' => $user['password'],
         'role' => $user['role'],
+        'account_status' => $user['account_status'] ?? 'active',
         'created_at' => $user['created_at'],
         'profile' => json_encode($user['profile'] ?? [], JSON_FORCE_OBJECT),
     ]);
@@ -321,6 +327,7 @@ function hydrate_user(array $row): array
         'role' => $row['role'],
         'created_at' => $row['created_at'],
         'profile' => db_json_decode($row['profile'] ?? '{}'),
+        'account_status' => $row['account_status'] ?? 'active',
     ];
 }
 
@@ -372,8 +379,6 @@ function save_users(array $users): void
     $pdo->beginTransaction();
 
     try {
-        $pdo->exec('DELETE FROM users');
-
         foreach (array_values($users) as $user) {
             insert_user_record($pdo, $user);
         }
@@ -398,8 +403,6 @@ function save_classrooms(array $classrooms): void
     $pdo->beginTransaction();
 
     try {
-        $pdo->exec('DELETE FROM classrooms');
-
         foreach (array_values($classrooms) as $classroom) {
             insert_classroom_record($pdo, $classroom);
         }
@@ -452,11 +455,8 @@ function current_user(): ?array
         return null;
     }
 
-    foreach (users() as $user) {
-        if ((int) $user['id'] === (int) $userId) {
-            return $user;
-        }
-    }
+    $user = find_user_by_id((int) $userId);
+    if ($user && ($user['account_status'] ?? 'active') === 'active') return $user;
 
     unset($_SESSION['user_id']);
 
@@ -528,6 +528,19 @@ function require_role(string $role): array
     }
 
     return $user;
+}
+
+function form_csrf(): string
+{
+    return $_SESSION['form_csrf'] ??= bin2hex(random_bytes(32));
+}
+
+function require_form_csrf(): void
+{
+    if (!is_string($_POST['csrf'] ?? null) || !hash_equals(form_csrf(), $_POST['csrf'])) {
+        http_response_code(403);
+        exit('Your form expired. Return to the previous page, reload, and try again.');
+    }
 }
 
 function esc(?string $value): string
@@ -800,31 +813,24 @@ function store_announcement_attachments(array $files): array
 
 function find_user_by_email(string $email): ?array
 {
-    foreach (users() as $user) {
-        if (strcasecmp($user['email'], $email) === 0) {
-            return $user;
-        }
-    }
-
-    return null;
+    $query = db()->prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1');
+    $query->execute([$email]);
+    $row = $query->fetch();
+    return $row ? hydrate_user($row) : null;
 }
 
 function find_user_by_id(int $id): ?array
 {
-    foreach (users() as $user) {
-        if ((int) $user['id'] === $id) {
-            return $user;
-        }
-    }
-
-    return null;
+    $query = db()->prepare('SELECT * FROM users WHERE id = ?');
+    $query->execute([$id]);
+    $row = $query->fetch();
+    return $row ? hydrate_user($row) : null;
 }
 
 function register_user(string $name, string $email, string $password, string $role, array $profile = []): array
 {
-    $records = users();
     $user = [
-        'id' => next_id($records),
+        'id' => 0,
         'name' => $name,
         'email' => strtolower($email),
         'password' => password_hash($password, PASSWORD_DEFAULT),
@@ -833,8 +839,17 @@ function register_user(string $name, string $email, string $password, string $ro
         'profile' => $profile,
     ];
 
-    $records[] = $user;
-    save_users($records);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->exec('LOCK TABLE users IN EXCLUSIVE MODE');
+        $user['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM users')->fetchColumn();
+        insert_user_record($pdo, $user);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
 
     return $user;
 }
@@ -843,15 +858,17 @@ function attempt_login(string $email, string $password): ?array
 {
     $user = find_user_by_email($email);
 
-    if (!$user) {
+    if (!$user || ($user['account_status'] ?? 'active') !== 'active' || !password_verify($password, $user['password'])) {
+        record_audit('login_failed', null, $user ? (int) $user['id'] : null);
         return null;
     }
-
-    return password_verify($password, $user['password']) ? $user : null;
+    record_audit('login_succeeded', (int) $user['id'], (int) $user['id']);
+    return $user;
 }
 
 function login_user(array $user): void
 {
+    session_regenerate_id(true);
     $_SESSION['user_id'] = $user['id'];
 }
 
@@ -923,7 +940,7 @@ function mastery_threshold_for_quiz(array $quiz): int
 
 function role_label(string $role): string
 {
-    return $role === 'teacher' ? 'Teacher' : 'Student';
+    return ['teacher' => 'Teacher', 'student' => 'Student', 'admin' => 'Administrator'][$role] ?? 'User';
 }
 
 function crossword_normalize_answer(string $answer): string
@@ -1369,19 +1386,7 @@ function find_classroom(int $classroomId): ?array
 
 function save_classroom(array $updatedClassroom): void
 {
-    $records = classrooms();
-
-    foreach ($records as $index => $classroom) {
-        if ((int) $classroom['id'] === (int) $updatedClassroom['id']) {
-            $records[$index] = $updatedClassroom;
-            save_classrooms($records);
-
-            return;
-        }
-    }
-
-    $records[] = $updatedClassroom;
-    save_classrooms($records);
+    insert_classroom_record(db(), $updatedClassroom);
 }
 
 function create_classroom_announcement(array $classroom, array $teacher, string $title, string $body, array $attachments): array
@@ -1423,7 +1428,14 @@ function classroom_belongs_to_user(array $classroom, array $user): bool
         return (int) $classroom['teacher_id'] === (int) $user['id'];
     }
 
-    return in_array((int) $user['id'], $classroom['student_ids'] ?? [], true);
+    return $user['role'] === 'student' && in_array((int) $user['id'], $classroom['student_ids'] ?? [], true);
+}
+
+function can_view_attempt(array $classroom, array $attempt, array $user): bool
+{
+    return classroom_belongs_to_user($classroom, $user)
+        && (int) $attempt['classroom_id'] === (int) $classroom['id']
+        && ($user['role'] === 'teacher' || (int) $attempt['student_id'] === (int) $user['id']);
 }
 
 function find_classroom_by_code(string $code): ?array
@@ -1528,7 +1540,6 @@ function student_attempts(int $studentId): array
 
 function create_attempt(int $studentId, int $classroomId, array $quiz, array $answers, int $elapsedSeconds, bool $forceZero = false): array
 {
-    $records = attempts();
     $score = 0;
     $maxScore = 0;
 
@@ -1573,8 +1584,9 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
         }
     }
 
+    $answers['_quiz_snapshot'] = $quiz;
     $attempt = [
-        'id' => next_id($records),
+        'id' => 0,
         'student_id' => $studentId,
         'classroom_id' => $classroomId,
         'quiz_id' => $quiz['id'],
@@ -1587,8 +1599,17 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
         'played_at' => now_iso(),
     ];
 
-    $records[] = $attempt;
-    save_attempts($records);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->exec('LOCK TABLE attempts IN EXCLUSIVE MODE');
+        $attempt['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM attempts')->fetchColumn();
+        insert_attempt_record($pdo, $attempt);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
 
     return $attempt;
 }
@@ -1839,6 +1860,7 @@ function learning_guidance(array $question, bool $isCorrect, bool $attempted, st
 
 function attempt_question_review_rows(array $quiz, array $attempt): array
 {
+    $quiz = attempt_quiz_version($quiz, $attempt);
     if (attempt_is_disqualified($attempt)) {
         return [];
     }
@@ -1955,6 +1977,7 @@ function student_learning_profile(int $studentId, ?int $classroomId = null): arr
         }
 
         $quiz = classroom_quiz($classroom, (int) ($attempt['quiz_id'] ?? 0));
+        if ($quiz) $quiz = attempt_quiz_version($quiz, $attempt);
         if (!$quiz) {
             continue;
         }
@@ -1992,6 +2015,7 @@ function student_learning_profile(int $studentId, ?int $classroomId = null): arr
                 (int) ($quiz['id'] ?? 0),
                 (int) $row['question_id'],
                 $row['index'],
+                hash('sha256', json_encode([$row['prompt'], $row['correct_answer'], $row['level']])),
             ]);
 
             if (!isset($questionStats[$questionKey])) {
@@ -2156,6 +2180,7 @@ function classroom_learning_profile(array $classroom): array
         }
 
         $quiz = classroom_quiz($classroom, (int) ($attempt['quiz_id'] ?? 0));
+        if ($quiz) $quiz = attempt_quiz_version($quiz, $attempt);
         if (!$quiz) {
             continue;
         }
@@ -2193,6 +2218,7 @@ function classroom_learning_profile(array $classroom): array
                 (int) ($quiz['id'] ?? 0),
                 (int) $row['question_id'],
                 $row['index'],
+                hash('sha256', json_encode([$row['prompt'], $row['correct_answer'], $row['level']])),
             ]);
 
             if (!isset($questionStats[$questionKey])) {

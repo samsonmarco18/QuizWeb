@@ -9,8 +9,9 @@ if (is_logged_in()) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    require_form_csrf();
+    $email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
+    $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
     $user = attempt_login($email, $password);
 
     if (!$user) {
@@ -36,6 +37,7 @@ render_header('Login', 'auth-page login-page');
         </a>
     </aside>
     <form method="post" class="stack-form auth-card">
+        <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
         <div class="auth-form-heading">
             <div class="auth-title-row">
                 <h1>Sign in</h1>

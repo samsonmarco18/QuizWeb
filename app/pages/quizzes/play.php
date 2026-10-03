@@ -23,6 +23,12 @@ $modes = game_modes();
 $isPreview = $user['role'] === 'teacher';
 $isTextActivity = activity_uses_text_answers($quiz['game_type']);
 $_SESSION['activity_csrf'] ??= bin2hex(random_bytes(32));
+$runToken = '';
+if (!$isPreview) {
+    $_SESSION['activity_runs'] = array_slice($_SESSION['activity_runs'] ?? [], -29, null, true);
+    $runToken = bin2hex(random_bytes(24));
+    $_SESSION['activity_runs'][$runToken] = ['classroom_id' => $classroomId, 'quiz_id' => $quizId, 'student_id' => (int) $user['id'], 'quiz_snapshot' => $quiz];
+}
 $quizData = [
     'id' => $quiz['id'],
     'title' => $quiz['title'],
@@ -60,6 +66,7 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
 <section class="game-shell glass">
     <div class="game-hud">
         <div>
+            <a class="button button-secondary game-exit" href="/QuizWeb/classroom.php?id=<?php echo (int) $classroomId; ?>&amp;tab=quizzes">Back to Classroom</a>
             <span class="eyebrow"><?php echo esc($modes[$quiz['game_type']]['label'] ?? 'Quiz Mode'); ?></span>
             <h1><?php echo esc($quiz['title']); ?></h1>
             <p class="lead compact"><?php echo esc($quiz['description'] ?: $modes[$quiz['game_type']]['description']); ?></p>
@@ -91,6 +98,7 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
         data-submit-url="/QuizWeb/submit_game.php"
         data-is-preview="<?php echo $isPreview ? '1' : '0'; ?>"
         data-csrf="<?php echo esc($_SESSION['activity_csrf']); ?>"
+        data-run-token="<?php echo esc($runToken); ?>"
         data-return-url="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>"
     >
         <div class="game-progress">

@@ -217,6 +217,9 @@
     }
 
     function button(label, className, onClick) {
+        if (isPreview && root.dataset.embeddedPreview === '1' && label.startsWith('Back to')) {
+            label = 'Close play test'; onClick = () => window.parent.postMessage({type: 'quizweb-preview-close'}, '*');
+        }
         const element = document.createElement("button");
         element.type = "button";
         element.className = className;
@@ -268,6 +271,8 @@
         form.appendChild(createHiddenInput("quiz_id", quiz.id));
         form.appendChild(createHiddenInput("elapsed_seconds", state.elapsedSeconds));
         form.appendChild(createHiddenInput("answers", JSON.stringify(state.answers)));
+        form.appendChild(createHiddenInput("csrf", root.dataset.csrf || ''));
+        form.appendChild(createHiddenInput("run_token", root.dataset.runToken || ''));
 
         Object.entries(extraFields).forEach(([name, value]) => {
             form.appendChild(createHiddenInput(name, value));
@@ -390,6 +395,8 @@
         appendAttemptField(formData, "quiz_id", quiz.id);
         appendAttemptField(formData, "elapsed_seconds", state.elapsedSeconds);
         appendAttemptField(formData, "answers", "[]");
+        appendAttemptField(formData, "csrf", root.dataset.csrf || '');
+        appendAttemptField(formData, "run_token", root.dataset.runToken || '');
         appendAttemptField(formData, "disqualified", "1");
         appendAttemptField(formData, "violation_reason", reason);
         appendAttemptField(formData, "violation_count", integrity.warningCount + 1);

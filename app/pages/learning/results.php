@@ -20,12 +20,13 @@ if (!$attempt) {
 
 $classroom = find_classroom((int) $attempt['classroom_id']);
 
-if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
+if (!$classroom || !can_view_attempt($classroom, $attempt, $user)) {
     flash_set('danger', 'Access denied.');
     redirect('/QuizWeb/dashboard.php');
 }
 
 $quiz = classroom_quiz($classroom, (int) $attempt['quiz_id']);
+$quiz = attempt_quiz_version($quiz ?? [], $attempt) ?: null;
 $scorePercent = percentage((int) $attempt['score'], (int) $attempt['max_score']);
 $student = find_user_by_id((int) $attempt['student_id']);
 $attemptAnswers = $attempt['answers'] ?? [];

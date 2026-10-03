@@ -119,7 +119,7 @@
         const card = fragment.querySelector(".question-card");
 
         card.querySelector('[data-field="prompt"]').value = seed.prompt || "";
-        card.querySelector('[data-field="answer"]').value = seed.answer || seed.options?.[0] || "";
+        card.querySelector('[data-field="answer"]').value = seed.answer || seed.options?.[seed.correct_index ?? 0] || "";
         card.querySelector('[data-field="preferred_direction"]').value = seed.preferred_direction || seed.crossword?.direction || "across";
         card.querySelector('[data-field="option-0"]').value = seed.options?.[0] || "";
         card.querySelector('[data-field="option-1"]').value = seed.options?.[1] || "";
@@ -134,13 +134,16 @@
         card.querySelector('[data-field="explanation"]').value = seed.explanation || '';
 
         card.querySelector(".remove-question").addEventListener("click", () => {
+            if (!confirm('Delete this question? Its content will be removed from this draft.')) return;
             card.remove();
             refreshQuestionLabels();
+            builderForm.dispatchEvent(new Event('activity:changed'));
         });
 
         questionList.appendChild(fragment);
         applyBuilderModeToCard(card);
         refreshQuestionLabels();
+        builderForm.dispatchEvent(new Event('activity:changed'));
 
         return card;
     }
@@ -182,6 +185,8 @@
         if (addQuestionButton) {
             addQuestionButton.textContent = isCrossword ? "Add Word" : "Add Question";
         }
+        const editorHeading = document.querySelector('.builder-header h2');
+        if (editorHeading) editorHeading.textContent = isCrossword ? 'Word and clue editor' : 'Question editor';
         const modeNote = document.querySelector('[data-builder-mode-note]');
         if (modeNote) {
             modeNote.querySelector('strong').textContent = isCrossword ? 'Crossword checklist' : 'Activity checklist';
@@ -225,7 +230,7 @@
                     case_sensitive: card.querySelector('[data-field="case_sensitive"]').checked,
                     hint: card.querySelector('[data-field="hint"]').value.trim(),
                     explanation: card.querySelector('[data-field="explanation"]').value.trim(),
-                    points: Number(card.querySelector('[data-field="points"]').value || 10),
+                    points: Number(card.querySelector('[data-field="points"]').value),
                     level: card.querySelector('[data-field="level"]').value || 'easy' };
             }
 
@@ -236,7 +241,7 @@
                     preferred_direction: card.querySelector('[data-field="preferred_direction"]').value || "across",
                     options: [answer],
                     correct_index: 0,
-                    points: Number(card.querySelector('[data-field="points"]').value || 10),
+                    points: Number(card.querySelector('[data-field="points"]').value),
                     level: card.querySelector('[data-field="level"]').value || "easy",
                 };
             }
@@ -250,7 +255,7 @@
                     card.querySelector('[data-field="option-3"]').value.trim(),
                 ],
                 correct_index: Number(card.querySelector('[data-field="correct_index"]').value || 0),
-                points: Number(card.querySelector('[data-field="points"]').value || 10),
+                points: Number(card.querySelector('[data-field="points"]').value),
                 level: card.querySelector('[data-field="level"]').value || "easy",
             };
         });
@@ -268,8 +273,13 @@
         gameTypeSelect?.addEventListener("change", applyBuilderMode);
         applyBuilderMode();
         builderForm.addEventListener('activity:collect', () => { payloadInput.value = JSON.stringify(collectQuestions()); });
+        window.quizBuilder = {collect: collectQuestions, add: buildQuestionCard, refresh: refreshQuestionLabels};
 
         builderForm.addEventListener("submit", (event) => {
+            if (window.quizBuilderWorkflow) {
+                payloadInput.value = JSON.stringify(collectQuestions());
+                return;
+            }
             const questions = collectQuestions();
             const isCrossword = currentBuilderMode() === "crossword";
             const incomplete = (isCrossword || ['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode()))

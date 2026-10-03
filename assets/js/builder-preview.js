@@ -5,98 +5,43 @@
     if (!form || !trigger || !dialog) return;
     const status = document.getElementById('preview-status');
     const content = document.getElementById('preview-content');
+    document.getElementById('play-test')?.addEventListener('click', () => trigger.click());
+    dialog.addEventListener('close', () => content.replaceChildren());
+    window.addEventListener('message', event => {
+        const frame = content.querySelector('iframe');
+        if (frame && event.source === frame.contentWindow && event.data?.type === 'quizweb-preview-close') dialog.close();
+    });
     function node(tag, text, className) {
         const element = document.createElement(tag);
         if (text !== undefined) element.textContent = text;
         if (className) element.className = className;
         return element;
     }
-    function crosswordPreview(quiz) {
-        const layout = quiz.crossword_layout;
-        const wrap = node('div', undefined, 'preview-crossword');
-        const scroll = node('div', undefined, 'preview-grid-scroll');
-        const grid = node('div', undefined, 'preview-grid');
-        grid.style.setProperty('--cols', layout.cols);
-        grid.setAttribute('aria-label', 'Crossword grid');
-        const labels = new Map();
-        layout.placements.forEach(p => {
-            const key = `${p.row}:${p.col}`;
-            labels.set(key, [...(labels.get(key) || []), `${p.number}${p.direction === 'across' ? 'A' : 'D'}`]);
-        });
-        layout.cells.forEach((row, y) => row.forEach((letter, x) => {
-            const cell = node('div', undefined, letter === null ? 'preview-cell is-block' : 'preview-cell');
-            if (letter !== null) {
-                const input = node('input');
-                input.maxLength = 1;
-                input.autocomplete = 'off';
-                input.setAttribute('aria-label', `Row ${y + 1}, column ${x + 1}`);
-                input.dataset.answer = letter;
-                const label = labels.get(`${y}:${x}`);
-                if (label) cell.append(node('small', label.join('/')));
-                cell.append(input);
-            }
-            grid.append(cell);
-        }));
-        scroll.append(grid);
-        wrap.append(scroll);
-        const clues = node('div', undefined, 'preview-clues');
-        for (const direction of ['across', 'down']) {
-            clues.append(node('h3', direction === 'across' ? 'Across' : 'Down'));
-            layout.placements.filter(p => p.direction === direction).forEach(p => {
-                const question = quiz.questions.find(q => Number(q.id) === Number(p.question_id));
-                clues.append(node('p', `${p.number}. ${question.prompt} (${question.answer.length})`));
-            });
+    function playTest(quiz) {
+        quiz.mastery_threshold = quiz.mastery_threshold ?? (Number(form.elements.mastery_threshold.value) || 75);
+        const frame = node('iframe');
+        frame.title = 'Isolated activity play test';
+        // No same-origin permission, forms, popups, or network writes. Even a
+        // renderer regression cannot submit a student attempt from this frame.
+        frame.setAttribute('sandbox', 'allow-scripts');
+        const doc = document.implementation.createHTMLDocument('Activity play test');
+        const csp = doc.createElement('meta'); csp.httpEquiv = 'Content-Security-Policy';
+        csp.content = `default-src 'none'; script-src ${location.origin}; style-src ${location.origin} 'unsafe-inline'; img-src ${location.origin} data:; connect-src 'none'; form-action 'none';`;
+        doc.head.append(csp);
+        for (const path of ['site.css', 'refinements.css']) {
+            const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = `${location.origin}/QuizWeb/assets/css/${path}`; doc.head.append(link);
         }
-        wrap.append(clues);
-        let showingAnswers = false;
-        const toggle = node('button', 'Show answer key', 'button button-secondary');
-        toggle.type = 'button';
-        toggle.setAttribute('aria-pressed', 'false');
-        toggle.addEventListener('click', () => {
-            showingAnswers = !showingAnswers;
-            grid.querySelectorAll('input').forEach(input => {
-                if (showingAnswers) input.dataset.draft = input.value;
-                input.value = showingAnswers ? input.dataset.answer : (input.dataset.draft || '');
-                input.readOnly = showingAnswers;
-            });
-            toggle.textContent = showingAnswers ? 'Hide answer key' : 'Show answer key';
-            toggle.setAttribute('aria-pressed', String(showingAnswers));
-        });
-        content.append(toggle, wrap);
-    }
-    function questionPreview(quiz) {
-        if (quiz.game_type === 'flip_match') {
-            content.append(node('p', 'Pair review: each term becomes one card and its definition becomes another. Cards are shuffled during play.'));
-        }
-        quiz.questions.forEach((question, index) => {
-            const card = node('article', undefined, 'preview-question');
-            card.append(node('small', `Item ${index + 1} · ${question.points} points`), node('h3', question.prompt));
-            if (quiz.game_type === 'flip_match') {
-                card.append(node('p', question.answer));
-            } else if (['fill_blank', 'emoji_quiz'].includes(quiz.game_type)) {
-                const input = node('input');
-                input.placeholder = 'Type your answer';
-                input.setAttribute('aria-label', `Answer for item ${index + 1}`);
-                card.append(input);
-            } else {
-                const choices = node('div', undefined, 'preview-choices');
-                question.options.forEach((option, optionIndex) => {
-                    const label = node('label');
-                    const input = node('input');
-                    input.type = 'radio'; input.name = `preview-${index}`; input.value = optionIndex;
-                    label.append(input, node('span', option)); choices.append(label);
-                });
-                card.append(choices);
-            }
-            if (question.hint) card.append(node('p', `Hint: ${question.hint}`));
-            const key = node('details');
-            key.append(node('summary', 'Answer key'), node('p', question.answer || question.options[question.correct_index]));
-            if (question.explanation) key.append(node('p', question.explanation));
-            card.append(key); content.append(card);
-        });
+        doc.body.className = `ui-refined game-page mode-${quiz.game_type}${document.body.classList.contains('theme-dark') ? ' theme-dark' : ''}`;
+        doc.body.innerHTML = `<main class="preview-play-test"><div class="card-meta"><span data-progress-count></span><span>Score <b data-score-value>0</b></span><span>Streak <b data-streak-value>0</b></span><span>Time <b data-timer-value>0</b></span></div><div class="game-board" data-game-root data-is-preview="1" data-return-url="#"><div class="game-progress"><div class="game-progress-bar" data-progress-bar></div></div><div class="battle-strip" data-battle-strip hidden><div data-boss-health></div><div data-player-health></div></div><div class="mode-stage"><article class="question-stage glass"><span data-question-points></span><h2 data-question-text></h2><p data-question-helper></p><div class="answers-grid" data-answer-grid></div><div class="game-controls" data-game-controls></div></article></div><div class="game-note" data-game-note></div></div></main>`;
+        doc.querySelector('[data-game-root]').dataset.quiz = JSON.stringify(quiz);
+        doc.querySelector('[data-game-root]').dataset.embeddedPreview = '1';
+        const script = doc.createElement('script');
+        script.src = `${location.origin}/QuizWeb/assets/js/${['fill_blank', 'emoji_quiz', 'flip_match'].includes(quiz.game_type) ? 'activity-game.js' : 'game.js'}`;
+        doc.body.append(script);
+        frame.srcdoc = '<!doctype html>' + doc.documentElement.outerHTML;
+        content.append(frame);
     }
     trigger.addEventListener('click', async () => {
-        if (!form.reportValidity()) return;
         form.dispatchEvent(new Event('activity:collect'));
         const data = new FormData(form);
         data.set('action', 'preview');
@@ -118,8 +63,8 @@
                 content.append(list); return;
             }
             document.getElementById('preview-title').textContent = quiz.title;
-            status.textContent = quiz.game_type === 'crossword' ? 'This is the grid that will be saved. Try the cells or show the answer key.' : `${quiz.questions.length} items · Nothing has been saved yet.`;
-            if (quiz.game_type === 'crossword') crosswordPreview(quiz); else questionPreview(quiz);
+            status.textContent = `${quiz.questions.length} items · Play test responses are never saved.`;
+            playTest(quiz);
         } catch (error) {
             status.textContent = error.name === 'AbortError' ? 'Preview timed out. Close and retry.' : (error.message || 'Could not load the preview. Please retry.');
         } finally {

@@ -1,4 +1,6 @@
 *.json
 uploads/
+qa/
+qa-cache/
 !.gitignore
 !.htaccess

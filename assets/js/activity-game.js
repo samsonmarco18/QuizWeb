@@ -1,6 +1,7 @@
 (() => {
     const root = document.querySelector('[data-game-root]');
     if (!root) return;
+    // The backend deduplicates this run token if a submit is retried.
     const quiz = JSON.parse(root.dataset.quiz || '{}');
     const questions = quiz.questions || [];
     const preview = root.dataset.isPreview === '1';
@@ -20,6 +21,9 @@
         return element;
     }
     function button(text, action, secondary = false) {
+        if (preview && root.dataset.embeddedPreview === '1' && text.startsWith('Back to')) {
+            text = 'Close play test'; action = () => window.parent.postMessage({type: 'quizweb-preview-close'}, '*');
+        }
         const element = node('button', text, `button button-${secondary ? 'secondary' : 'primary'}`);
         element.type = 'button'; element.addEventListener('click', action); return element;
     }
@@ -134,7 +138,7 @@
         note.textContent = 'Submitting your answers…';
         if (matching) answers._moves = moves;
         const form = node('form'); form.method = 'post'; form.action = root.dataset.submitUrl;
-        const fields = {classroom_id: root.dataset.classroomId, quiz_id: quiz.id, elapsed_seconds: elapsed(), answers: JSON.stringify(answers), csrf: root.dataset.csrf};
+        const fields = {classroom_id: root.dataset.classroomId, quiz_id: quiz.id, elapsed_seconds: elapsed(), answers: JSON.stringify(answers), csrf: root.dataset.csrf, run_token: root.dataset.runToken};
         Object.entries(fields).forEach(([name, value]) => { const input = node('input'); input.type = 'hidden'; input.name = name; input.value = value; form.append(input); });
         document.body.append(form); form.submit();
     }
