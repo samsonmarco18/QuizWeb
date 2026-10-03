@@ -66,6 +66,22 @@ gradeCategory.value = ''; gradeCategory.dispatchEvent(new a.w.Event('change', {b
 assert(a.doc.querySelector('[data-quiz-graded]').hidden);
 assert.match(a.doc.getElementById('builder-review').textContent, /Practice activity/);
 a.close();
+const conversion = setup(seed);
+const convertedCard = conversion.doc.querySelectorAll('.question-card')[1];
+convertedCard.querySelector('[data-field="correct_index"]').value = '3';
+convertedCard.querySelector('[data-field="option-3"]').value = 'Updated D';
+const changeMode = mode => {
+    conversion.doc.querySelector('[name="game_type"]').value = mode;
+    conversion.doc.querySelector('[name="game_type"]').dispatchEvent(new conversion.w.Event('change', {bubbles: true}));
+};
+changeMode('fill_blank');
+assert.equal(conversion.w.quizBuilder.collect()[1].answer, 'Updated D', 'Mode conversion uses the current selected answer');
+const explicitAnswer = convertedCard.querySelector('[data-field="answer"]');
+explicitAnswer.value = 'Teacher-written answer';
+explicitAnswer.dispatchEvent(new conversion.w.Event('input', {bubbles: true}));
+changeMode('standard'); changeMode('fill_blank');
+assert.equal(conversion.w.quizBuilder.collect()[1].answer, 'Teacher-written answer', 'Explicit text answers survive mode round trips');
+conversion.close();
 const b = setup(seed);
 const cleanLeave = new b.w.Event('beforeunload', {cancelable: true}); b.w.dispatchEvent(cleanLeave);
 assert(!cleanLeave.defaultPrevented, 'Unchanged editing must not warn');

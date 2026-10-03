@@ -119,7 +119,10 @@
         const card = fragment.querySelector(".question-card");
 
         card.querySelector('[data-field="prompt"]').value = seed.prompt || "";
-        card.querySelector('[data-field="answer"]').value = seed.answer || seed.options?.[0] || "";
+        const answerInput = card.querySelector('[data-field="answer"]');
+        answerInput.value = seed.answer || seed.options?.[seed.correct_index ?? 0] || "";
+        card.dataset.explicitAnswer = seed.answer ? 'true' : 'false';
+        answerInput.addEventListener('input', () => { card.dataset.explicitAnswer = 'true'; });
         card.querySelector('[data-field="preferred_direction"]').value = seed.preferred_direction || seed.crossword?.direction || "auto";
         card.querySelector('[data-field="option-0"]').value = seed.options?.[0] || "";
         card.querySelector('[data-field="option-1"]').value = seed.options?.[1] || "";
@@ -155,6 +158,10 @@
     function applyBuilderModeToCard(card) {
         const isCrossword = currentBuilderMode() === "crossword";
         const textMode = ['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode());
+        if ((isCrossword || textMode) && card.dataset.explicitAnswer !== 'true') {
+            const selected = card.querySelector('[data-field="correct_index"]').value || '0';
+            card.querySelector('[data-field="answer"]').value = card.querySelector(`[data-field="option-${selected}"]`).value;
+        }
         card.querySelector('[data-answer-field]').hidden = !(isCrossword || textMode);
         card.querySelector('[data-answer-label]').textContent = currentBuilderMode() === 'flip_match' ? 'Matching definition / answer' : 'Correct answer';
         card.querySelector('[data-field="answer"]').placeholder = isCrossword ? '3–15 letters' : 'Enter the expected answer';
