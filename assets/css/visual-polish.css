@@ -1,0 +1,203 @@
+/* Expressive surfaces and motion, layered over the shared application theme. */
+body.ui-refined {
+    --scene-teal: rgba(20, 124, 104, .12);
+    --scene-blue: rgba(98, 139, 207, .10);
+    --scene-gold: rgba(218, 169, 81, .11);
+    --polish-shadow: 0 8px 28px rgba(30, 70, 58, .065), 0 1px 3px rgba(30, 70, 58, .04);
+    --polish-hover-shadow: 0 14px 34px rgba(30, 70, 58, .12);
+}
+body.ui-refined.theme-dark {
+    --scene-teal: rgba(98, 215, 188, .10);
+    --scene-blue: rgba(116, 154, 229, .10);
+    --scene-gold: rgba(228, 191, 108, .08);
+    --polish-shadow: 0 8px 28px rgba(0, 8, 15, .22), 0 1px 0 rgba(255, 255, 255, .03) inset;
+    --polish-hover-shadow: 0 14px 34px rgba(0, 8, 15, .34);
+}
+body.ui-refined:not(.auth-page):not(.game-page) {
+    background: radial-gradient(ellipse at 12% 0%, var(--scene-teal), transparent 42%),
+                radial-gradient(ellipse at 95% 20%, var(--scene-blue), transparent 38%),
+                radial-gradient(ellipse at 65% 95%, var(--scene-gold), transparent 42%), var(--bg-primary);
+    background-attachment: fixed;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .site-header {
+    background: var(--bg-secondary);
+    background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 4px 20px rgba(10, 40, 35, .045);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .classroom-sidebar {
+    background: linear-gradient(175deg, var(--scene-teal), transparent 40%), var(--bg-secondary);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .classroom-sidebar-link {
+    transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .classroom-sidebar-link.is-active {
+    box-shadow: inset 3px 0 var(--accent), 0 4px 12px var(--scene-teal);
+    font-weight: 700;
+}
+body.ui-refined:not(.auth-page):not(.game-page) :is(.panel, .classroom-card, .quiz-card, .review-card) {
+    border-radius: 18px;
+    box-shadow: var(--polish-shadow);
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero {
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: linear-gradient(125deg, var(--scene-teal), transparent 58%),
+                linear-gradient(315deg, var(--scene-blue), transparent 55%), var(--surface);
+    box-shadow: var(--polish-shadow);
+    padding: clamp(24px, 3vw, 40px);
+    isolation: isolate;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero::before {
+    inset: -110px -100px auto auto;
+    width: 310px;
+    height: 310px;
+    background: none;
+    border: 42px solid var(--scene-teal);
+    box-shadow: 0 0 0 24px var(--scene-blue), 0 0 0 54px var(--scene-gold);
+    opacity: .65;
+    z-index: 0;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero h1 {
+    font-size: clamp(1.8rem, 3vw, 2.65rem);
+    letter-spacing: -.045em;
+    margin-top: 14px;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-weight: 700;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero .eyebrow {
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 3px 10px var(--scene-teal);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero .eyebrow::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--scene-teal);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-overview .stat-card {
+    background: linear-gradient(145deg, var(--scene-teal), transparent 65%), var(--surface);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px var(--scene-teal);
+    border-top: 3px solid var(--accent);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-overview .stat-card:nth-child(2) {
+    background: linear-gradient(145deg, var(--scene-blue), transparent 65%), var(--surface);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-overview .stat-card:nth-child(3) {
+    background: linear-gradient(145deg, var(--scene-gold), transparent 65%), var(--surface);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .dashboard-stat-icon {
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15);
+}
+body.ui-refined:not(.auth-page):not(.game-page) :is(.page-heading, .section-heading) h2 {
+    letter-spacing: -.025em;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .panel > .section-heading {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .button {
+    border-radius: 11px;
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .button-primary {
+    background: linear-gradient(115deg, var(--accent), var(--accent-hover));
+    box-shadow: 0 5px 14px var(--scene-teal), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .button-secondary {
+    background: var(--surface);
+    box-shadow: 0 2px 5px rgba(10, 40, 35, .035);
+}
+body.ui-refined:not(.auth-page):not(.game-page) :is(input, select, textarea) {
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+body.ui-refined:not(.auth-page):not(.game-page) :is(input, select, textarea):focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--scene-teal);
+}
+body.ui-refined:not(.auth-page):not(.game-page) :is(.classroom-tabs, .builder-steps) {
+    padding: 6px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .classroom-tabs a {
+    border-radius: 9px;
+    transition: background 180ms ease, box-shadow 180ms ease;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .classroom-tabs a.is-active {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 3px 10px var(--scene-teal), inset 0 -2px var(--accent);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .builder-steps button.is-active {
+    background: var(--surface);
+    border-color: var(--accent);
+    box-shadow: 0 3px 10px var(--scene-teal);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .grade-summary {
+    background: linear-gradient(120deg, var(--scene-teal), transparent 70%), var(--surface);
+    border-left: 4px solid var(--accent);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .grade-summary h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    letter-spacing: -.05em;
+    color: var(--accent);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .grade-table tbody tr:nth-child(even) {
+    background: var(--surface-soft);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .grade-table tbody tr {
+    transition: background 160ms ease;
+}
+body.ui-refined:not(.auth-page):not(.game-page) .grade-category-list details[open] {
+    border-color: var(--accent);
+}
+body.ui-refined:not(.auth-page):not(.game-page) .builder-live-preview {
+    background: linear-gradient(155deg, var(--scene-teal), transparent 70%), var(--surface-soft);
+    border-radius: 16px;
+}
+body.ui-refined:not(.auth-page):not(.game-page) :is(.empty-state, .hero-note-card) {
+    background: linear-gradient(145deg, var(--scene-blue), transparent 65%), var(--surface);
+    border-radius: 16px;
+}
+@media (hover: hover) and (pointer: fine) {
+    body.ui-refined:not(.auth-page):not(.game-page) :is(.classroom-card, .quiz-card):hover {
+        border-color: var(--accent);
+        box-shadow: var(--polish-hover-shadow);
+        transform: translateY(-3px);
+    }
+    body.ui-refined:not(.auth-page):not(.game-page) :is(.classroom-card, .quiz-card) {
+        transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+    }
+    body.ui-refined:not(.auth-page):not(.game-page) .button:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: var(--polish-hover-shadow);
+    }
+    body.ui-refined:not(.auth-page):not(.game-page) .button:not(:disabled):active { transform: translateY(0); }
+    body.ui-refined:not(.auth-page):not(.game-page) .grade-table tbody tr:hover { background: var(--surface-hover); }
+}
+@media (max-width: 760px) {
+    body.ui-refined:not(.auth-page):not(.game-page) { background-attachment: scroll; }
+    body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero { padding: 22px 18px; border-radius: 18px; }
+    body.ui-refined:not(.auth-page):not(.game-page) .dashboard-hero::before { opacity: .35; }
+    body.ui-refined:not(.auth-page):not(.game-page) :is(.classroom-tabs, .builder-steps) { padding: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.ui-refined :is(.button, .quiz-card, .classroom-card) { transform: none !important; }
+}
