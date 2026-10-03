@@ -1,5 +1,8 @@
 # QuizWeb / CHALK
 
+For the new activity templates and unsaved crossword preview, see
+[Activity builder](docs/ACTIVITY_BUILDER.md).
+
 Source files are grouped by feature under app/pages/; root PHP files preserve the
 existing public URLs. See [Project structure](docs/PROJECT_STRUCTURE.md) for the
 folder map, editing conventions, and verification commands.

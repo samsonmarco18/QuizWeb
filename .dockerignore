@@ -3,6 +3,10 @@
 .codex
 data/*.json
 data/uploads
+data/ui-layout-browser
+data/ui-*.png
+data/sess_*
+tests
 .env
 .env.*
 !.env.example

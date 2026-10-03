@@ -1,6 +1,12 @@
 *.json
 uploads/
+<<<<<<< HEAD
 qa/
 qa-cache/
+=======
+ui-layout-browser/
+ui-*.png
+sess_*
+>>>>>>> b4a3f5c1efffd452b9f36351654f1ecef8553a69
 !.gitignore
 !.htaccess

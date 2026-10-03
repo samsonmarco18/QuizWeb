@@ -329,7 +329,7 @@ if ($user['role'] === 'teacher') {
             <div class="section-heading">
                 <div>
                     <span class="eyebrow">Game modes</span>
-                    <h2>Activity formats</h2>
+                    <h2>Seven editable formats</h2>
                 </div>
             </div>
             <details><summary>Browse available game modes</summary><div class="mode-list">

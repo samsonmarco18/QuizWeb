@@ -226,7 +226,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
         <div class="builder-mode-note" data-builder-mode-note>
             <strong><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Crossword checklist' : 'Quiz checklist'); ?></strong>
             <span><?php echo esc(($selectedMode ?? '') === 'crossword'
-                ? 'Use 3+ unique words, varied lengths, clear clues, and answers that can intersect through matching letters.'
+                ? 'Use 3+ unique words with shared letters and clear clues, then preview the grid before saving.'
                 : 'Write complete prompts, four options, one correct answer, and points for each question.'); ?></span>
         </div>
 
@@ -303,6 +303,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
         <label data-crossword-only>
             <span>Direction</span>
             <select data-field="preferred_direction">
+                <option value="auto">Automatic</option>
                 <option value="across">Horizontal</option>
                 <option value="down">Vertical</option>
             </select>

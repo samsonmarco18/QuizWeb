@@ -1045,13 +1045,13 @@ function build_crossword_layout(array $questions): ?array
     foreach (array_slice($entries, 1) as $entry) {
         $word = $entry['answer'];
         $candidates = [];
-        $preferredDirection = ($entry['preferred_direction'] ?? '') === 'down' ? 'down' : 'across';
+        $preferredDirection = $entry['preferred_direction'] ?? 'auto';
 
         foreach ($placements as $placed) {
             $placedWord = $placed['answer'];
             $direction = $placed['direction'] === 'across' ? 'down' : 'across';
 
-            if ($direction !== $preferredDirection) {
+            if ($preferredDirection !== 'auto' && $direction !== $preferredDirection) {
                 continue;
             }
 
