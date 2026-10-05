@@ -79,7 +79,7 @@
             const minimum = mode() === 'crossword' ? 3 : 2;
             if (questions.length < minimum) issues.push(`Add at least ${minimum} items.`);
             if (mode() === 'flip_match' && questions.length > 12) issues.push('Use up to 12 matching pairs.');
-            const answers = questions.map(q => mode() === 'crossword' ? (q.answer || '').replace(/[^a-z]/gi, '').toUpperCase() : (q.answer || '').trim().toLowerCase());
+            const answers = questions.map(q => mode() === 'crossword' ? (q.answer || '').replace(/[^a-z]/gi, '').toUpperCase() : q.answer_image || (q.answer || '').trim().toLowerCase());
             if (new Set(answers).size !== answers.length) issues.push('Use unique answers for every item.');
         }
         return issues;
@@ -103,7 +103,15 @@
             })));
             card.append(choices);
         } else if (mode() === 'flip_match') {
-            card.append(action('Flip to matching definition', () => { feedback.textContent = q.answer || 'Add a definition.'; }));
+            if (q.prompt_image && /^data:image\/(png|jpeg|webp);base64,/.test(q.prompt_image)) {
+                const image = node('img', undefined, 'match-card-image'); image.src = q.prompt_image; image.alt = q.prompt; card.append(image);
+            }
+            card.append(action('Reveal matching card', () => {
+                feedback.replaceChildren(node('span', q.answer || 'Add a matching label.'));
+                if (q.answer_image && /^data:image\/(png|jpeg|webp);base64,/.test(q.answer_image)) {
+                    const image = node('img', undefined, 'match-card-image'); image.src = q.answer_image; image.alt = q.answer; feedback.append(image);
+                }
+            }));
         } else {
             const label = node('label', mode() === 'crossword' ? 'Answer to this clue' : 'Your answer');
             const input = node('input'); input.type = 'text'; label.append(input);
@@ -217,6 +225,7 @@
     form.addEventListener('submit', async event => {
         event.preventDefault();
         if (submitting) return;
+        if (api.imagesPending?.()) { status.textContent = 'Wait for the image upload to finish, then save again.'; return; }
         const questions = api.collect();
         if (!form.elements.title.value.trim() || form.elements.title.value.length > 255) {
             showStep(1); status.textContent = 'Quiz title is required (up to 255 characters).'; form.elements.title.focus(); return;

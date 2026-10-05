@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($masteryThreshold === false || $masteryThreshold < 50 || $masteryThreshold > 100) {
         $errors[] = 'Mastery target must be between 50% and 100%.';
     }
-    $payload = is_string($_POST['questions_payload'] ?? null) && strlen($_POST['questions_payload']) <= 250000 ? $_POST['questions_payload'] : '[]';
+    $payload = is_string($_POST['questions_payload'] ?? null) && strlen($_POST['questions_payload']) <= 1500000 ? $_POST['questions_payload'] : '[]';
     $decodedQuestions = json_decode($payload, true);
     $questions = [];
 
@@ -143,7 +143,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
                     <strong><?php echo esc($mode['label']); ?></strong>
                 </div>
                 <p><?php echo esc($mode['description']); ?></p>
-                <details><summary>Preview Mechanics</summary><p><?php echo esc($key === 'master_ladder' ? 'Start at Easy. Reach the configured accuracy target to unlock Medium, Hard, and Master.' : ($key === 'flip_match' ? 'Reveal two cards to match a term with its definition. Moves and elapsed time are informational.' : ($key === 'crossword' ? 'Fill an intersecting grid from Across and Down clues. Whole correct words earn points.' : ($key === 'standard' ? 'Choose one of four answers, see feedback, and continue to the next question.' : 'Type your responses, use configured hints, and review before submitting.')))); ?></p></details>
+                <details><summary>Preview Mechanics</summary><p><?php echo esc($key === 'master_ladder' ? 'Start at Easy. Reach the configured accuracy target to unlock Medium, Hard, and Master.' : ($key === 'flip_match' ? 'Reveal two cards to match text or images. Moves and elapsed time are informational.' : ($key === 'crossword' ? 'Fill an intersecting grid from Across and Down clues. Whole correct words earn points.' : ($key === 'standard' ? 'Choose one of four answers, see feedback, and continue to the next question.' : 'Type your responses, use configured hints, and review before submitting.')))); ?></p></details>
                 <?php if ($key === 'crossword'): ?>
                     <div class="card-meta">
                         <span>Words + clues</span>
@@ -304,6 +304,15 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <span data-answer-label>Answer</span>
             <input type="text" data-field="answer" placeholder="Single word, letters only">
         </label>
+        <fieldset data-match-only class="match-image-editor" hidden>
+            <legend>Matching card images (optional)</legend>
+            <p>Match text to an image, or upload an image for both cards. Keep the text fields as descriptive labels. Images are saved with the quiz.</p>
+            <div class="option-grid">
+                <label><span>First card image</span><input type="file" data-match-upload="prompt" accept="image/png,image/jpeg,image/webp"><img data-match-preview="prompt" alt="First card image preview" hidden><button type="button" class="button button-secondary" data-match-clear="prompt" hidden>Remove first image</button></label>
+                <label><span>Matching card image</span><input type="file" data-match-upload="answer" accept="image/png,image/jpeg,image/webp"><img data-match-preview="answer" alt="Matching card image preview" hidden><button type="button" class="button button-secondary" data-match-clear="answer" hidden>Remove matching image</button></label>
+            </div>
+            <p data-match-image-status role="status"></p>
+        </fieldset>
         <div data-text-only class="stack-form">
             <label><span>Alternative answers (one per line)</span><textarea data-field="accepted_answers" rows="2"></textarea></label>
             <label><span><input type="checkbox" data-field="case_sensitive"> Match capitalization exactly</span></label>

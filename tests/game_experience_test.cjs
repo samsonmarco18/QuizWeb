@@ -7,14 +7,14 @@ const markup = `<div class="game-hud"><div class="hud-stats">${['progress-count'
 function setup(quiz, preview = true, practice = false) {
     const dom = new JSDOM(markup, {url: 'http://localhost/QuizWeb/', runScripts: 'outside-only', pretendToBeVisual: true});
     const w = dom.window, doc = w.document, root = doc.querySelector('[data-game-root]');
-    root.dataset.quiz = JSON.stringify(quiz); root.dataset.isPreview = preview ? '1' : '0'; root.dataset.practiceMode = practice ? '1' : '0';
+    root.dataset.quiz = JSON.stringify(quiz); root.dataset.isPreview = preview ? '1' : '0'; root.dataset.practiceMode = practice ? '1' : '0'; root.dataset.integrityUrl = '/QuizWeb/quiz_integrity.php';
     const submits = [], intervals = new Map(), delays = new Map(); let id = 0, fullscreen = 0;
     w.setInterval = fn => { intervals.set(++id, fn); return id; }; w.clearInterval = key => intervals.delete(key);
     w.setTimeout = fn => { delays.set(++id, fn); return id; }; w.clearTimeout = key => delays.delete(key);
     w.HTMLFormElement.prototype.submit = function() { submits.push(Object.fromEntries(new w.FormData(this))); };
-    doc.documentElement.requestFullscreen = () => { fullscreen++; return Promise.resolve(); };
-    w.fetch = () => { throw new Error('Unexpected network write'); };
-    w.eval(source('game-experience'));
+    doc.documentElement.requestFullscreen = () => { fullscreen++; Object.defineProperty(doc, 'fullscreenElement', {value: doc.documentElement, configurable: true}); return Promise.resolve(); };
+    w.fetch = async (_, options) => { assert.equal(options.body.get('action'), 'start', 'Only the security start event is expected'); return {ok: true, json: async () => ({warnings: 0, disqualified: false})}; };
+    w.eval(source('game-experience')); w.eval(source('quiz-integrity'));
     w.eval(source(['flip_match','fill_blank','emoji_quiz'].includes(quiz.game_type) ? 'activity-game' : 'game'));
     const controls = doc.querySelector('[data-game-controls]');
     return {w, doc, root, submits, intervals, delays, controls, fullscreen: () => fullscreen, start: async () => { controls.querySelector('.button-primary').click(); await new Promise(resolve => setImmediate(resolve)); }, answer: index => doc.querySelectorAll('[data-answer-index]')[index].click(), next: () => controls.querySelector('.button-primary').click(), close: () => w.close()};
@@ -60,6 +60,16 @@ function setup(quiz, preview = true, practice = false) {
     [...match.delays.values()].forEach(fn => fn()); assert.equal(tiles[0].textContent,'?');
     tiles[0].click(); tiles[1].click(); tiles[2].click(); tiles[3].click(); match.next();
     assert.equal(match.submits.length,0,'Matching preview never writes'); assert.match(match.doc.querySelector('[data-question-helper]').textContent,/20 \/ 20/); match.close();
+    const imageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aC1sAAAAASUVORK5CYII=';
+    const imageMatch = setup({title:'Image matching',game_type:'flip_match',questions:[{id:1,prompt:'First photo',answer:'First match',prompt_image:imageData,answer_image:imageData,points:10},{id:2,prompt:'Second term',answer:'Second definition',points:10}]});
+    imageMatch.w.Math.random = () => .99; await imageMatch.start();
+    const imageTiles = [...imageMatch.doc.querySelectorAll('.match-card')];
+    assert.equal(imageMatch.doc.querySelectorAll('.match-card img').length,0,'Images stay hidden before flipping');
+    imageTiles[0].click(); assert.equal(imageTiles[0].querySelector('img').alt,'First photo');
+    imageTiles[2].click(); [...imageMatch.delays.values()].forEach(fn=>fn());
+    assert.equal(imageTiles[0].querySelector('img'),null,'Mismatch hides image again');
+    imageTiles[0].click(); imageTiles[1].click();
+    assert(imageTiles[0].disabled && imageTiles[1].disabled); assert.equal(imageTiles[1].querySelector('img').src,imageData,'Image-to-image match remains revealed'); imageMatch.close();
     const crossword = setup({title:'Puzzle', game_type:'crossword', questions:[{id:1,prompt:'Animal',word_length:3,points:10}],crossword_layout:{cols:3,cells:[[1,1,1]],placements:[{question_id:1,row:0,col:0,direction:'across',number:1}]}},false);
     await crossword.start(); assert(!crossword.controls.textContent.includes('Answer Key'));
     crossword.doc.querySelector('[data-clue-id]').click(); assert.match(crossword.doc.querySelector('[data-current-clue]').textContent,/Animal/);

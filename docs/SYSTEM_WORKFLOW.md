@@ -226,24 +226,55 @@ Emoji Quiz uses the same text-answer rules; the teacher supplies the emoji clue 
 
 ### Flip Match
 
-The engine creates two cards per pair: a term card and a definition card, then shuffles all cards. Students reveal two cards at a time. Each two-card selection counts as one move.
+The engine creates two cards per pair and shuffles all cards. Each face can contain text or an uploaded image, supporting text-to-image and image-to-image matching. Descriptive text labels remain required for accessibility and scoring. Students reveal two cards at a time. Each two-card selection counts as one move.
 
 A matching term/definition pair remains revealed and disabled. A mismatch locks further card selection and automatically turns back after 900 milliseconds; Turn Cards Back also lets the player continue sooner. After every pair is matched, Submit Matches becomes available, followed by completion and View Results. Elapsed time and moves are tracked; moves are stored with responses but do not reduce points.
 
 Because ordinary play only offers final submission after all pairs match, a normally completed run earns full points. Time and moves communicate efficiency rather than producing a partial score.
 
-### Fullscreen and focus rules
+### Fullscreen, warnings, and screenshot shortcuts
 
-Live student runs using the older engine activate focus protection. Leaving fullscreen, hiding the tab, minimizing, or moving focus away can register violations. Closely timed events within 1.5 seconds are merged to reduce duplicate counting.
+All eleven game modes use the same security controller for live student runs.
+Start Activity requests browser fullscreen directly from the student's click.
+The quiz stays on its start screen if fullscreen is unavailable or denied. Once
+fullscreen succeeds, a CSRF-protected server request activates the run before
+questions and timers become available. Teacher previews and Focus Practice are
+exempt.
 
-- Violations one, two, and three show warnings.
-- The fourth violation disqualifies the run and submits zero.
-- Reloading, closing, or leaving an active page triggers an attempted zero-score submission through the unload path.
-- Teacher previews and Focus Practice are exempt from fullscreen requests and focus disqualification.
+Leaving fullscreen, switching tabs, minimizing, and moving focus away pause the
+quiz behind a warning. The interface shows the current warning count. Blur,
+visibility, and fullscreen changes from one incident count once while its warning
+is awaiting acknowledgement. Continue Quiz requires fullscreen again. Timed
+questions pause while the warning is visible.
 
-The newer engine for Fill in the Blank, Emoji Quiz, and Flip Match has an unfinished-work navigation warning. It does not implement the older engine's fullscreen warnings or automatic disqualification.
+Violations one through three show warnings; violation four saves a zero score.
+Warnings are recorded in the server session with unique event IDs, so retrying a
+request cannot double-count it and starting again cannot reset the count. The
+fourth violation immediately creates a disqualified attempt in PostgreSQL. A
+later normal submit returns that same result. Closing or reloading an active quiz
+sends an abandonment event that also saves zero. Browser termination or network
+loss can prevent that event from reaching the server; this is browser monitoring,
+not complete proctoring.
 
-These controls depend on browser events and successful requests. They are not proof against browser manipulation; unload delivery is best effort. Multiple-choice answer indexes are present in the older engine's page data. Written-answer and crossword keys are withheld from ordinary student page data, while Flip Match necessarily includes both card faces.
+Print Screen and supported Windows/macOS screenshot shortcuts trigger warnings
+when the browser receives their keyboard events. A website cannot reliably detect
+or block every operating-system screenshot, mobile hardware capture, external
+screen recorder, or photograph. A focus change caused by a capture tool can still
+trigger the normal focus warning. The quiz rules explain this limitation.
+
+Results include the server-recorded warning count and last reason. Client answers
+cannot overwrite security metadata or the saved quiz snapshot. Student submissions
+require a valid started run, CSRF token, membership, and the matching run token.
+
+### Question and choice shuffling
+
+Each student run receives a shuffled question list and shuffled multiple-choice
+options. Correct indexes are remapped with the options. The server stores that
+exact version in the run and grades against it; the saved attempt retains the
+snapshot for later review. Classroom quiz definitions and teacher previews keep
+their authored order. Mastery Ladder shuffles within each difficulty, retaining
+Easy ? Medium ? Hard ? Master progression. Crossword question IDs retain their
+existing grid placements even when the question list is reordered.
 
 ## 8. Scores, accuracy, and leaderboards
 
@@ -498,7 +529,7 @@ These distinctions matter when presenting or using the system:
 | Grades | Explicit publication is required for student access; drafts can change independently |
 | Learning coach | Rule-based recommendations from reviewed attempts |
 | Matching score | Completed normal play yields full points; moves and time are informational |
-| Focus protection | Older game engine only; browser-event monitoring is not complete proctoring |
+| Focus protection | All student quiz modes; fullscreen and three warnings, with a zero on violation four; browser-event monitoring is not complete proctoring |
 | Classroom archive | Student page is a placeholder |
 | Grade-item archive | Implemented and preserves history |
 | Saved Materials | Collection of classroom announcement files |
@@ -519,7 +550,8 @@ Paths are relative to the repository root.
 | Enrollment and classroom views | `app/pages/classrooms/join.php`, `app/pages/classrooms/classroom.php` |
 | Builder and activity/version validation | `app/pages/quizzes/quiz_builder.php`, `includes/activity.php` |
 | Launch and submission | `app/pages/quizzes/play.php`, `app/pages/quizzes/submit_game.php` |
-| Older game mechanics and focus protection | `assets/js/game.js` |
+| Older game mechanics | `assets/js/game.js` |
+| Shared quiz security | `assets/js/quiz-integrity.js`, `quiz_integrity.php`, `includes/quiz_integrity.php` |
 | Written-answer and matching mechanics | `assets/js/activity-game.js` |
 | Grade calculation, mutations, snapshots, audit | `includes/grading.php` |
 | Teacher/student grading pages | `app/pages/grading/gradebook.php`, `app/pages/grading/grades.php` |
@@ -529,3 +561,10 @@ Paths are relative to the repository root.
 | Database setup | `database/schema.sql`, loaded by startup setup in `includes/app.php` |
 
 Related focused documentation: [Grading](GRADING.md), [Activity builder](ACTIVITY_BUILDER.md), and [Project structure](PROJECT_STRUCTURE.md).
+
+Matching image uploads accept PNG, JPEG, or WebP. The builder resizes images to
+at most 640 pixels and compresses them. The server verifies raster type, size
+(up to 96 KB per face), dimensions, total payload, and distinct card faces.
+Images are embedded in the quiz JSON in PostgreSQL and retained in attempt
+snapshots, so they persist through Render restarts. SVG and remote image URLs
+are rejected. Old text-only matching quizzes remain compatible.

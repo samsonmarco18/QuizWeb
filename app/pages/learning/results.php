@@ -49,11 +49,17 @@ render_header('Results', 'results-page');
     <h1><?php echo esc($attempt['quiz_title']); ?></h1>
     <p class="lead">
         <?php if ($isDisqualified): ?>
-            This attempt was marked as 0 after the fullscreen/focus warning limit was exceeded.
+            This attempt was marked as 0 for a quiz security violation or leaving an active quiz.
         <?php else: ?>
             Great run, <?php echo esc($student['name'] ?? 'Player'); ?>. Here is the score snapshot from your latest game.
         <?php endif; ?>
     </p>
+    <?php if (!empty($attemptAnswers['_violations'])): ?>
+        <p class="quiz-warning-count">Warnings recorded: <?php echo (int) $attemptAnswers['_violations']; ?>
+            <?php $securityReasons = ['fullscreen_exit' => 'Leaving fullscreen', 'focus_loss' => 'Moving focus away', 'tab_hidden' => 'Switching tabs or minimizing', 'screenshot_shortcut' => 'Detected screenshot shortcut', 'page_exit' => 'Leaving or reloading the quiz']; ?>
+            <?php if (isset($securityReasons[$attemptAnswers['_reason'] ?? ''])): ?> ? <?php echo esc($securityReasons[$attemptAnswers['_reason']]); ?><?php endif; ?>
+        </p>
+    <?php endif; ?>
     <div class="feature-pills centered">
         <span><?php echo esc($classroom['name'] ?? 'Classroom'); ?></span>
         <span><?php echo esc($quiz['game_type'] ?? $attempt['game_type'] ?? 'Quiz mode'); ?></span>

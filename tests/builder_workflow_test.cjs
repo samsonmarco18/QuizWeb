@@ -192,3 +192,17 @@ b.close();
     d.close();
     console.log('Builder editing, steps, duplication, reorder, mode changes, validation, unsaved guards, isolated play test, and save checks passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
+
+// Matching images survive editor changes, duplication, and draft restoration.
+const imageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aC1sAAAAASUVORK5CYII=';
+const imageBuilder = setup([{prompt:'Photo label',answer:'Definition',prompt_image:imageData,answer_image:imageData,points:10}], 'flip_match');
+assert.equal(imageBuilder.w.quizBuilder.collect()[0].prompt_image,imageData);
+assert.equal(imageBuilder.w.quizBuilder.collect()[0].answer_image,imageData);
+assert(!imageBuilder.doc.querySelector('[data-match-only]').hidden);
+imageBuilder.step(2); imageBuilder.click('duplicate-question');
+assert.equal(imageBuilder.w.quizBuilder.collect()[1].prompt_image,imageData);
+imageBuilder.doc.querySelector('.question-card:not([hidden]) [data-match-clear="answer"]').click();
+assert.equal(imageBuilder.w.quizBuilder.collect()[1].answer_image,'');
+assert.equal(imageBuilder.w.quizBuilder.collect()[0].answer_image,imageData,'Removing an image must not affect another pair');
+imageBuilder.close();
+console.log('Matching image editor, both card faces, duplication, and image removal passed.');

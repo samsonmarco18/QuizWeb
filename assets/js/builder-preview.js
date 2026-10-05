@@ -42,6 +42,7 @@
         doc.querySelector('[data-game-root]').dataset.quiz = JSON.stringify(quiz);
         doc.querySelector('[data-game-root]').dataset.embeddedPreview = '1';
         const experience = doc.createElement('script'); experience.src = `${location.origin}/QuizWeb/assets/js/game-experience.js`; doc.body.append(experience);
+        const security = doc.createElement('script'); security.src = `${location.origin}/QuizWeb/assets/js/quiz-integrity.js`; doc.body.append(security);
         const script = doc.createElement('script');
         script.src = `${location.origin}/QuizWeb/assets/js/${['fill_blank', 'emoji_quiz', 'flip_match'].includes(quiz.game_type) ? 'activity-game.js' : 'game.js'}`;
         doc.body.append(script);
@@ -49,6 +50,7 @@
         content.append(frame);
     }
     trigger.addEventListener('click', async () => {
+        if (window.quizBuilder?.imagesPending?.()) { dialog.showModal(); content.replaceChildren(); status.textContent = 'Wait for the image upload to finish, then preview again.'; return; }
         form.dispatchEvent(new Event('activity:collect'));
         const data = new FormData(form);
         data.set('action', 'preview');

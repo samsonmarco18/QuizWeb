@@ -5,6 +5,79 @@ function activity_uses_text_answers(string $mode): bool
     return in_array($mode, ['fill_blank', 'emoji_quiz', 'flip_match'], true);
 }
 
+
+// Each run owns its shuffled snapshot, so indexes stay stable for server grading.
+function activity_shuffle_items(array $items): array
+{
+    $original = array_values($items);
+    $items = $original;
+    for ($i = count($items) - 1; $i > 0; $i--) {
+        $j = random_int(0, $i);
+        [$items[$i], $items[$j]] = [$items[$j], $items[$i]];
+    }
+    if (count($items) > 1 && $items === $original) $items[] = array_shift($items);
+    return $items;
+}
+
+function activity_shuffle_for_run(array $quiz): array
+{
+    if (($quiz['game_type'] ?? '') === 'master_ladder') {
+        $questions = [];
+        foreach (['easy', 'medium', 'hard', 'master'] as $level) {
+            $group = array_values(array_filter($quiz['questions'], static fn($q) => ($q['level'] ?? 'easy') === $level));
+            $questions = array_merge($questions, activity_shuffle_items($group));
+        }
+        $quiz['questions'] = $questions;
+    } else {
+        // Crossword positions refer to stable question IDs, not list indexes.
+        $quiz['questions'] = activity_shuffle_items($quiz['questions']);
+    }
+    foreach ($quiz['questions'] as &$question) {
+        if (activity_uses_text_answers($quiz['game_type']) || $quiz['game_type'] === 'crossword') continue;
+        $options = $question['options'] ?? [];
+        if (!$options) continue;
+        $order = activity_shuffle_items(array_keys($options));
+        $question['options'] = array_map(static fn($i) => $options[$i], $order);
+        $question['correct_index'] = array_search((int) ($question['correct_index'] ?? 0), $order, true);
+    }
+    unset($question);
+    return $quiz;
+}
+
+// Accept only actual question answers; security metadata is supplied by the
+// server and cannot be overwritten by an answers payload.
+function activity_submission_answers(array $quiz, array $answers): array
+{
+    $clean = [];
+    $text = activity_uses_text_answers($quiz['game_type']) || $quiz['game_type'] === 'crossword';
+    foreach ($quiz['questions'] as $index => $question) {
+        if (!array_key_exists($index, $answers)) continue;
+        $value = $answers[$index];
+        if ($text) $clean[$index] = is_string($value) && strlen($value) <= 2000 ? $value : '';
+        else $clean[$index] = is_int($value) && $value >= 0 && $value < count($question['options'] ?? []) ? $value : null;
+    }
+    if ($quiz['game_type'] === 'flip_match' && isset($answers['_moves']) && is_int($answers['_moves'])) {
+        $clean['_moves'] = max(0, min(100000, $answers['_moves']));
+    }
+    return $clean;
+}
+
+// Store small raster images in the existing PostgreSQL quiz JSON, not ephemeral
+// Render upload directories. Reject SVG, remote URLs, and oversized images.
+function activity_match_image($value): string
+{
+    if ($value === null || $value === '') return '';
+    if (!is_string($value) || strlen($value) > 131200 || !preg_match('#^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$#D', $value, $matches)) {
+        throw new InvalidArgumentException('Matching images must be uploaded PNG, JPEG, or WebP images under 96 KB.');
+    }
+    $bytes = base64_decode($matches[2], true);
+    $info = $bytes !== false ? @getimagesizefromstring($bytes) : false;
+    if (!$info || strlen($bytes) > 98304 || ($info['mime'] ?? '') !== 'image/' . $matches[1] || $info[0] > 1600 || $info[1] > 1600) {
+        throw new InvalidArgumentException('Matching image is invalid, too large, or exceeds 1600 pixels.');
+    }
+    return 'data:' . $info['mime'] . ';base64,' . base64_encode($bytes);
+}
+
 // Crossword clients need the shape and word lengths, never the student answer key.
 function activity_public_crossword(array $quiz, bool $preview): array
 {
@@ -117,7 +190,17 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
                     $errors[] = 'Item ' . ($index + 1) . ' needs a prompt and answer (maximum 250 characters), with up to 20 alternative answers.';
                     continue;
                 }
-                $questions[] = ['id' => $index + 1, 'prompt' => $prompt, 'answer' => $answer,
+                $images = [];
+                if ($gameType === 'flip_match') {
+                    try {
+                        $images = ['prompt_image' => activity_match_image($question['prompt_image'] ?? ''),
+                            'answer_image' => activity_match_image($question['answer_image'] ?? '')];
+                    } catch (InvalidArgumentException $error) {
+                        $errors[] = 'Pair ' . ($index + 1) . ': ' . $error->getMessage();
+                        continue;
+                    }
+                }
+                $questions[] = $images + ['id' => $index + 1, 'prompt' => $prompt, 'answer' => $answer,
                     'accepted_answers' => array_values(array_filter(array_map('trim', $alternatives))),
                     'case_sensitive' => !empty($question['case_sensitive']),
                     'hint' => is_string($question['hint'] ?? null) ? trim($question['hint']) : '',
@@ -225,9 +308,13 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
     }
     if ($gameType === 'flip_match') {
         foreach (['prompt', 'answer'] as $field) {
-            $values = array_map('strtolower', array_column($questions, $field));
+            $values = array_map(static fn($q) => !empty($q[$field . '_image']) ? hash('sha256', $q[$field . '_image']) : strtolower($q[$field]), $questions);
             if (count(array_unique($values)) !== count($values)) $errors[] = 'Use distinct terms and definitions so each card has one matching pair.';
         }
+    }
+
+    if ($gameType === 'flip_match' && array_sum(array_map(static fn($q) => strlen($q['prompt_image'] ?? '') + strlen($q['answer_image'] ?? ''), $questions)) > 1048576) {
+        $errors[] = 'Keep all matching images together under 1 MB. Use smaller images or fewer image pairs.';
     }
 
     return ['questions' => $questions, 'layout' => $crosswordLayout, 'errors' => $errors];

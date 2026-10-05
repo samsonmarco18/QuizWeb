@@ -25,6 +25,7 @@ $isTextActivity = activity_uses_text_answers($quiz['game_type']);
 $_SESSION['activity_csrf'] ??= bin2hex(random_bytes(32));
 $runToken = '';
 if (!$isPreview) {
+    $quiz = activity_shuffle_for_run($quiz);
     $_SESSION['activity_runs'] = array_slice($_SESSION['activity_runs'] ?? [], -29, null, true);
     $runToken = bin2hex(random_bytes(24));
     $_SESSION['activity_runs'][$runToken] = ['classroom_id' => $classroomId, 'quiz_id' => $quizId, 'student_id' => (int) $user['id'], 'quiz_snapshot' => $quiz];
@@ -42,6 +43,10 @@ $quizData = [
             $public = ['id' => (int) $question['id'], 'prompt' => $question['prompt'], 'points' => (int) $question['points'], 'hint' => $question['hint'] ?? ''];
             // A matching game needs both card faces; written answers stay server-side.
             if ($quiz['game_type'] === 'flip_match' || $isPreview) $public['answer'] = $question['answer'];
+            if ($quiz['game_type'] === 'flip_match') {
+                $public['prompt_image'] = $question['prompt_image'] ?? '';
+                $public['answer_image'] = $question['answer_image'] ?? '';
+            }
             if ($isPreview) {
                 $public['accepted_answers'] = $question['accepted_answers'] ?? [];
                 $public['case_sensitive'] = $question['case_sensitive'] ?? false;
@@ -105,6 +110,7 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
         data-classroom-id="<?php echo esc((string) $classroom['id']); ?>"
         data-quiz='<?php echo esc(json_encode($quizData, JSON_UNESCAPED_SLASHES)); ?>'
         data-submit-url="/QuizWeb/submit_game.php"
+        data-integrity-url="/QuizWeb/quiz_integrity.php"
         data-is-preview="<?php echo $isPreview ? '1' : '0'; ?>"
         data-csrf="<?php echo esc($_SESSION['activity_csrf']); ?>"
         data-run-token="<?php echo esc($runToken); ?>"
@@ -143,4 +149,4 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
     </div>
 </section>
 
-<?php render_footer(['/QuizWeb/assets/js/game-experience.js', $isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>
+<?php render_footer(['/QuizWeb/assets/js/game-experience.js', '/QuizWeb/assets/js/quiz-integrity.js', $isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>

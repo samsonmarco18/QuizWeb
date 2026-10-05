@@ -5,6 +5,12 @@
     const quiz = JSON.parse(root.dataset.quiz || '{}');
     const questions = quiz.questions || [];
     const preview = root.dataset.isPreview === '1';
+    const guard = window.chalkQuizIntegrity?.create(root, {onDisqualify(reason, warnings) {
+        finished = true; guard?.complete(); clearInterval(timer); heading.textContent = 'Quiz marked as 0.';
+        helper.textContent = `Security violation: ${reason}. ${warnings} warnings recorded.`; stage.replaceChildren();
+        submit({disqualified: '1', violation_reason: reason, violation_count: warnings}, {});
+    }});
+    let starting = false;
     const matching = quiz.game_type === 'flip_match';
     const stage = root.querySelector('[data-answer-grid]');
     const controls = root.querySelector('[data-game-controls]');
@@ -40,8 +46,11 @@
     points.textContent = `${questions.length} ${matching ? 'pairs' : 'questions'}`;
     stage.replaceChildren();
     note.textContent = preview ? 'Teacher preview. No results will be saved.' : 'Your results are saved when you submit.';
-    controls.replaceChildren(button(preview ? 'Start Preview' : 'Start Activity', () => {
-        if (started) return;
+    controls.replaceChildren(button(preview ? 'Start Preview' : 'Start Activity', async () => {
+        if (started || starting) return;
+        if (!guard && !preview) { note.textContent = 'Quiz security failed to load. Reload from your classroom.'; return; }
+        starting = true; const ready = guard ? await guard.start() : true; starting = false;
+        if (!ready) return;
         started = Date.now();
         window.chalkGameUI?.start(root);
         timer = setInterval(() => { document.querySelector('[data-timer-value]').textContent = `${elapsed()}s`; }, 1000);
@@ -66,6 +75,7 @@
             hint.append(node('summary', 'Show hint'), node('p', question.hint)); stage.append(hint);
         }
         const advance = () => {
+            if (guard?.enabled && !guard.canInteract) return;
             answers[index] = input.value;
             if (index < questions.length - 1) { index++; renderQuestion(); } else review();
         };
@@ -88,7 +98,7 @@
         heading.textContent = 'Find the matching pairs';
         helper.textContent = 'Choose two cards. A term matches its definition.';
         stage.replaceChildren(); stage.classList.add('match-board');
-        const cards = questions.flatMap((q, i) => [{pair: i, side: 'term', text: q.prompt}, {pair: i, side: 'answer', text: q.answer}]);
+        const cards = questions.flatMap((q, i) => [{pair: i, side: 'term', text: q.prompt, image: q.prompt_image}, {pair: i, side: 'answer', text: q.answer, image: q.answer_image}]);
         for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cards[i], cards[j]] = [cards[j], cards[i]]; }
         let selected = [], busy = false, mismatchTimer;
         const movesValue = document.querySelector('[data-streak-value]');
@@ -99,8 +109,14 @@
             const tile = node('button', '?', 'match-card'); tile.type = 'button';
             tile.setAttribute('aria-label', `Reveal card ${position + 1}`); tile.setAttribute('aria-pressed', 'false');
             tile.addEventListener('click', () => {
+                if (guard?.enabled && !guard.canInteract) return;
                 if (busy || tile.disabled || selected.some(item => item.tile === tile)) return;
-                tile.textContent = card.text; tile.classList.add('is-revealed'); tile.setAttribute('aria-pressed', 'true'); tile.setAttribute('aria-label', card.text);
+                tile.replaceChildren();
+                if (card.image && /^data:image\/(png|jpeg|webp);base64,/.test(card.image)) {
+                    const image = node('img', undefined, 'match-card-image'); image.src = card.image; image.alt = card.text; image.draggable = false;
+                    image.addEventListener('error', () => { tile.textContent = card.text; }); tile.append(image);
+                } else tile.textContent = card.text;
+                tile.classList.add('is-revealed'); tile.setAttribute('aria-pressed', 'true'); tile.setAttribute('aria-label', card.text);
                 selected.push({card, tile, position});
                 if (selected.length < 2) return;
                 moves++; busy = true;
@@ -132,6 +148,8 @@
     function finish() {
         if (finished) return;
         if (!preview && !readyToSubmit) {
+            if (guard?.enabled && !guard.canInteract) return;
+            guard?.complete();
             finishedElapsed = elapsed(); readyToSubmit = true; clearInterval(timer);
             heading.textContent = 'Activity Complete'; helper.textContent = matching ? `${matched} pairs matched · ${moves} moves · ${elapsed()} seconds` : 'Your answers are ready for server grading.';
             stage.replaceChildren(); controls.replaceChildren(button('View Results', finish));
@@ -153,10 +171,12 @@
         controls.querySelectorAll('button').forEach(element => { element.disabled = true; });
         note.textContent = 'Submitting your answers…';
         if (matching) answers._moves = moves;
+        submit();
+    }
+    function submit(extra = {}, submittedAnswers = answers) {
         const form = node('form'); form.method = 'post'; form.action = root.dataset.submitUrl;
-        const fields = {classroom_id: root.dataset.classroomId, quiz_id: quiz.id, elapsed_seconds: elapsed(), answers: JSON.stringify(answers), csrf: root.dataset.csrf, run_token: root.dataset.runToken};
+        const fields = {classroom_id: root.dataset.classroomId, quiz_id: quiz.id, elapsed_seconds: elapsed(), answers: JSON.stringify(submittedAnswers), csrf: root.dataset.csrf, run_token: root.dataset.runToken, ...extra};
         Object.entries(fields).forEach(([name, value]) => { const input = node('input'); input.type = 'hidden'; input.name = name; input.value = value; form.append(input); });
         document.body.append(form); form.submit();
     }
-    window.addEventListener('beforeunload', event => { if (started && !finished) { event.preventDefault(); event.returnValue = ''; } });
 })();

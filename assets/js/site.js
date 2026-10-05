@@ -110,6 +110,55 @@
         document.getElementById("profile-dialog")?.showModal();
     });
 
+    let pendingMatchImages = 0;
+    function bindMatchImages(card, seed) {
+        const status = card.querySelector('[data-match-image-status]');
+        if (!status) return;
+        for (const side of ['prompt', 'answer']) {
+            const key = side + 'Image';
+            const input = card.querySelector(`[data-match-upload="${side}"]`);
+            const image = card.querySelector(`[data-match-preview="${side}"]`);
+            const clear = card.querySelector(`[data-match-clear="${side}"]`);
+            let generation = 0;
+            function update(value) {
+                card.dataset[key] = value;
+                if (value && /^data:image\/(png|jpeg|webp);base64,/.test(value)) { image.src = value; image.hidden = false; }
+                else { image.removeAttribute('src'); image.hidden = true; }
+                clear.hidden = !value;
+            }
+            update(seed[side + '_image'] || '');
+            clear.addEventListener('click', () => {
+                generation++; input.value = ''; update(''); status.textContent = 'Image removed from this draft.';
+                builderForm.dispatchEvent(new Event('activity:changed'));
+            });
+            input.addEventListener('change', async () => {
+                const file = input.files?.[0]; if (!file) return;
+                const current = ++generation;
+                if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+                    status.textContent = 'Choose a PNG, JPEG, or WebP image under 5 MB.'; input.value = ''; return;
+                }
+                pendingMatchImages++; status.textContent = 'Preparing image?';
+                let url;
+                try {
+                    url = URL.createObjectURL(file);
+                    const picture = new Image();
+                    await new Promise((resolve, reject) => { picture.onload = resolve; picture.onerror = () => reject(new Error('This image could not be read.')); picture.src = url; });
+                    const scale = Math.min(1, 640 / Math.max(picture.naturalWidth, picture.naturalHeight));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(picture.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(picture.naturalHeight * scale));
+                    canvas.getContext('2d').drawImage(picture, 0, 0, canvas.width, canvas.height);
+                    let value = canvas.toDataURL('image/webp', .75);
+                    if (!value.startsWith('data:image/webp;')) value = canvas.toDataURL('image/jpeg', .75);
+                    if (value.length > 131100) throw new Error('This image is too detailed. Choose a smaller image.');
+                    if (current !== generation || !card.isConnected) return;
+                    update(value); status.textContent = 'Image ready. Preview and save the activity to keep it.';
+                    builderForm.dispatchEvent(new Event('activity:changed'));
+                } catch (error) { if (current === generation) status.textContent = error.message; }
+                finally { if (url) URL.revokeObjectURL(url); pendingMatchImages--; input.value = ''; }
+            });
+        }
+    }
+
     function buildQuestionCard(seed = {}) {
         if (!questionTemplate || !questionList) {
             return null;
@@ -135,6 +184,7 @@
         card.querySelector('[data-field="case_sensitive"]').checked = Boolean(seed.case_sensitive);
         card.querySelector('[data-field="hint"]').value = seed.hint || '';
         card.querySelector('[data-field="explanation"]').value = seed.explanation || '';
+        bindMatchImages(card, seed);
 
         card.querySelector(".remove-question").addEventListener("click", () => {
             if (!confirm('Delete this question? Its content will be removed from this draft.')) return;
@@ -165,6 +215,7 @@
         card.querySelector('[data-answer-field]').hidden = !(isCrossword || textMode);
         card.querySelector('[data-answer-label]').textContent = currentBuilderMode() === 'flip_match' ? 'Matching definition / answer' : 'Correct answer';
         card.querySelector('[data-field="answer"]').placeholder = isCrossword ? '3–15 letters' : 'Enter the expected answer';
+        card.querySelectorAll('[data-match-only]').forEach(element => { element.hidden = currentBuilderMode() !== 'flip_match'; });
         card.querySelectorAll('[data-text-only]').forEach(element => { element.hidden = !textMode; });
         card.querySelectorAll("[data-crossword-only]").forEach((element) => {
             element.hidden = !isCrossword;
@@ -233,6 +284,7 @@
 
             if (['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode())) {
                 return { prompt, answer, options: [], correct_index: 0,
+                    ...(currentBuilderMode() === 'flip_match' ? {prompt_image: card.dataset.promptImage || '', answer_image: card.dataset.answerImage || ''} : {}),
                     accepted_answers: card.querySelector('[data-field="accepted_answers"]').value.split('\n').map(value => value.trim()).filter(Boolean),
                     case_sensitive: card.querySelector('[data-field="case_sensitive"]').checked,
                     hint: card.querySelector('[data-field="hint"]').value.trim(),
@@ -280,7 +332,7 @@
         gameTypeSelect?.addEventListener("change", applyBuilderMode);
         applyBuilderMode();
         builderForm.addEventListener('activity:collect', () => { payloadInput.value = JSON.stringify(collectQuestions()); });
-        window.quizBuilder = {collect: collectQuestions, add: buildQuestionCard, refresh: refreshQuestionLabels};
+        window.quizBuilder = {collect: collectQuestions, add: buildQuestionCard, refresh: refreshQuestionLabels, imagesPending: () => pendingMatchImages > 0};
 
         builderForm.addEventListener("submit", (event) => {
             if (window.quizBuilderWorkflow) {

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quiz security browser fixture</title>
+<link rel="stylesheet" href="/QuizWeb/assets/css/site.css"><link rel="stylesheet" href="/QuizWeb/assets/css/game-experience.css">
+<body class="ui-refined game-page mode-flip_match"><main class="page-shell">
+<div class="game-hud"><div class="hud-stats"><div class="hud-pill"><span>Progress</span><b data-progress-count></b></div><div class="hud-pill"><span>Score</span><b data-score-value></b></div><div class="hud-pill"><span>Moves</span><b data-streak-value></b></div><div class="hud-pill"><span>Time</span><b data-timer-value></b></div></div></div>
+<section class="game-board" data-game-root data-classroom-id="1" data-csrf="fixture" data-run-token="fixture" data-integrity-url="fixture" data-submit-url="fixture" data-is-preview="0">
+<div data-progress-bar></div><article class="question-stage glass"><span data-question-points></span><h2 data-question-text></h2><p data-question-helper></p><div class="answers-grid" data-answer-grid></div><div class="game-controls" data-game-controls></div></article><p data-game-note></p></section>
+<output id="checks">PENDING</output></main>
+<script>
+const root=document.querySelector('[data-game-root]'), checks=document.getElementById('checks');
+const canvas=document.createElement('canvas');canvas.width=160;canvas.height=100;
+canvas.getContext('2d').fillStyle='#ec4444';canvas.getContext('2d').fillRect(0,0,160,100);const red=canvas.toDataURL('image/png');
+canvas.getContext('2d').fillStyle='#246ee9';canvas.getContext('2d').fillRect(0,0,160,100);const blue=canvas.toDataURL('image/png');
+root.dataset.quiz=JSON.stringify({id:1,title:'Image matching security',game_type:'flip_match',questions:[{id:1,prompt:'Red image',answer:'Red',prompt_image:red,points:10},{id:2,prompt:'Blue image',answer:'Blue',prompt_image:blue,answer_image:blue,points:10}]});
+let warnings=0,phase=0,submits=[];const events=new Set();
+window.fetch=async(url,options)=>{const p=Object.fromEntries(options.body);if(p.action==='violation'&&!events.has(p.event_id)){events.add(p.event_id);warnings++;}return {ok:true,json:async()=>({warnings,disqualified:warnings>3,results_url:null})};};
+HTMLFormElement.prototype.submit=function(){submits.push(Object.fromEntries(new FormData(this)));};
+function assert(ok,message){if(!ok)throw new Error(message);}
+async function waitFor(check){for(let i=0;i<50;i++){if(check())return;await new Promise(r=>setTimeout(r,20));}throw new Error('Timed out waiting for browser UI');}
+window.runSecurityBrowserStep=async()=>{try{
+if(phase===0){document.querySelector('[data-game-controls] .button-primary').click();await waitFor(()=>document.querySelector('.match-card'));assert(document.fullscreenElement,'Real browser fullscreen required');phase++;return;}
+if(phase===1){
+const tile=[...document.querySelectorAll('.match-card')].find(b=>{b.click();return b.querySelector('img');});
+assert(tile?.querySelector('img'),'Matching card must render its uploaded image');await waitFor(()=>tile.querySelector('img').complete);assert(tile.querySelector('img').naturalWidth===160,'Raster matching card image must decode');
+document.dispatchEvent(new KeyboardEvent('keyup',{key:'PrintScreen',code:'PrintScreen',bubbles:true}));await waitFor(()=>warnings===1);assert(!document.querySelector('.quiz-integrity-dialog').hidden&&root.inert,'Screenshot warning pauses game');await document.exitFullscreen();phase++;return;
+}
+if([2,4,6].includes(phase)){document.querySelector('[data-integrity-continue]').click();await waitFor(()=>document.querySelector('.quiz-integrity-dialog').hidden);assert(document.fullscreenElement,'Continue must restore real fullscreen');phase++;return;}
+if(phase===3){await document.exitFullscreen();await waitFor(()=>warnings===2);phase++;return;}
+if(phase===5){document.dispatchEvent(new KeyboardEvent('keyup',{key:'PrintScreen',code:'PrintScreen',bubbles:true}));await waitFor(()=>warnings===3);phase++;return;}
+if(phase===7){window.dispatchEvent(new Event('blur'));await waitFor(()=>submits.length===1);assert(submits[0].disqualified==='1'&&submits[0].violation_count==='4','Fourth warning must submit zero');checks.textContent='PASS: real fullscreen, image decode/reveal, screenshot warning, return to fullscreen, and zero after fourth warning';phase++;}
+}catch(e){checks.textContent='FAIL '+e.message;}};
+window.addEventListener('load',()=>{checks.textContent='READY';});
+</script>
+<script src="/QuizWeb/assets/js/game-experience.js"></script><script src="/QuizWeb/assets/js/quiz-integrity.js"></script><script src="/QuizWeb/assets/js/activity-game.js"></script>
+</body></html>

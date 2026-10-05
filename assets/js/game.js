@@ -87,15 +87,8 @@
         failedLevelLabel: "",
         crosswordFilled: 0,
     };
-    const integrity = {
-        active: false,
-        warningCount: 0,
-        maxWarnings: 3,
-        lastViolationAt: 0,
-        disqualifying: false,
-        unloadSubmitted: false,
-        dialog: null,
-    };
+    const guard = window.chalkQuizIntegrity?.create(root, {onDisqualify: disqualifyAttempt});
+    let startingGame = false;
     window.chalkGameUI?.init(root, quiz);
 
     const modeNotes = {
@@ -117,7 +110,7 @@
         crossword: "Fill every white square, use intersections to check your spelling, then submit the completed puzzle.",
         master_ladder: `Each level needs at least ${masteryThreshold}% before the next one unlocks.`,
     };
-    const integrityStartMessage = "Quiz rule: stay in fullscreen and keep this tab focused. Alt-tab, minimizing, or leaving fullscreen gives a warning. After 3 warnings, the next violation marks the quiz as 0. Reloading or closing the quiz while it is active also marks it as 0.";
+    const integrityStartMessage = guard?.rule || '';
 
     let startTime = null;
     let overallTimer = null;
@@ -237,27 +230,6 @@
         return element;
     }
 
-    function fullscreenElement() {
-        return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
-    }
-
-    function requestQuizFullscreen() {
-        const target = document.documentElement;
-        const request = target.requestFullscreen || target.webkitRequestFullscreen || target.msRequestFullscreen;
-
-        if (isPreview || practiceMode || fullscreenElement() || !request) {
-            return Promise.resolve();
-        }
-
-        return Promise.resolve(request.call(target)).catch(() => {
-            setNote("Fullscreen could not start automatically. Keep this quiz tab focused.");
-        });
-    }
-
-    function setIntegrityActive(active) {
-        integrity.active = !isPreview && !practiceMode && active;
-    }
-
     function createHiddenInput(name, value) {
         const input = document.createElement("input");
         input.type = "hidden";
@@ -291,153 +263,19 @@
         form.submit();
     }
 
-    function ensureIntegrityDialog() {
-        if (integrity.dialog) {
-            return integrity.dialog;
-        }
-
-        const dialog = document.createElement("div");
-        dialog.className = "quiz-integrity-dialog";
-        dialog.hidden = true;
-        dialog.setAttribute("aria-hidden", "true");
-        dialog.innerHTML = `
-            <section class="quiz-integrity-panel" role="alertdialog" aria-modal="true" aria-labelledby="quiz-integrity-title">
-                <span class="eyebrow">Quiz Warning</span>
-                <h2 id="quiz-integrity-title">Stay in fullscreen</h2>
-                <p data-integrity-message></p>
-                <button class="button button-primary" type="button" data-integrity-continue>Continue Quiz</button>
-            </section>
-        `;
-
-        dialog.querySelector("[data-integrity-continue]")?.addEventListener("click", () => {
-            dialog.hidden = true;
-            dialog.setAttribute("aria-hidden", "true");
-            setIntegrityActive(false);
-            requestQuizFullscreen().finally(() => {
-                if (state.started && !state.finished && !integrity.disqualifying) {
-                    setIntegrityActive(true);
-                }
-            });
-        });
-
-        document.body.appendChild(dialog);
-        integrity.dialog = dialog;
-
-        return dialog;
-    }
-
-    function showIntegrityWarning(reason) {
-        const dialog = ensureIntegrityDialog();
-        const message = dialog.querySelector("[data-integrity-message]");
-        const remaining = integrity.maxWarnings - integrity.warningCount;
-        const nextMessage = remaining > 0
-            ? `${remaining} warning${remaining === 1 ? "" : "s"} left before your score is marked as 0.`
-            : "This is your last warning. The next violation will mark your score as 0.";
-
-        if (message) {
-            message.textContent = `Warning ${integrity.warningCount} of ${integrity.maxWarnings}: ${reason}. ${nextMessage}`;
-        }
-
-        dialog.hidden = false;
-        dialog.setAttribute("aria-hidden", "false");
-        setNote(`Warning ${integrity.warningCount} of ${integrity.maxWarnings}. Return to fullscreen to continue.`);
-    }
-
-    function disqualifyAttempt(reason) {
-        if (integrity.disqualifying || state.finished) {
-            return;
-        }
-
-        integrity.disqualifying = true;
-        setIntegrityActive(false);
+    function disqualifyAttempt(reason, warningCount) {
+        if (state.finished) return;
         state.finished = true;
-        state.awaitingNext = false;
         state.score = 0;
         state.answers = [];
         window.clearInterval(overallTimer);
         window.clearInterval(questionTimer);
-
-        questionText.textContent = "Quiz marked as 0.";
-        questionPoints.textContent = "0 total points";
-        questionHelper.textContent = "The warning limit was exceeded.";
-        answerGrid.innerHTML = `
-            <div class="finish-card">
-                <article class="finish-metric">
-                    <strong>0</strong>
-                    <span>Total score</span>
-                </article>
-                <article class="finish-metric">
-                    <strong>${integrity.warningCount}</strong>
-                    <span>Warnings</span>
-                </article>
-                <article class="finish-metric">
-                    <strong>${state.elapsedSeconds}s</strong>
-                    <span>Time used</span>
-                </article>
-            </div>
-        `;
-        setControls([]);
-        setNote("Saving a zero score for this attempt...");
-        updateHud();
-        submitAttempt({
-            disqualified: "1",
-            violation_reason: reason,
-            violation_count: integrity.warningCount,
-        });
-    }
-
-    function appendAttemptField(formData, name, value) {
-        formData.append(name, String(value));
-    }
-
-    function submitUnloadDisqualification(reason) {
-        if (isPreview || integrity.unloadSubmitted || !state.started || state.finished) {
-            return;
-        }
-
-        integrity.unloadSubmitted = true;
-        const formData = new FormData();
-        appendAttemptField(formData, "classroom_id", classroomId);
-        appendAttemptField(formData, "quiz_id", quiz.id);
-        appendAttemptField(formData, "elapsed_seconds", state.elapsedSeconds);
-        appendAttemptField(formData, "answers", "[]");
-        appendAttemptField(formData, "csrf", root.dataset.csrf || '');
-        appendAttemptField(formData, "run_token", root.dataset.runToken || '');
-        appendAttemptField(formData, "disqualified", "1");
-        appendAttemptField(formData, "violation_reason", reason);
-        appendAttemptField(formData, "violation_count", integrity.warningCount + 1);
-
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(submitUrl, formData);
-            return;
-        }
-
-        fetch(submitUrl, {
-            method: "POST",
-            body: formData,
-            keepalive: true,
-        }).catch(() => {});
-    }
-
-    function registerIntegrityViolation(reason) {
-        if (!integrity.active || !state.started || state.finished || integrity.disqualifying) {
-            return;
-        }
-
-        const now = Date.now();
-        if (now - integrity.lastViolationAt < 1500) {
-            return;
-        }
-
-        integrity.lastViolationAt = now;
-        integrity.warningCount += 1;
-
-        if (integrity.warningCount > integrity.maxWarnings) {
-            disqualifyAttempt(reason);
-            return;
-        }
-
-        showIntegrityWarning(reason);
+        questionText.textContent = 'Quiz marked as 0.';
+        questionPoints.textContent = '0 total points';
+        questionHelper.textContent = `Security violation: ${reason}. ${warningCount} warnings recorded.`;
+        answerGrid.replaceChildren(); setControls([]); updateHud();
+        setNote('Saving the zero score for this attempt?');
+        submitAttempt({disqualified: '1', violation_reason: reason, violation_count: warningCount});
     }
 
     function setControls(elements) {
@@ -469,6 +307,7 @@
 
         updateHud();
         questionTimer = window.setInterval(() => {
+            if (guard?.paused) return;
             questionTimeLeft -= 1;
             updateHud();
 
@@ -868,28 +707,17 @@
         updateHud();
     }
 
-    function startGame() {
-        if (state.started) {
-            return;
-        }
-
+    async function startGame() {
+        if (state.started || startingGame) return;
+        if (!guard && !isPreview && !practiceMode) { setNote('Quiz security failed to load. Reload from your classroom.'); return; }
+        startingGame = true;
+        const ready = guard ? await guard.start() : true;
+        startingGame = false;
+        if (!ready) return;
         state.started = true;
         window.chalkGameUI?.start(root);
-        setNote(isPreview ? (practiceMode ? "Practice started." : "Game on.") : "Entering fullscreen...");
-        clearControls();
-        requestQuizFullscreen().finally(() => {
-            if (!state.started || state.finished) {
-                return;
-            }
-
-            setIntegrityActive(true);
-            startTimers();
-            if (crosswordMode) {
-                renderCrossword();
-                return;
-            }
-            renderQuestion();
-        });
+        clearControls(); startTimers();
+        if (crosswordMode) renderCrossword(); else renderQuestion();
     }
 
     function renderQuestion() {
@@ -948,6 +776,7 @@
     }
 
     function handleAnswer(selectedIndex, isCorrect, timedOut) {
+        if (guard?.enabled && !guard.canInteract) return;
         if (state.awaitingNext || state.finished || !state.started) {
             return;
         }
@@ -1047,7 +876,7 @@
         }
 
         state.finished = true;
-        setIntegrityActive(false);
+        guard?.complete();
         state.awaitingNext = false;
         window.clearInterval(overallTimer);
         window.clearInterval(questionTimer);
@@ -1119,40 +948,8 @@
         })]);
     }
 
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-            registerIntegrityViolation("leaving the quiz tab or minimizing the browser");
-        }
-    });
-
-    window.addEventListener("beforeunload", (event) => {
-        if (!integrity.active || !state.started || state.finished || isPreview) {
-            return;
-        }
-
-        event.preventDefault();
-        event.returnValue = integrityStartMessage;
-    });
-
-    window.addEventListener("pagehide", () => {
-        if (integrity.active && state.started && !state.finished && !isPreview) {
-            submitUnloadDisqualification("reloading or closing the quiz page");
-        }
-    });
-
-    window.addEventListener("blur", () => {
-        registerIntegrityViolation("moving focus away from the quiz");
-    });
-
-    ["fullscreenchange", "webkitfullscreenchange", "MSFullscreenChange"].forEach((eventName) => {
-        document.addEventListener(eventName, () => {
-            if (integrity.active && !fullscreenElement()) {
-                registerIntegrityViolation("exiting fullscreen");
-            }
-        });
-    });
-
     document.addEventListener("keydown", (event) => {
+        if (guard?.paused) return;
         if (!state.started && event.key === "Enter") {
             const startButton = controls?.querySelector(".button-primary");
             startButton?.click();

@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__, 3) . '/includes/app.php';
+require_once dirname(__DIR__, 3) . '/includes/quiz_integrity.php';
 
 $user = require_role('student');
 
@@ -39,29 +40,20 @@ if (!$run || (int) $run['classroom_id'] !== $classroomId || (int) $run['quiz_id'
 }
 if (isset($run['attempt_id'])) redirect('/QuizWeb/results.php?id=' . (int) $run['attempt_id']);
 $quiz = $run['quiz_snapshot'] ?? $quiz;
+if (empty($run['integrity']['started_at'])) {
+    http_response_code(403); exit('Start the quiz in fullscreen before submitting.');
+}
+$disqualified = $disqualified || !empty($run['integrity']['disqualified']);
 
 if (!is_array($answers)) {
     $answers = [];
 }
 
-if (activity_uses_text_answers($quiz['game_type'])) {
-    if (!is_string($_POST['csrf'] ?? null) || !isset($_SESSION['activity_csrf']) || !hash_equals($_SESSION['activity_csrf'], $_POST['csrf'])) {
-        http_response_code(403);
-        exit('Your activity session expired. Return to the classroom and start again.');
-    }
-    foreach ($quiz['questions'] as $index => $question) {
-        $answers[$index] = is_string($answers[$index] ?? null) && strlen($answers[$index]) <= 2000 ? $answers[$index] : '';
-    }
-    $answers = array_intersect_key($answers, array_flip(array_merge(array_keys($quiz['questions']), ['_moves'])));
-    if (isset($answers['_moves'])) $answers['_moves'] = max(0, min(100000, (int) $answers['_moves']));
-}
+$answers = activity_submission_answers($quiz, $answers);
 
+$answers = array_replace($answers, quiz_integrity_metadata($run));
 if ($disqualified) {
-    $answers = [
-        '_disqualified' => true,
-        '_reason' => trim((string) ($_POST['violation_reason'] ?? 'quiz_integrity_violation')),
-        '_violations' => max(0, (int) ($_POST['violation_count'] ?? 0)),
-    ];
+    $answers = ['_disqualified' => true] + quiz_integrity_metadata($run);
 }
 
 $attempt = create_attempt((int) $user['id'], (int) $classroom['id'], $quiz, $answers, $elapsedSeconds, $disqualified);

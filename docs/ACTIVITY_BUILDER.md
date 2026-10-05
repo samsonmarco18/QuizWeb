@@ -52,3 +52,20 @@ This change covers activity types, previews, navigation, and shared layout. It
 does not complete the entire broader brief: administration, password-reset
 approval, OAuth mail, notifications, and additional assessment settings still
 require their own implementations and verification.
+
+## Matching images and student quiz security
+
+In Flip Match, open Questions and use First card image and Matching card image.
+You can put an image on one side or both. Keep descriptive text labels in the
+prompt and answer fields. Preview the cards, then Save Activity. PNG, JPEG, and
+WebP files up to 5 MB are resized and compressed in the browser; saved faces must
+be at most 96 KB each, with at most 1 MB of embedded image data for the activity.
+Remove image clears only that card face. Images survive draft recovery,
+duplication, saved edits, and Render redeployments because they live in PostgreSQL.
+
+All live student activities now require fullscreen before starting and share
+three warnings. The fourth violation saves zero. Teacher previews are exempt.
+Screenshot shortcuts count when the browser receives them; operating-system
+captures cannot be reliably detected. Questions and multiple-choice options are
+shuffled for each student run, with server grading tied to the saved shuffled
+version. Mastery difficulty progression and crossword grid positions stay intact.

@@ -115,3 +115,27 @@ Render Git revision, actual admin/teacher/student sign-in, persisted demo data,
 role restrictions, and logout. Run it with --revision followed by the deployed
 commit SHA. These live checks are distinct from the isolated fixture tests and
 must pass before declaring the accounts verified on Render.
+
+
+## October 5, 2026: shared quiz security, shuffling, and image matching
+
+The shared security controller gates all eleven student modes on fullscreen,
+records server-side warning events, merges events from one focus incident, pauses
+responses and question timers, and saves zero on the fourth violation or a
+reported abandonment. Preview and Focus Practice remain exempt. Browser-delivered
+screenshot shortcuts trigger warnings; this does not detect every OS screenshot.
+
+Server tests pass for event validation, start state, idempotent retries, warning
+limits, abandonment, immutable completed attempts, authoritative metadata,
+question/choice shuffling, answer/point preservation, and mastery ordering.
+Raster tests pass for both matching card faces, format/type/size validation,
+unsafe input rejection, duplicate images, and unchanged grading. Game and builder
+regressions pass, including revealed image rendering, mismatch hiding, retained
+matched images, image duplication/removal, and existing preview/practice behavior.
+
+The new browser simulation suite exercises shared security in all eleven modes.
+Actual headless Chrome also passes the security/image fixture at 1366?768 and
+390?844: real browser fullscreen, decoded raster card images, a Print Screen
+shortcut warning, returning to fullscreen, and zero submission on violation four.
+Its backend transport is a fixture; live Render persistence must be checked
+separately after deploying this commit. No local database accounts were created.

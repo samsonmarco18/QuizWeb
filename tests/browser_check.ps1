@@ -3,6 +3,7 @@ param(
     [int]$Width = 1440,
     [int]$Height = 1000,
     [switch]$Matrix,
+    [switch]$Security,
     [ValidateSet('reduce','no-preference')][string]$Motion = 'reduce'
 )
 $ErrorActionPreference = 'Stop'
@@ -72,6 +73,9 @@ try {
             $result = Send-BrowserCommand 'Runtime.evaluate' @{expression='JSON.stringify({check:document.getElementById("checks")?.textContent,width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth+2})'; returnByValue=$true}
             if ($result.result.value) {
                 $state = $result.result.value | ConvertFrom-Json
+                if ($Security -and $state.check -eq 'READY') {
+                    Send-BrowserCommand 'Runtime.evaluate' @{expression='window.runSecurityBrowserStep()'; awaitPromise=$true; userGesture=$true; returnByValue=$true} | Out-Null
+                }
                 if ($state.check -match '^(PASS|FAIL)') { break }
             }
         }
