@@ -111,7 +111,8 @@ function ensure_database_schema(PDO $pdo): void
     if ($schema === false || !str_contains($schema, '-- DEMO ADMIN: explicit import only')) {
         throw new RuntimeException('The main PostgreSQL schema file is missing or invalid.');
     }
-    // Never automatically provision a public sample account on application startup.
+    // Web requests apply schema only. Render's CLI bootstrap explicitly imports
+    // the demo section before Apache starts.
     $pdo->exec(explode('-- DEMO ADMIN: explicit import only', $schema, 2)[0]);
 
     $initialized = true;

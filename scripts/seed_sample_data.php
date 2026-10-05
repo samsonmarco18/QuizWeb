@@ -30,31 +30,18 @@ $studentSeeds = [
 
 if ($currentStudent && ($currentStudent['role'] ?? '') === 'student') {
     $studentSeeds[0] = [$currentStudent['name'], $currentStudent['email']];
-} elseif (!$currentStudent) {
-    foreach (classrooms() as $existingClassroom) {
-        if (($existingClassroom['name'] ?? '') !== 'Grade 10 Science' || count($existingClassroom['student_ids'] ?? []) !== 5) {
-            continue;
-        }
-        $existingCohort = [];
-        foreach ($existingClassroom['student_ids'] as $studentId) {
-            $existingStudent = find_user_by_id((int) $studentId);
-            if ($existingStudent && ($existingStudent['role'] ?? '') === 'student') {
-                $existingCohort[] = [$existingStudent['name'], $existingStudent['email']];
-            }
-        }
-        if (count($existingCohort) === 5) {
-            $studentSeeds = $existingCohort;
-        }
-        break;
-    }
 }
 
 foreach ($teacherSeeds as [$name, $email, $subject]) {
+    $existing = find_user_by_email($email);
+    if ($existing && $existing['role'] !== 'teacher') throw new RuntimeException('Sample teacher email has a conflicting role.');
     if (!find_user_by_email($email)) {
         register_user($name, $email, $password, 'teacher', ['program' => $subject, 'year_level' => 'Faculty']);
     }
 }
 foreach ($studentSeeds as [$name, $email]) {
+    $existing = find_user_by_email($email);
+    if ($existing && $existing['role'] !== 'student') throw new RuntimeException('Sample student email has a conflicting role.');
     if (!find_user_by_email($email)) {
         register_user($name, $email, $password, 'student', ['program' => 'General Education', 'year_level' => 'Grade 10']);
     }
@@ -136,9 +123,10 @@ foreach ($teacherSeeds as $index => [$teacherName, $teacherEmail, $subject]) {
         ];
         $records[] = $classroom;
     } else {
-        if ($currentStudent || empty($classroom['student_ids'])) {
-            $classroom['student_ids'] = $studentIds;
-        }
+        // Restore demo enrollments while preserving every existing member.
+        $classroom['student_ids'] = array_values(array_unique(array_merge(
+            $classroom['student_ids'] ?? [], $studentIds
+        )));
         foreach ($classroom['quizzes'] ?? [] as $quizIndex => $quiz) {
             if (empty($quiz['due_at'])) {
                 $classroom['quizzes'][$quizIndex]['due_at'] = date(DATE_ATOM, strtotime('+' . (3 + ($index * 3)) . ' days 17:00'));
@@ -165,7 +153,9 @@ $targetScores = [
 
 foreach ($students as $studentIndex => $student) {
     foreach ($sampleClassrooms as $classIndex => $classroom) {
-        $quiz = $classroom['quizzes'][0];
+        // Teachers may have removed a demo quiz; preserve their edits.
+        $quiz = $classroom['quizzes'][0] ?? null;
+        if (!$quiz || empty($quiz['questions'])) continue;
         $alreadySeeded = array_filter(attempts(), fn(array $attempt) =>
             (int) $attempt['student_id'] === (int) $student['id']
             && (int) $attempt['classroom_id'] === (int) $classroom['id']
@@ -191,7 +181,6 @@ foreach ($students as $studentIndex => $student) {
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     $seeded = seed_sample_data();
     echo "Sample data ready.\n";
-    echo "Password for all demo accounts: {$seeded['password']}\n";
     foreach (array_merge($seeded['teachers'], $seeded['students']) as $seed) {
         echo "- {$seed[1]}\n";
     }

@@ -8,7 +8,8 @@ RUN apt-get update \
 COPY docker/000-default.conf /etc/apache2/sites-enabled/000-default.conf
 COPY docker/start-apache.sh /usr/local/bin/start-apache
 COPY . /var/www/html/QuizWeb
-RUN chmod +x /usr/local/bin/start-apache \
+RUN sed -i 's/\r$//' /usr/local/bin/start-apache \
+    && chmod +x /usr/local/bin/start-apache \
     && mkdir -p /var/www/html/QuizWeb/data/uploads/announcements \
     && chown -R www-data:www-data /var/www/html/QuizWeb/data
 EXPOSE 80

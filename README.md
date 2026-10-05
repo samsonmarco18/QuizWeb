@@ -23,11 +23,55 @@ docker compose up --build
 
 Open `http://localhost:8080/QuizWeb/`. PostgreSQL data is stored in the named `postgres_data` volume and announcement uploads are persisted in `data/uploads`.
 
-## Render deployment
+## Render deployment and sample accounts
 
-This repository includes a Render Blueprint in `render.yaml`. Push the project to a Git repository, then create a new **Blueprint** in Render and select that repository. The Blueprint provisions the Docker web service and a managed PostgreSQL 16 database, wiring the database credentials through environment variables. The web service is available at `/QuizWeb/` after deployment.
+The live website is **https://chalk-web.onrender.com/QuizWeb/**. Sign in at
+[Render login](https://chalk-web.onrender.com/QuizWeb/login.php).
 
-For local non-Docker PostgreSQL configuration, copy `.env.example` and set the `QUIZWEB_DB_*` environment variables in your web-server environment. Do not commit real passwords.
+| Role | Email | Password |
+| --- | --- | --- |
+| Administrator | admin@chalk.local | ChalkAdmin!2026 |
+| Teacher | elena.cruz@chalk.demo | Sample123! |
+| Student | ava.mendoza@chalk.demo | Sample123! |
+
+After admin sign-in, the dashboard redirects to
+[Administration](https://chalk-web.onrender.com/QuizWeb/admin.php). The email's
+.local suffix is simply an account name; the account is stored in Render PostgreSQL.
+
+Render starts the Docker image from the deployed Git revision. Its startup command
+runs scripts/bootstrap_render.php inside Render before Apache accepts requests.
+This applies the single database/schema.sql file, creates the sample administrator
+and its audit entry atomically, and provisions three teachers, five students, three
+classrooms, quizzes, deadlines, and sample results in the connected PostgreSQL.
+An advisory lock serializes overlapping bootstrap runs. Redeploying preserves
+existing passwords, class members, quizzes, deadlines, and attempts. The five demo
+students are added to the demo classrooms if missing; real members are retained.
+Existing conflicting account roles cause provisioning to fail rather than grant
+privileges. Changed passwords and suspended sample accounts are preserved.
+
+Startup retries PostgreSQL provisioning up to 20 times and fails the deployment
+if it cannot finish. Web requests never run account provisioning. The deployment
+bootstrap refuses to run outside Render. No local database setup or manual SQL
+import is required to obtain these accounts on Render.
+
+The Render Blueprint in render.yaml connects chalk-web to chalk-postgres using
+QUIZWEB_DB_HOST, QUIZWEB_DB_PORT, QUIZWEB_DB_NAME, QUIZWEB_DB_USER, and
+QUIZWEB_DB_PASS. Existing Render services must use this Dockerfile/startup command
+and track this repository's main branch. Pushes deploy automatically when the
+service's auto-deploy setting is enabled; otherwise use Deploy latest commit.
+The Blueprint health check is /QuizWeb/health.php, which checks PostgreSQL and
+reports the Render Git revision without exposing credentials.
+
+Verify the deployed revision and all three logins with:
+
+```bash
+python tests/render_smoke_test.py --revision YOUR_DEPLOYED_COMMIT_SHA
+```
+
+The test uses HTTPS sessions on Render, checks persisted sample data and role
+permissions, and logs out each account. It does not create accounts or alter grades.
+Existing accounts with rotated passwords retain those passwords; the sample test
+credentials apply to newly provisioned accounts.
 
 ## Legacy XAMPP setup
 
@@ -44,29 +88,15 @@ For local non-Docker PostgreSQL configuration, copy `.env.example` and set the `
 
 Create a PostgreSQL database named `quizweb` and apply `database/schema.sql` before starting the app. Docker Compose and Render handle this automatically.
 
-### One main PostgreSQL file and administrator login
+### One main PostgreSQL file
 
-All tables, indexes, and upgrades are in **[database/schema.sql](database/schema.sql)**.
-In pgAdmin, create/select `quizweb`, open Query Tool, load this file, and run it.
-Alternatively run `psql -h 127.0.0.1 -U YOUR_USER -d quizweb -v ON_ERROR_STOP=1 -f database/schema.sql`.
-Set the connection environment variables from `.env.example` and enable PHP's
-`pdo_pgsql` extension for Apache.
-
-Explicitly importing the file creates this sample account when its email is unused:
-
-- Login: `http://localhost/QuizWeb/login.php`
-- Email: `admin@chalk.local`
-- Password: `ChalkAdmin!2026`
-- Admin area after login: `http://localhost/QuizWeb/admin.php`
-
-Existing accounts and passwords are preserved. Application startup reads the
-schema portion of this same file without creating the sample account.
-For an administrator with your own password, run `powershell -File scripts/create_admin.ps1`;
-it prompts for the password and uses your configured PostgreSQL connection.
-
-The current local environment has no running PostgreSQL server on port 5432, so
-the sample login becomes available after the SQL import; it has not been created
-in a live local database during this session.
+All PostgreSQL tables, indexes, legacy upgrades, and the sample admin insert live
+in **[database/schema.sql](database/schema.sql)**. Render imports it automatically
+through the deployment bootstrap described above. A full manual import also
+creates the admin if its email is unused, and never resets existing credentials.
+Web requests execute only the schema section. For a separate custom administrator,
+run scripts/create_admin.php inside the intended service with
+QUIZWEB_ADMIN_EMAIL and QUIZWEB_ADMIN_PASSWORD supplied through its environment.
 
 ## Teacher Test Flow
 
@@ -134,9 +164,9 @@ When using Docker, run it inside the web container so PostgreSQL support and dat
 docker compose exec web php scripts/seed_sample_data.php
 ```
 
-On Render, the web container runs the idempotent seeder during startup after PostgreSQL becomes available. The three teachers, five students, classrooms, quizzes, deadlines, and attempts are therefore real persisted PostgreSQL records—there is no dashboard load button. Redeploying does not duplicate the seeded attempts.
+On Render, the web container runs the admin-and-sample bootstrap during startup after PostgreSQL becomes available. The three teachers, five students, classrooms, quizzes, deadlines, and attempts are therefore real persisted PostgreSQL records—there is no dashboard load button. Redeploying does not duplicate the seeded attempts.
 
-All demo accounts use the password `Sample123!`. The script prints each demo email and is safe to rerun without duplicating its quiz attempts.
+All newly created student and teacher demo accounts use the password `Sample123!`. The script prints each demo email and is safe to rerun without duplicating its quiz attempts.
 
 ## Game Testing Checklist
 

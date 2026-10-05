@@ -3,7 +3,7 @@ services:
     name: chalk-web
     runtime: docker
     plan: free
-    healthCheckPath: /QuizWeb/login.php
+    healthCheckPath: /QuizWeb/health.php
     envVars:
       - key: QUIZWEB_DB_HOST
         fromDatabase: {name: chalk-postgres, property: host}

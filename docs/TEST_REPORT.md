@@ -87,3 +87,31 @@ A custom administrator can also be provisioned with powershell -File scripts/cre
 The local PostgreSQL connection to 127.0.0.1:5432 was refused and the normal localhost application was unreachable. The installed PHP CLI does have a loadable pdo_pgsql DLL, which was enabled for the provisioning attempt, but the server was still absent. Consequently, no live admin account was created in this session, and importing the SQL, authenticated sign-in, classroom save/play/reload, uploads, and grade publication must still be verified against the intended PostgreSQL deployment.
 
 The sample credentials become usable after importing the SQL into that deployment. Existing deadlines remain reminders, retakes remain unlimited, and no unsupported settings or draft publication state were introduced. Multiple-choice answer indexes and browser-based focus monitoring retain their existing limitations; this work does not add complete proctoring or a server-enforced mastery progression engine. Local draft recovery depends on browser storage and is retained until discarded, including after successful saves. The main SQL file cannot start or install a PostgreSQL server.
+
+## Render account provisioning update
+
+This update supersedes the local-only administrator setup instructions above.
+The intended live service is https://chalk-web.onrender.com/QuizWeb/.
+Before this fix, its login page responded with HTTP 200, but signing in as
+admin@chalk.local with the documented sample password failed.
+
+Render startup now explicitly imports the administrator section from the same
+main database/schema.sql file and seeds the named teacher/student accounts into
+Render's connected PostgreSQL before accepting traffic. A session advisory lock
+serializes overlapping account/demo bootstrap runs. Existing account passwords,
+roles, statuses, quiz edits, deadlines, and results are preserved. Existing demo
+class members remain enrolled when the named sample cohort is added. Sample
+passwords are no longer printed by the seeder. No local database was seeded.
+
+tests/render_seed_test.php passes for complete named cohorts, idempotent reruns,
+password/history/deadline preservation, legacy enrollments, and role conflicts
+using memory fixtures. tests/render_startup_test.cjs passes for successful startup,
+20 failed retries without Apache starting, and refusal to provision outside
+Render. Existing schema, administration, activity, and grading tests also pass.
+Changed PHP files pass syntax checks and git diff --check passes.
+
+tests/render_smoke_test.py checks the public HTTPS service, PostgreSQL readiness,
+Render Git revision, actual admin/teacher/student sign-in, persisted demo data,
+role restrictions, and logout. Run it with --revision followed by the deployed
+commit SHA. These live checks are distinct from the isolated fixture tests and
+must pass before declaring the accounts verified on Render.
