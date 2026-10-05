@@ -49,6 +49,13 @@ seed_sample_data();
 check_seed($users === $beforeUsers, 'Rerun must preserve users and passwords.');
 check_seed($classes === $beforeClasses, 'Rerun must preserve membership, work, and deadlines.');
 check_seed($runs === $beforeRuns, 'Rerun must not duplicate or overwrite attempts.');
+$classes[0]['quizzes'][0]['game_type'] = 'fill_blank';
+$classes[0]['quizzes'][0]['questions'] = [['prompt' => 'Name a planet', 'accepted_answers' => ['Earth'], 'points' => 10]];
+$runs = array_values(array_filter($runs, fn($run) => $run['classroom_id'] !== $classes[0]['id']));
+$convertedQuiz = $classes[0]['quizzes'][0];
+seed_sample_data();
+check_seed($classes[0]['quizzes'][0] === $convertedQuiz && count($runs) === 10, 'Preserve converted activities without fabricating attempts.');
+$classes = $beforeClasses;
 // A legacy classroom with a different cohort must not suppress named accounts.
 $users = array_slice($users, 0, 3);
 $classes[0]['student_ids'] = [101, 102, 103, 104, 105];

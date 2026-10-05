@@ -156,6 +156,26 @@ foreach ($students as $studentIndex => $student) {
         // Teachers may have removed a demo quiz; preserve their edits.
         $quiz = $classroom['quizzes'][0] ?? null;
         if (!$quiz || empty($quiz['questions'])) continue;
+        $multipleChoice = true;
+        foreach ($quiz['questions'] as $question) {
+            if (!isset($question['correct_index']) || empty($question['options']) || !is_array($question['options'])) {
+                $multipleChoice = false;
+                break;
+            }
+        }
+        // A teacher may have converted the sample quiz into a written activity.
+        // Do not fabricate answers or fail deployment for their saved changes.
+        if (!$multipleChoice) continue;
+        $multipleChoice = true;
+        foreach ($quiz['questions'] as $question) {
+            if (!isset($question['correct_index']) || empty($question['options']) || !is_array($question['options'])) {
+                $multipleChoice = false;
+                break;
+            }
+        }
+        // A teacher may have converted the sample quiz into a written activity.
+        // Do not fabricate answers or fail deployment for their saved changes.
+        if (!$multipleChoice) continue;
         $alreadySeeded = array_filter(attempts(), fn(array $attempt) =>
             (int) $attempt['student_id'] === (int) $student['id']
             && (int) $attempt['classroom_id'] === (int) $classroom['id']
