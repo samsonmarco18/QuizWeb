@@ -5,6 +5,24 @@ function activity_uses_text_answers(string $mode): bool
     return in_array($mode, ['fill_blank', 'emoji_quiz', 'flip_match'], true);
 }
 
+// Crossword clients need the shape and word lengths, never the student answer key.
+function activity_public_crossword(array $quiz, bool $preview): array
+{
+    if ($preview || ($quiz['game_type'] ?? '') !== 'crossword') return $quiz;
+    foreach ($quiz['questions'] as &$question) {
+        $question['word_length'] = strlen(crossword_normalize_answer((string) ($question['answer'] ?? ($question['options'][0] ?? ''))));
+        $question = array_intersect_key($question, array_flip(['id', 'prompt', 'points', 'level', 'crossword', 'word_length']));
+    }
+    unset($question);
+    if (is_array($quiz['crossword_layout']['cells'] ?? null)) {
+        $quiz['crossword_layout']['cells'] = array_map(static fn($row) => array_map(static fn($cell) => $cell ? 1 : null, $row), $quiz['crossword_layout']['cells']);
+    }
+    if (is_array($quiz['crossword_layout']['placements'] ?? null)) {
+        $quiz['crossword_layout']['placements'] = array_map(static fn($placement) => array_intersect_key($placement, array_flip(['question_id', 'row', 'col', 'direction', 'number', 'intersections'])), $quiz['crossword_layout']['placements']);
+    }
+    return $quiz;
+}
+
 function attempt_quiz_version(array $quiz, array $attempt): array
 {
     $snapshot = $attempt['answers']['_quiz_snapshot'] ?? null;

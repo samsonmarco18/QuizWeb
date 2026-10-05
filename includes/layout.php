@@ -104,6 +104,7 @@ function render_header(string $title, string $pageClass = ''): void
         <link rel="stylesheet" href="/QuizWeb/assets/css/site.css">
         <link rel="stylesheet" href="/QuizWeb/assets/css/refinements.css">
         <link rel="stylesheet" href="/QuizWeb/assets/css/visual-polish.css">
+        <link rel="stylesheet" href="/QuizWeb/assets/css/game-experience.css">
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>

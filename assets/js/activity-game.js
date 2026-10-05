@@ -13,7 +13,8 @@
     const helper = root.querySelector('[data-question-helper]');
     const points = root.querySelector('[data-question-points]');
     const answers = {};
-    let started = 0, timer, index = 0, finished = false, moves = 0, matched = 0;
+    window.chalkGameUI?.init(root, quiz);
+    let started = 0, timer, index = 0, finished = false, moves = 0, matched = 0, finishedElapsed = null;
     function node(tag, text, className) {
         const element = document.createElement(tag);
         if (text !== undefined) element.textContent = text;
@@ -31,7 +32,7 @@
         document.querySelector('[data-progress-count]').textContent = `${count} / ${questions.length}`;
         root.querySelector('[data-progress-bar]').style.width = `${count / Math.max(questions.length, 1) * 100}%`;
     }
-    function elapsed() { return started ? Math.round((Date.now() - started) / 1000) : 0; }
+    function elapsed() { return finishedElapsed ?? (started ? Math.round((Date.now() - started) / 1000) : 0); }
     document.querySelector('[data-score-value]').textContent = 'After submit';
     document.querySelector('[data-streak-value]').textContent = '—';
     heading.textContent = quiz.title;
@@ -42,6 +43,7 @@
     controls.replaceChildren(button(preview ? 'Start Preview' : 'Start Activity', () => {
         if (started) return;
         started = Date.now();
+        window.chalkGameUI?.start(root);
         timer = setInterval(() => { document.querySelector('[data-timer-value]').textContent = `${elapsed()}s`; }, 1000);
         if (matching) renderMatching(); else renderQuestion();
     }), button('Back to Classroom', () => { location.href = root.dataset.returnUrl; }, true));
@@ -78,7 +80,7 @@
         stage.replaceChildren();
         questions.forEach((question, item) => {
             const row = node('article', undefined, 'activity-review-row');
-            row.append(node('strong', question.prompt), node('p', answers[item] || 'Not answered'), button('Edit', () => { index = item; renderQuestion(); }, true)); stage.append(row);
+            row.append(node('strong', question.prompt), node('small', answers[item]?.trim() ? 'Answered' : 'Unanswered'), node('p', answers[item] || 'Not answered'), button('Edit Answer', () => { index = item; renderQuestion(); }, true)); stage.append(row);
         });
         controls.replaceChildren(button(preview ? 'Finish Preview' : 'Submit Activity', finish)); progress(questions.length);
     }
@@ -88,8 +90,11 @@
         stage.replaceChildren(); stage.classList.add('match-board');
         const cards = questions.flatMap((q, i) => [{pair: i, side: 'term', text: q.prompt}, {pair: i, side: 'answer', text: q.answer}]);
         for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cards[i], cards[j]] = [cards[j], cards[i]]; }
-        let selected = [], busy = false;
-        function update() { points.textContent = `${matched} / ${questions.length} pairs · ${moves} moves`; progress(matched); }
+        let selected = [], busy = false, mismatchTimer;
+        const movesValue = document.querySelector('[data-streak-value]');
+        movesValue?.closest('.hud-pill')?.removeAttribute('hidden');
+        if (movesValue?.previousElementSibling) movesValue.previousElementSibling.textContent = 'Moves';
+        function update() { points.textContent = `${matched} / ${questions.length} pairs · ${moves} moves`; if (movesValue) movesValue.textContent = String(moves); progress(matched); }
         cards.forEach((card, position) => {
             const tile = node('button', '?', 'match-card'); tile.type = 'button';
             tile.setAttribute('aria-label', `Reveal card ${position + 1}`); tile.setAttribute('aria-pressed', 'false');
@@ -108,10 +113,14 @@
                     if (matched === questions.length) controls.replaceChildren(button(preview ? 'Finish Preview' : 'Submit Matches', finish));
                 } else {
                     note.textContent = 'Not a pair. Remember these cards, then continue.';
-                    controls.replaceChildren(button('Turn Cards Back', () => {
+                    const turnBack = () => {
+                        if (!busy) return;
+                        clearTimeout(mismatchTimer);
                         selected.forEach(item => { item.tile.textContent = '?'; item.tile.classList.remove('is-revealed'); item.tile.setAttribute('aria-pressed', 'false'); item.tile.setAttribute('aria-label', `Reveal card ${item.position + 1}`); });
                         selected = []; busy = false; controls.replaceChildren();
-                    }, true));
+                    };
+                    controls.replaceChildren(button('Turn Cards Back', turnBack, true));
+                    mismatchTimer = setTimeout(turnBack, 900);
                 }
                 update();
             });
@@ -119,8 +128,15 @@
         });
         controls.replaceChildren(); update();
     }
+    let readyToSubmit = false;
     function finish() {
         if (finished) return;
+        if (!preview && !readyToSubmit) {
+            finishedElapsed = elapsed(); readyToSubmit = true; clearInterval(timer);
+            heading.textContent = 'Activity Complete'; helper.textContent = matching ? `${matched} pairs matched · ${moves} moves · ${elapsed()} seconds` : 'Your answers are ready for server grading.';
+            stage.replaceChildren(); controls.replaceChildren(button('View Results', finish));
+            note.textContent = 'Continue to submit your answers and view the saved result.'; return;
+        }
         finished = true; clearInterval(timer);
         if (preview) {
             let score = 0;

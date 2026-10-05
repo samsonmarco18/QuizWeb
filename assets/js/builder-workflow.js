@@ -11,6 +11,16 @@
     let step = 0, active = 0, submitting = false, leaving = false;
     const snapshot = () => JSON.stringify([form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
     const original = window.quizBuilderUnsaved ? null : snapshot();
+    const stepNames = ['Game', 'Details', 'Questions', 'Settings', 'Grading', 'Review'];
+    const draftKey = `chalk-builder:${location.pathname}${location.search}`;
+    let recoveredDraft = null, draftTimer;
+    try { recoveredDraft = JSON.parse(localStorage.getItem(draftKey)); } catch (_) { /* Storage is optional. */ }
+    function saveLocalDraft() {
+        if (leaving) return;
+        const fields = {};
+        ['title', 'description', 'due_at', 'mastery_threshold', 'grade_category_id', 'grade_max_score', 'grade_attempt_policy', 'game_type'].forEach(name => { fields[name] = form.elements[name]?.value || ''; });
+        try { localStorage.setItem(draftKey, JSON.stringify({version: 1, fields, questions: api.collect(), step})); } catch (_) { /* Private mode or full storage must not prevent saving. */ }
+    }
     const node = (tag, text, cls) => {
         const el = document.createElement(tag);
         if (text !== undefined) el.textContent = text;
@@ -39,23 +49,21 @@
         return '';
     }
     function showStep(value, focus = true) {
-        step = Math.max(0, Math.min(3, value));
+        step = Math.max(0, Math.min(5, value));
         form.querySelectorAll('[data-builder-step]').forEach(el => { el.hidden = Number(el.dataset.builderStep) !== step; });
         form.querySelectorAll('[data-step]').forEach(el => {
             const selected = Number(el.dataset.step) === step;
             el.setAttribute('aria-current', selected ? 'step' : 'false');
         });
         document.getElementById('builder-previous').disabled = step === 0;
-        document.getElementById('builder-next').hidden = step === 3;
+        document.getElementById('builder-next').hidden = step === 5;
+        document.getElementById('builder-save').hidden = step !== 5;
+        document.getElementById('builder-step-summary').textContent = `Step ${step + 1} of 6 · ${stepNames[step]}`;
         refresh();
         if (focus) form.querySelector(`[data-step="${step}"]`).focus();
     }
     function configurationProblems(questions) {
         const issues = [];
-        if (form.elements.grade_category_id?.value && form.elements.grade_max_score.value !== '') {
-            const maximum = Number(form.elements.grade_max_score.value);
-            if (!Number.isFinite(maximum) || maximum < .01 || maximum > 100000 || Math.abs(maximum * 100 - Math.round(maximum * 100)) > .00001) issues.push('Gradebook maximum must be 0.01–100000 with up to two decimal places.');
-        }
         if (form.elements.grade_category_id?.value && form.elements.grade_max_score.value !== '') {
             const maximum = Number(form.elements.grade_max_score.value);
             if (!Number.isFinite(maximum) || maximum < .01 || maximum > 100000 || Math.abs(maximum * 100 - Math.round(maximum * 100)) > .00001) issues.push('Gradebook maximum must be 0.01–100000 with up to two decimal places.');
@@ -73,14 +81,13 @@
             if (mode() === 'flip_match' && questions.length > 12) issues.push('Use up to 12 matching pairs.');
             const answers = questions.map(q => mode() === 'crossword' ? (q.answer || '').replace(/[^a-z]/gi, '').toUpperCase() : (q.answer || '').trim().toLowerCase());
             if (new Set(answers).size !== answers.length) issues.push('Use unique answers for every item.');
-            if (mode() === 'crossword' && new Set(answers.map(answer => answer.length)).size < 2) issues.push('Use words of varied lengths.');
         }
         return issues;
     }
     function selectQuestion(index) {
         active = Math.max(0, Math.min(index, cards().length - 1));
         refresh();
-        if (step === 1) cards()[active]?.querySelector('[data-field="prompt"]')?.focus();
+        if (step === 2) cards()[active]?.querySelector('[data-field="prompt"]')?.focus();
     }
     function renderLive(q) {
         live.replaceChildren();
@@ -131,16 +138,29 @@
         window.quizBuilderThreshold = Number(form.elements.mastery_threshold.value);
         settings.replaceChildren(node('h3', window.quizBuilderModes[mode()]?.label), node('p', window.quizBuilderModes[mode()]?.description));
         if (mode() === 'master_ladder') settings.append(node('p', `Each difficulty needs at least one question. Level unlock target: ${window.quizBuilderThreshold}%.`));
-        if (mode() === 'crossword') settings.append(node('p', 'At least three unique words of varied lengths must intersect. Preview Activity checks the complete grid.'));
+        if (mode() === 'crossword') settings.append(node('p', 'At least three unique words must intersect. Preview Activity checks the complete grid.'));
+        if (mode() === 'time_attack') settings.append(node('p', 'Each question allows 12 seconds. A timeout earns zero for that item.'));
+        if (mode() === 'boss_battle') settings.append(node('p', 'Boss and shield start at 100. The run can end early when either reaches zero. Health never subtracts academic points.'));
         const review = document.getElementById('builder-review'); review.replaceChildren();
         review.append(node('h3', form.elements.title.value.trim() || 'Untitled activity'), node('p', `${window.quizBuilderModes[mode()]?.label} · ${questions.length} questions · ${questions.reduce((sum, q) => sum + q.points, 0)} points`), node('p', form.elements.due_at.value ? `Deadline: ${form.elements.due_at.value.replace('T', ' ')}` : 'No deadline'));
-        review.append(action(form.elements.title.value.trim() ? '✓ Quiz information complete' : '! Quiz title is required', () => showStep(0)));
+        review.append(action(form.elements.title.value.trim() ? '✓ Quiz information complete' : '! Quiz title is required', () => showStep(1)));
         const incomplete = questions.findIndex(q => problem(q));
-        review.append(action(!questions.length ? '! Add a question' : incomplete < 0 ? '✓ Questions and answers complete' : `! Q${incomplete + 1}: ${problem(questions[incomplete])}`, () => { showStep(1); selectQuestion(Math.max(0, incomplete)); }));
+        review.append(action(!questions.length ? '! Add a question' : incomplete < 0 ? '✓ Questions and answers complete' : `! Q${incomplete + 1}: ${problem(questions[incomplete])}`, () => { showStep(2); selectQuestion(Math.max(0, incomplete)); }));
         const issues = configurationProblems(questions);
-        review.append(action(issues.length ? `! ${issues.join(' ')}` : '✓ Settings valid', () => showStep(2)));
+        review.append(action(issues.length ? `! ${issues.join(' ')}` : '✓ Settings valid', () => showStep(3)));
         review.append(node('p', categorySelect?.value ? `Grade category: ${categorySelect.selectedOptions[0].textContent} · Gradebook maximum: ${form.elements.grade_max_score.value || questions.reduce((sum, q) => sum + q.points, 0)} · Attempt policy: ${form.elements.grade_attempt_policy.selectedOptions[0].textContent}` : 'Practice activity — excluded from classroom grades.'));
-        review.append(node('p', 'Play test validates game-specific rules before publishing. Saving publishes to this classroom.'));
+        review.append(node('p', 'Preview validates game content without recording an attempt. Saving makes the activity available in this classroom. Grades are published separately.'));
+        form.querySelectorAll('[data-select-game]').forEach(button => {
+            const selected = button.dataset.selectGame === mode();
+            button.setAttribute('aria-pressed', String(selected));
+            button.textContent = selected ? 'Selected' : 'Select';
+            button.closest('article').classList.toggle('is-selected', selected);
+        });
+        cards().forEach((card, index) => {
+            let error = card.querySelector('.question-error');
+            if (!error) { error = node('p', '', 'question-error'); error.setAttribute('role', 'status'); card.append(error); }
+            error.textContent = problem(questions[index]);
+        });
     }
     form.querySelectorAll('[data-step]').forEach(button => button.addEventListener('click', () => showStep(Number(button.dataset.step))));
     document.getElementById('builder-previous').addEventListener('click', () => showStep(step - 1));
@@ -154,7 +174,7 @@
         if (target < 0 || target >= all.length) return;
         if (delta < 0) list.insertBefore(all[active], all[target]);
         else list.insertBefore(all[target], all[active]);
-        active = target; api.refresh(); refresh();
+        active = target; api.refresh(); refresh(); saveLocalDraft();
     }
     document.getElementById('move-question-up').addEventListener('click', () => move(-1));
     document.getElementById('move-question-down').addEventListener('click', () => move(1));
@@ -162,6 +182,20 @@
     form.addEventListener('input', refresh);
     form.addEventListener('change', refresh);
     form.addEventListener('activity:changed', refresh);
+    ['input', 'change', 'activity:changed'].forEach(type => form.addEventListener(type, () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveLocalDraft, 300); }));
+    document.getElementById('builder-recovery').hidden = !recoveredDraft || recoveredDraft.version !== 1;
+    document.getElementById('restore-builder-draft').addEventListener('click', () => {
+        if (!recoveredDraft || !Array.isArray(recoveredDraft.questions) || recoveredDraft.questions.length > 40) return;
+        Object.entries(recoveredDraft.fields).forEach(([name, value]) => { if (form.elements[name] && typeof value === 'string') form.elements[name].value = value; });
+        list.replaceChildren(); recoveredDraft.questions.forEach(q => api.add(q));
+        form.elements.game_type.dispatchEvent(new Event('change', {bubbles: true}));
+        document.getElementById('builder-recovery').hidden = true; showStep(recoveredDraft.step || 0);
+        status.textContent = 'Local draft restored. Preview and save when ready.';
+    });
+    document.getElementById('discard-builder-draft').addEventListener('click', () => {
+        try { localStorage.removeItem(draftKey); } catch (_) { /* Storage may be disabled. */ }
+        recoveredDraft = null; document.getElementById('builder-recovery').hidden = true;
+    });
     document.getElementById('toggle-live-preview').addEventListener('click', event => {
         const panel = document.getElementById('builder-live-preview');
         const visible = panel.classList.toggle('preview-open');
@@ -169,14 +203,14 @@
         document.querySelector('.builder-panel').classList.toggle('preview-collapsed', !visible);
     });
     window.addEventListener('beforeunload', event => {
-        if (!leaving && snapshot() !== original) { event.preventDefault(); event.returnValue = ''; }
+        if (!leaving && snapshot() !== original) { saveLocalDraft(); event.preventDefault(); event.returnValue = ''; }
     });
     window.addEventListener('pageshow', event => { if (event.persisted) { submitting = false; leaving = false; } });
     document.addEventListener('click', event => {
         const link = event.target.closest('a[href]');
         if (link && !link.target && !link.getAttribute('href').startsWith('#') && snapshot() !== original && !leaving) {
             if (!confirm("You have changes that haven't been saved. Leave anyway?")) event.preventDefault();
-            else leaving = true;
+            else { saveLocalDraft(); leaving = true; }
         }
     });
     window.quizBuilderWorkflow = true;
@@ -185,14 +219,14 @@
         if (submitting) return;
         const questions = api.collect();
         if (!form.elements.title.value.trim() || form.elements.title.value.length > 255) {
-            showStep(0); status.textContent = 'Quiz title is required (up to 255 characters).'; form.elements.title.focus(); return;
+            showStep(1); status.textContent = 'Quiz title is required (up to 255 characters).'; form.elements.title.focus(); return;
         }
         const invalid = questions.findIndex(q => problem(q));
         if (!questions.length || invalid >= 0) {
-            showStep(1); selectQuestion(Math.max(0, invalid)); status.textContent = questions.length ? `Q${invalid + 1}: ${problem(questions[invalid])}.` : 'Add a question.'; return;
+            showStep(2); selectQuestion(Math.max(0, invalid)); status.textContent = questions.length ? `Q${invalid + 1}: ${problem(questions[invalid])}.` : 'Add a question.'; return;
         }
         if (configurationProblems(questions).length) {
-            showStep(3); status.textContent = configurationProblems(questions).join(' '); return;
+            showStep(5); status.textContent = configurationProblems(questions).join(' '); return;
         }
         submitting = true;
         const buttons = [...form.querySelectorAll('[type="submit"]')]; buttons.forEach(button => { button.disabled = true; });
@@ -209,12 +243,12 @@
                 submitting = false; buttons.forEach(button => { button.disabled = false; }); return;
             }
             if (!response.ok || result.errors?.length) {
-                showStep(3); status.textContent = (result.errors || ['Could not validate this activity.']).join(' ');
+                showStep(5); status.textContent = (result.errors || ['Could not validate this activity.']).join(' ');
                 const match = status.textContent.match(/(?:Question|Item|word) (\d+)/i);
-                if (match) { showStep(1); selectQuestion(Number(match[1]) - 1); }
+                if (match) { showStep(2); selectQuestion(Number(match[1]) - 1); }
                 submitting = false; buttons.forEach(button => { button.disabled = false; }); return;
             }
-            status.textContent = 'Saving activity…'; leaving = true; HTMLFormElement.prototype.submit.call(form);
+            status.textContent = 'Saving activity…'; clearTimeout(draftTimer); saveLocalDraft(); leaving = true; HTMLFormElement.prototype.submit.call(form);
         } catch (error) {
             status.textContent = error.name === 'TimeoutError' ? 'Validation timed out. Your draft is still here. Try again.' : error.message;
             submitting = false; leaving = false; buttons.forEach(button => { button.disabled = false; });
@@ -223,5 +257,18 @@
     const wide = window.matchMedia('(min-width: 1101px)').matches;
     document.getElementById('builder-live-preview').classList.toggle('preview-open', wide);
     document.getElementById('toggle-live-preview').setAttribute('aria-expanded', String(wide));
-    showStep(window.quizBuilderUnsaved ? 3 : 0, false);
+    const picker = document.getElementById('builder-game-cards');
+    const primary = ['standard', 'crossword', 'flip_match', 'fill_blank', 'emoji_quiz', 'master_ladder'];
+    const more = node('details', undefined, 'additional-modes'); more.append(node('summary', 'More Game Styles'));
+    const moreGrid = node('div', undefined, 'quiz-grid'); more.append(moreGrid);
+    Object.entries(window.quizBuilderModes).forEach(([key, game]) => {
+        const card = node('article', undefined, 'quiz-card');
+        card.append(node('span', game.icon || 'Q', 'mode-badge'), node('h3', game.label), node('p', game.description));
+        const mechanics = node('details'); mechanics.append(node('summary', 'Preview Mechanics'), node('p', window.chalkMechanics?.[key] || game.description));
+        const select = action('Select', () => { form.elements.game_type.value = key; form.elements.game_type.dispatchEvent(new Event('change', {bubbles: true})); });
+        select.dataset.selectGame = key; card.append(mechanics, select);
+        (primary.includes(key) ? picker : moreGrid).append(card);
+    });
+    picker.append(more);
+    showStep(window.quizBuilderUnsaved ? 5 : 0, false);
 })();

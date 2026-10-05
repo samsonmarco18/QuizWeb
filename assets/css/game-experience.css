@@ -1,0 +1,90 @@
+/* Activity surfaces share the existing light/dark theme tokens. */
+body.ui-refined [hidden] { display: none !important; }
+body.ui-refined :is(.game-shell, .builder-panel, .quiz-card, .question-stage, .results-shell, .activity-preview, .game-hud, .builder-question-layout) { min-width: 0; max-width: 100%; }
+body.ui-refined :is(.game-shell, .builder-panel, .results-shell, .activity-preview) :is(h1,h2,h3,p,button,a,label,strong) { overflow-wrap: anywhere; }
+body.ui-refined :is(.game-controls,.builder-toolbar,.preview-devices) { display: flex; flex-wrap: wrap; gap: 8px; }
+body.ui-refined :is(.game-controls,.builder-toolbar,.preview-devices) .button { white-space: normal; min-height: 44px; }
+body.ui-refined .builder-steps { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 4px; }
+body.ui-refined .builder-steps button { min-width: 0; white-space: normal; }
+body.ui-refined .builder-step-summary { font-weight: 700; margin: 8px 0; }
+body.ui-refined .builder-toolbar { position: static; padding: 16px 0 0; }
+body.ui-refined .builder-panel .remove-question { color: var(--danger); background: var(--surface-soft); border: 1px solid var(--border); }
+body.ui-refined .game-page .page-shell { height: auto; }
+body.ui-refined.game-page .page-shell { height: auto; min-height: 100dvh; }
+body.ui-refined.game-page .game-shell { height: auto; }
+body.ui-refined.game-page .game-hud { max-height: none; overflow: visible; }
+body.ui-refined.game-page .mode-stage { overflow: visible; flex: 0 0 auto; }
+body.ui-refined .preview-play-test { padding: 16px; }
+body.ui-refined #builder-game-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
+body.ui-refined #builder-game-cards > details { grid-column: 1 / -1; }
+body.ui-refined .quiz-card.is-selected { border: 2px solid var(--accent); }
+body.ui-refined .quiz-card details { margin: 8px 0 16px; }
+body.ui-refined .question-error { color: var(--danger); font-weight: 600; }
+body.ui-refined :is(button,a,input,summary):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+body.ui-refined .game-instructions { margin: 8px 0 16px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+body.ui-refined summary { cursor: pointer; }
+body.ui-refined .answer-feedback { margin: 16px 0 0; padding: 16px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 8px; text-align: left; }
+body.ui-refined .answer-feedback p { margin: 8px 0 0; }
+body.ui-refined .health-damage { animation: chalk-damage 250ms ease-out; }
+body.ui-refined .question-clock { width: 100%; height: 12px; accent-color: var(--accent); margin-bottom: 16px; }
+body.ui-refined [data-timer-state="warning"] .question-clock { accent-color: var(--warning); }
+body.ui-refined [data-timer-state="urgent"] .question-clock { accent-color: var(--danger); }
+body.ui-refined .game-journey { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; padding: 16px; margin-bottom: 16px; background: var(--surface-soft); border-radius: 8px; }
+body.ui-refined .game-journey progress { width: 100%; accent-color: var(--accent); }
+body.ui-refined .game-journey small { grid-column: 1 / -1; }
+body.ui-refined .journey-track { position: relative; padding-top: 32px; }
+body.ui-refined .journey-marker { position: absolute; top: 0; left: clamp(0px,calc(var(--journey-progress,0%) - 24px),calc(100% - 24px)); font-size: 24px; transition: left 250ms; }
+body.ui-refined .mastery-ladder { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; padding: 0; list-style: none; margin: 0 0 16px; }
+body.ui-refined .mastery-ladder li { padding: 12px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+body.ui-refined .mastery-ladder [aria-current="step"] { border-color: var(--accent); font-weight: 700; }
+body.ui-refined .crossword-play-shell { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 24px; }
+body.ui-refined .crossword-board-scroll { overflow: auto; max-width: 100%; padding: 4px; }
+body.ui-refined .crossword-grid { width: max-content; display: grid; grid-template-columns: repeat(var(--crossword-cols),36px); gap: 2px; }
+body.ui-refined .crossword-cell { width: 36px; height: 40px; min-width: 0; }
+body.ui-refined .crossword-cell-input { width: 100%; height: 100%; padding: 8px 2px 0; text-align: center; }
+body.ui-refined .crossword-cell.active-word { outline: 2px solid var(--accent); outline-offset: -2px; }
+body.ui-refined .crossword-cell:focus-within { outline: 3px solid var(--accent); outline-offset: 1px; }
+body.ui-refined .clue-button { display: block; width: 100%; min-height: 44px; text-align: left; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); padding: 12px; margin: 8px 0; border-radius: 8px; }
+body.ui-refined .clue-button[aria-pressed="true"] { border-color: var(--accent); font-weight: 700; }
+body.ui-refined.mode-flip_match .answers-grid.match-board { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; perspective: 1000px; }
+body.ui-refined .match-card { min-height: 112px; width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; transition: transform 200ms ease, background-color 200ms; transform-style: preserve-3d; }
+body.ui-refined .match-card.is-revealed { transform: rotateY(0deg) translateY(-2px); }
+body.ui-refined .match-card:not(.is-revealed) { transform: rotateY(-8deg); }
+body.ui-refined .match-card.is-matched::after { content: ' ✓ Matched'; display: block; font-size: .8rem; margin-top: 8px; }
+body.ui-refined .activity-preview { box-sizing: border-box; width: min(1180px,94vw); max-height: 92dvh; overflow: auto; }
+body.ui-refined .activity-preview iframe { display: block; width: 100%; max-width: var(--preview-width,100%); height: 66dvh; margin: 0 auto; border: 1px solid var(--border); }
+body.ui-refined .activity-preview .preview-devices { margin-bottom: 16px; }
+body.ui-refined .game-intro-info { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+body.ui-refined .game-intro-info span { padding: 8px 12px; background: var(--surface-soft); border-radius: 8px; }
+body.ui-refined .game-hud { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 16px; }
+body.ui-refined .game-hud > .game-intro-info { grid-column: 1 / -1; grid-row: 2; }
+body.ui-refined .game-hud > .hud-stats { grid-column: 2; grid-row: 1; }
+@keyframes chalk-damage { from { transform: translateY(6px); } to { transform: translateY(0); } }
+@media (max-width: 1024px) {
+    body.ui-refined .builder-panel { grid-template-columns: minmax(0,1fr); }
+    body.ui-refined .crossword-play-shell { grid-template-columns: minmax(0,1fr); }
+    body.ui-refined.mode-flip_match .answers-grid.match-board { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 600px) {
+    body.ui-refined .builder-question-layout > div > .action-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+    body.ui-refined .builder-steps { display: none; }
+    body.ui-refined #builder-game-cards { grid-template-columns: minmax(0,1fr); }
+    body.ui-refined .builder-toolbar { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+    body.ui-refined .builder-toolbar > a { grid-column: 1 / -1; }
+    body.ui-refined .game-controls .button { flex: 1 1 100%; }
+    body.ui-refined .mastery-ladder { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    body.ui-refined.mode-flip_match .answers-grid.match-board { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    body.ui-refined .game-hud { grid-template-columns: minmax(0,1fr); align-items: stretch; gap: 16px; }
+    body.ui-refined .game-hud > .hud-stats { grid-column: 1; grid-row: 3; }
+    body.ui-refined .hud-stats { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; }
+    body.ui-refined .question-stage { padding: 16px; }
+    body.ui-refined .game-shell { padding: 16px; }
+    body.ui-refined .activity-preview { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.ui-refined :is(.match-card,.journey-marker,.health-damage,.answer-button,.game-progress-bar) { animation: none !important; transition: none !important; transform: none !important; }
+}
+
+body.ui-refined .battle-meter-track { background: var(--surface-hover); border: 1px solid var(--border); }
+body.ui-refined .battle-meter-fill-boss { background: var(--danger); }
+body.ui-refined .battle-meter-fill-player { background: var(--accent); }

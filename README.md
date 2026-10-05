@@ -1,5 +1,9 @@
 # QuizWeb / CHALK
 
+For the complete teacher, student, and administrator workflows, game mechanics,
+scoring formulas, leaderboards, and grade publication, see
+[System workflow guide](docs/SYSTEM_WORKFLOW.md).
+
 For the new activity templates and unsaved crossword preview, see
 [Activity builder](docs/ACTIVITY_BUILDER.md).
 
@@ -34,11 +38,35 @@ For local non-Docker PostgreSQL configuration, copy `.env.example` and set the `
 ## Setup
 
 1. Open the XAMPP Control Panel.
-2. Start `Apache` and `MySQL`.
+2. Start `Apache` and PostgreSQL (the application uses PostgreSQL, not MySQL).
 3. Open `http://localhost/QuizWeb/` in your browser.
 4. Register one teacher account and one student account.
 
 Create a PostgreSQL database named `quizweb` and apply `database/schema.sql` before starting the app. Docker Compose and Render handle this automatically.
+
+### One main PostgreSQL file and administrator login
+
+All tables, indexes, and upgrades are in **[database/schema.sql](database/schema.sql)**.
+In pgAdmin, create/select `quizweb`, open Query Tool, load this file, and run it.
+Alternatively run `psql -h 127.0.0.1 -U YOUR_USER -d quizweb -v ON_ERROR_STOP=1 -f database/schema.sql`.
+Set the connection environment variables from `.env.example` and enable PHP's
+`pdo_pgsql` extension for Apache.
+
+Explicitly importing the file creates this sample account when its email is unused:
+
+- Login: `http://localhost/QuizWeb/login.php`
+- Email: `admin@chalk.local`
+- Password: `ChalkAdmin!2026`
+- Admin area after login: `http://localhost/QuizWeb/admin.php`
+
+Existing accounts and passwords are preserved. Application startup reads the
+schema portion of this same file without creating the sample account.
+For an administrator with your own password, run `powershell -File scripts/create_admin.ps1`;
+it prompts for the password and uses your configured PostgreSQL connection.
+
+The current local environment has no running PostgreSQL server on port 5432, so
+the sample login becomes available after the SQL import; it has not been created
+in a live local database during this session.
 
 ## Teacher Test Flow
 

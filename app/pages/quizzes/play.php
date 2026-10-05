@@ -29,12 +29,14 @@ if (!$isPreview) {
     $runToken = bin2hex(random_bytes(24));
     $_SESSION['activity_runs'][$runToken] = ['classroom_id' => $classroomId, 'quiz_id' => $quizId, 'student_id' => (int) $user['id'], 'quiz_snapshot' => $quiz];
 }
+$publicQuiz = activity_public_crossword($quiz, $isPreview);
 $quizData = [
     'id' => $quiz['id'],
     'title' => $quiz['title'],
+    'description' => $quiz['description'] ?? '',
     'game_type' => $quiz['game_type'],
     'mastery_threshold' => mastery_threshold_for_quiz($quiz),
-    'crossword_layout' => $quiz['crossword_layout'] ?? null,
+    'crossword_layout' => $publicQuiz['crossword_layout'] ?? null,
     'questions' => array_map(function (array $question) use ($quiz, $isPreview) {
         if (activity_uses_text_answers($quiz['game_type'])) {
             $public = ['id' => (int) $question['id'], 'prompt' => $question['prompt'], 'points' => (int) $question['points'], 'hint' => $question['hint'] ?? ''];
@@ -47,6 +49,7 @@ $quizData = [
             }
             return $public;
         }
+        if ($quiz['game_type'] === 'crossword' && !$isPreview) return $question;
         return [
             'id' => (int) ($question['id'] ?? 0),
             'prompt' => $question['prompt'],
@@ -57,7 +60,7 @@ $quizData = [
             'level' => $question['level'] ?? 'easy',
             'crossword' => $question['crossword'] ?? null,
         ];
-    }, $quiz['questions']),
+    }, $publicQuiz['questions']),
 ];
 
 render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
@@ -81,6 +84,12 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
                     <span><?php echo esc((string) mastery_threshold_for_quiz($quiz)); ?>% to unlock next level</span>
                 <?php endif; ?>
             </div>
+        </div>
+        <div class="game-intro-info">
+            <span><?php echo (int) array_sum(array_column($quiz['questions'], 'points')); ?> possible points</span>
+            <span><?php echo empty($quiz['grade_category_id']) ? 'Practice · outside classroom grades' : 'Graded · attempt policy: ' . esc($quiz['grade_attempt_policy'] ?? 'highest'); ?></span>
+            <?php if (!$isPreview): ?><span><?php echo count(array_filter(student_attempts((int) $user['id']), static fn($attempt) => (int) $attempt['classroom_id'] === $classroomId && (int) $attempt['quiz_id'] === $quizId)); ?> completed attempts · Retry available</span><?php endif; ?>
+            <?php if (!empty($quiz['due_at'])): ?><span>Due <?php echo esc(format_date($quiz['due_at'])); ?> · reminder, submissions remain open</span><?php endif; ?>
         </div>
         <div class="hud-stats">
             <div class="hud-pill"><span>Question</span><strong data-progress-count>1 / <?php echo esc((string) count($quiz['questions'])); ?></strong></div>
@@ -134,4 +143,4 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
     </div>
 </section>
 
-<?php render_footer([$isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>
+<?php render_footer(['/QuizWeb/assets/js/game-experience.js', $isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>

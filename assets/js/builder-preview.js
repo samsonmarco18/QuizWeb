@@ -5,6 +5,10 @@
     if (!form || !trigger || !dialog) return;
     const status = document.getElementById('preview-status');
     const content = document.getElementById('preview-content');
+    dialog.querySelectorAll('[data-preview-width]').forEach(button => button.addEventListener('click', () => {
+        dialog.style.setProperty('--preview-width', button.dataset.previewWidth);
+        dialog.querySelectorAll('[data-preview-width]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    }));
     document.getElementById('play-test')?.addEventListener('click', () => trigger.click());
     dialog.addEventListener('close', () => content.replaceChildren());
     window.addEventListener('message', event => {
@@ -21,6 +25,7 @@
         quiz.mastery_threshold = quiz.mastery_threshold ?? (Number(form.elements.mastery_threshold.value) || 75);
         const frame = node('iframe');
         frame.title = 'Isolated activity play test';
+        frame.addEventListener('load', () => { frame.dataset.previewReady = '1'; });
         // No same-origin permission, forms, popups, or network writes. Even a
         // renderer regression cannot submit a student attempt from this frame.
         frame.setAttribute('sandbox', 'allow-scripts');
@@ -28,13 +33,15 @@
         const csp = doc.createElement('meta'); csp.httpEquiv = 'Content-Security-Policy';
         csp.content = `default-src 'none'; script-src ${location.origin}; style-src ${location.origin} 'unsafe-inline'; img-src ${location.origin} data:; connect-src 'none'; form-action 'none';`;
         doc.head.append(csp);
-        for (const path of ['site.css', 'refinements.css']) {
+        const viewport = doc.createElement('meta'); viewport.name = 'viewport'; viewport.content = 'width=device-width,initial-scale=1'; doc.head.append(viewport);
+        for (const path of ['site.css', 'refinements.css', 'visual-polish.css', 'game-experience.css']) {
             const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = `${location.origin}/QuizWeb/assets/css/${path}`; doc.head.append(link);
         }
         doc.body.className = `ui-refined game-page mode-${quiz.game_type}${document.body.classList.contains('theme-dark') ? ' theme-dark' : ''}`;
         doc.body.innerHTML = `<main class="preview-play-test"><div class="card-meta"><span data-progress-count></span><span>Score <b data-score-value>0</b></span><span>Streak <b data-streak-value>0</b></span><span>Time <b data-timer-value>0</b></span></div><div class="game-board" data-game-root data-is-preview="1" data-return-url="#"><div class="game-progress"><div class="game-progress-bar" data-progress-bar></div></div><div class="battle-strip" data-battle-strip hidden><div data-boss-health></div><div data-player-health></div></div><div class="mode-stage"><article class="question-stage glass"><span data-question-points></span><h2 data-question-text></h2><p data-question-helper></p><div class="answers-grid" data-answer-grid></div><div class="game-controls" data-game-controls></div></article></div><div class="game-note" data-game-note></div></div></main>`;
         doc.querySelector('[data-game-root]').dataset.quiz = JSON.stringify(quiz);
         doc.querySelector('[data-game-root]').dataset.embeddedPreview = '1';
+        const experience = doc.createElement('script'); experience.src = `${location.origin}/QuizWeb/assets/js/game-experience.js`; doc.body.append(experience);
         const script = doc.createElement('script');
         script.src = `${location.origin}/QuizWeb/assets/js/${['fill_blank', 'emoji_quiz', 'flip_match'].includes(quiz.game_type) ? 'activity-game.js' : 'game.js'}`;
         doc.body.append(script);

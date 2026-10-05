@@ -154,4 +154,4 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
     </div>
 </section>
 
-<?php render_footer(['/QuizWeb/assets/js/game.js']); ?>
+<?php render_footer(['/QuizWeb/assets/js/game-experience.js', '/QuizWeb/assets/js/game.js']); ?>

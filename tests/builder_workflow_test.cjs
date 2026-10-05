@@ -3,13 +3,14 @@ const {JSDOM} = require('../data/qa/node_modules/jsdom');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync('app/pages/quizzes/quiz_builder.php', 'utf8');
-const html = source.slice(source.indexOf('<section class="glass panel builder-panel">'), source.indexOf('<script>\nwindow.quizBuilderSeed'))
+const html = source.slice(source.indexOf('<section class="glass panel builder-panel">'), source.search(/<script>\s*window.quizBuilderSeed/))
     .replace(/<\?php[\s\S]*?\?>/g, '');
-function setup(seed = [], mode = 'standard') {
+function setup(seed = [], mode = 'standard', draft = null) {
     const dom = new JSDOM(`<!doctype html><body class="ui-refined builder-page">${html}<dialog id="activity-preview"><h2 id="preview-title"></h2><p id="preview-status"></p><div id="preview-content"></div></dialog>`, {url: 'http://localhost/QuizWeb/quiz_builder.php?classroom_id=1', runScripts: 'outside-only'});
     const w = dom.window;
     w.matchMedia = () => ({matches: true});
     w.confirm = () => true;
+    if (draft) w.localStorage.setItem('chalk-builder:/QuizWeb/quiz_builder.php?classroom_id=1', JSON.stringify(draft));
     w.alert = message => { throw new Error('Unexpected generic alert: ' + message); };
     w.quizBuilderSeed = seed; w.quizBuilderMode = mode;
     w.quizBuilderThreshold = 75;
@@ -22,6 +23,7 @@ function setup(seed = [], mode = 'standard') {
     w.document.getElementById('question-template').content.querySelector('[data-field="level"]').innerHTML = ['easy', 'medium', 'hard', 'master'].map(key => `<option>${key}</option>`).join('');
     w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
     w.eval(fs.readFileSync('assets/js/site.js', 'utf8'));
+    w.eval(fs.readFileSync('assets/js/game-experience.js', 'utf8'));
     w.eval(fs.readFileSync('assets/js/builder-workflow.js', 'utf8'));
     w.eval(fs.readFileSync('assets/js/builder-preview.js', 'utf8'));
     return {w, doc: w.document, click: id => w.document.getElementById(id).click(), step: index => w.document.querySelector(`[data-step="${index}"]`).click(), close: () => dom.window.close()};
@@ -31,8 +33,14 @@ const seed = [
     {prompt: 'Second question', options: ['A', 'B', 'C', 'D'], correct_index: 2, points: 20, level: 'medium'}
 ];
 const a = setup(seed);
+assert.equal(a.doc.querySelectorAll('[data-step]').length, 6);
+assert(a.doc.getElementById('builder-save').hidden);
+a.step(5); assert(!a.doc.getElementById('builder-save').hidden);
+assert.match(a.doc.getElementById('builder-step-summary').textContent, /Step 6 of 6/);
+a.step(0);
+assert(a.doc.querySelector('[data-select-game="standard"]').getAttribute('aria-pressed') === 'true');
 assert.equal(a.doc.querySelectorAll('#question-list .question-card:not([hidden])').length, 1);
-a.step(1);
+a.step(2);
 a.doc.querySelectorAll('#question-navigator button')[1].click();
 assert.equal(a.doc.querySelector('.question-card:not([hidden]) textarea').value, 'Second question');
 a.click('duplicate-question');
@@ -42,7 +50,7 @@ assert.equal(a.w.quizBuilder.collect()[1].prompt, 'Second question');
 a.doc.querySelector('.question-card:not([hidden]) textarea').value = 'Modified duplicate';
 a.doc.querySelector('.question-card:not([hidden]) textarea').dispatchEvent(new a.w.Event('input', {bubbles: true}));
 assert.match(a.doc.getElementById('live-preview-content').textContent, /Modified duplicate/);
-a.step(2); a.step(0); a.step(1);
+a.step(3); a.step(1); a.step(2);
 assert.equal(a.w.quizBuilder.collect()[1].prompt, 'Modified duplicate');
 a.doc.querySelector('[name="game_type"]').value = 'fill_blank';
 a.doc.querySelector('[name="game_type"]').dispatchEvent(new a.w.Event('change', {bubbles: true}));
@@ -66,6 +74,16 @@ gradeCategory.value = ''; gradeCategory.dispatchEvent(new a.w.Event('change', {b
 assert(a.doc.querySelector('[data-quiz-graded]').hidden);
 assert.match(a.doc.getElementById('builder-review').textContent, /Practice activity/);
 a.close();
+const restored = setup(seed, 'standard', {version:1, fields:{title:'Recovered local draft',game_type:'standard',description:'Teacher instructions',mastery_threshold:'75'}, questions:seed, step:2});
+assert(!restored.doc.getElementById('builder-recovery').hidden);
+restored.click('restore-builder-draft');
+assert.equal(restored.doc.querySelector('[name=title]').value,'Recovered local draft');
+assert.equal(restored.w.quizBuilder.collect().length,2);
+assert.match(restored.doc.getElementById('builder-step-summary').textContent,/Step 3 of 6/);
+assert(!restored.doc.querySelector('[data-builder-step="2"]').hidden);
+restored.click('discard-builder-draft');
+assert.equal(restored.w.localStorage.getItem('chalk-builder:/QuizWeb/quiz_builder.php?classroom_id=1'),null);
+restored.close();
 const conversion = setup(seed);
 const convertedCard = conversion.doc.querySelectorAll('.question-card')[1];
 convertedCard.querySelector('[data-field="correct_index"]').value = '3';
@@ -150,6 +168,7 @@ b.close();
         assert.match(gw.document.querySelector('[data-game-note]').textContent, textMode ? /No score or attempt was saved/ : /previews are not saved/);
         game.window.close();
     }
+    c.doc.querySelector('form').dispatchEvent(new c.w.Event('submit', {bubbles: true, cancelable: true}));
     c.doc.querySelector('form').dispatchEvent(new c.w.Event('submit', {bubbles: true, cancelable: true}));
     await new Promise(resolve => setTimeout(resolve, 10));
     assert.equal(submitted, 1, 'Validated save must retain the existing POST behavior');

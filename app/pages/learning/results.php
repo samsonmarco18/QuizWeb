@@ -85,7 +85,7 @@ render_header('Results', 'results-page');
     </div>
 
     <?php if ($learningSummary && $reviewRows): ?>
-        <div class="result-learning-panel">
+        <div class="result-learning-panel" id="answer-review">
             <div class="section-heading result-section-heading">
                 <div>
                     <span class="eyebrow">Learning review</span>
@@ -133,6 +133,7 @@ render_header('Results', 'results-page');
     <?php endif; ?>
 
     <div class="action-row centered">
+        <?php if ($reviewRows): ?><a class="button button-secondary" href="#answer-review">Review Answers</a><?php endif; ?>
         <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
         <?php if ($quiz): ?>
             <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $attempt['quiz_id']); ?>">Play Again</a>
@@ -141,6 +142,25 @@ render_header('Results', 'results-page');
             <a class="button button-secondary" href="/QuizWeb/practice.php?return=<?php echo rawurlencode('/QuizWeb/results.php?id=' . $attempt['id']); ?>">Focus Practice</a>
         <?php endif; ?>
     </div>
+    <?php if ($quiz && !empty($quiz['grade_category_id'])): ?><p class="muted">This game score is one attempt. Your classroom grade uses the teacher's configured <?php echo esc($quiz['grade_attempt_policy'] ?? 'highest'); ?> attempt policy, category weights, and any adjustments. Released grades appear under My Grades.</p><?php endif; ?>
+    <?php if (!$isDisqualified && $quiz): ?>
+        <?php
+        $mode = $quiz['game_type'] ?? '';
+        $bestStreak = 0; $currentStreak = 0;
+        foreach ($reviewRows as $row) { $currentStreak = $row['is_correct'] ? $currentStreak + 1 : 0; $bestStreak = max($bestStreak, $currentStreak); }
+        ?>
+        <div class="game-intro-info">
+        <?php if ($mode === 'flip_match'): ?><span><?php echo (int) ($attemptAnswers['_moves'] ?? 0); ?> moves · <?php echo count($learningSummary['correct_rows'] ?? []); ?> pairs matched</span>
+        <?php elseif ($mode === 'crossword'): ?><span><?php echo count($learningSummary['correct_rows'] ?? []); ?> / <?php echo count($quiz['questions']); ?> words solved</span>
+        <?php elseif ($mode === 'master_ladder'): ?>
+            <?php $reached = 'Easy'; foreach (mastery_levels() as $level => $label) foreach ($reviewRows as $row) if ($row['level'] === $level) $reached = $label; ?>
+            <span>Highest level reached: <?php echo esc($reached); ?></span>
+        <?php elseif ($mode === 'boss_battle'): ?>
+            <?php $damage = max(4, (int) ceil(100 / max(1, count($quiz['questions'])))); $bossHits = 0; $shieldHits = 0; foreach ($reviewRows as $row) if (array_key_exists($row['index'], $attemptAnswers)) { if ($row['is_correct']) $bossHits++; else $shieldHits++; } ?>
+            <span><?php echo $bossHits * $damage >= 100 ? 'Boss defeated' : ($shieldHits * $damage >= 100 ? 'Shield exhausted' : 'Run finished'); ?> · Game health is separate from academic points</span>
+        <?php else: ?><span>Best streak: <?php echo $bestStreak; ?> correct answers</span><?php endif; ?>
+        </div>
+    <?php endif; ?>
 </section>
 
 <?php render_footer(); ?>
