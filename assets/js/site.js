@@ -411,6 +411,60 @@
         const currentUserId = Number(messengerDock.dataset.currentUserId || 0);
         const messengerSeenStorageKey = `quizweb-messenger-seen-${currentUserId}`;
         const messengerOpenStorageKey = `quizweb-messenger-open-${currentUserId}`;
+        let imagePreview = null;
+        let imagePreviewTrigger = null;
+
+        function restoreImagePreviewFocus() {
+            const replacement = [...messengerDock.querySelectorAll('[data-chat-image-open]')].find(button => button.dataset.imageUrl === imagePreviewTrigger?.dataset.imageUrl);
+            const target = imagePreviewTrigger?.isConnected ? imagePreviewTrigger : replacement || messengerDock.querySelector('.messenger-thread.is-active [name="chat_body"]');
+            imagePreviewTrigger = null;
+            target?.focus();
+        }
+
+        function closeImagePreview() {
+            if (!imagePreview?.open) return;
+            imagePreview.close();
+        }
+
+        function openImagePreview(trigger) {
+            const fileUrl = new URL(trigger.dataset.imageUrl, location.origin);
+            if (fileUrl.origin !== location.origin || fileUrl.pathname !== '/QuizWeb/chat_file.php') return;
+            fileUrl.searchParams.delete('view');
+            const previewUrl = new URL(fileUrl); previewUrl.searchParams.set('view', '1');
+            if (!imagePreview) {
+                imagePreview = chatElement('dialog', 'chat-image-preview');
+                imagePreview.setAttribute('aria-labelledby', 'chat-image-preview-title');
+                imagePreview.innerHTML = `<div class="chat-image-preview-header"><h2 id="chat-image-preview-title">Image preview</h2><div class="chat-image-preview-actions"><a class="button button-primary" data-chat-image-save>Save image</a><button type="button" class="chat-image-preview-close" aria-label="Close image preview">×</button></div></div><div class="chat-image-preview-stage"><img alt="Shared image" data-chat-preview-image><p role="status" data-chat-image-status></p></div>`;
+                document.body.append(imagePreview);
+                imagePreview.querySelector('.chat-image-preview-close').addEventListener('click', closeImagePreview);
+                imagePreview.addEventListener('close', () => {
+                    imagePreview.querySelector('[data-chat-preview-image]').removeAttribute('src');
+                    restoreImagePreviewFocus();
+                });
+                imagePreview.addEventListener('click', event => {
+                    if (event.target !== imagePreview) return;
+                    const bounds = imagePreview.getBoundingClientRect();
+                    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeImagePreview();
+                });
+                const image = imagePreview.querySelector('[data-chat-preview-image]');
+                image.addEventListener('load', () => { imagePreview.querySelector('[data-chat-image-status]').textContent = ''; });
+                image.addEventListener('error', () => { if (imagePreview.open) imagePreview.querySelector('[data-chat-image-status]').textContent = 'This image could not be loaded. Close the preview and try again.'; });
+            }
+            imagePreviewTrigger = trigger;
+            const save = imagePreview.querySelector('[data-chat-image-save]');
+            save.href = fileUrl.href; save.download = trigger.dataset.imageName || 'image';
+            imagePreview.querySelector('[data-chat-image-status]').textContent = 'Loading image…';
+            imagePreview.querySelector('[data-chat-preview-image]').src = previewUrl.href;
+            imagePreview.showModal();
+            imagePreview.querySelector('.chat-image-preview-close').focus();
+        }
+
+        messengerDock.addEventListener('click', event => {
+            const trigger = event.target.closest('[data-chat-image-open]');
+            if (!trigger) return;
+            event.preventDefault();
+            openImagePreview(trigger);
+        });
 
         function readMessengerSeenState() {
             try {
@@ -576,6 +630,7 @@
         }
 
         function closeMessenger() {
+            closeImagePreview();
             messengerThreads.forEach((thread) => setMembersOpen(thread, false));
             messengerDock.classList.remove("is-open");
             messengerPanel?.setAttribute("aria-hidden", "true");
@@ -692,14 +747,19 @@
                 bubble.append(link);
             }
             (message.attachments || []).forEach((file) => {
-                const link = chatElement('a', 'chat-file-link', `${file.name} · ${Math.ceil(file.size / 1024)} KB`);
-                link.href = file.url; link.target = '_blank'; link.rel = 'noopener';
                 if (file.image) {
+                    const preview = chatElement('button', 'chat-image-open');
+                    preview.type = 'button'; preview.dataset.chatImageOpen = '';
+                    preview.dataset.imageUrl = file.url; preview.dataset.imageName = file.name;
+                    preview.setAttribute('aria-label', 'Preview shared image');
                     const img = chatElement('img', 'chat-image');
-                    img.src = `${file.url}&view=1`; img.alt = file.name; img.loading = 'lazy';
-                    link.prepend(img);
+                    img.src = `${file.url}&view=1`; img.alt = 'Shared image'; img.loading = 'lazy';
+                    preview.append(img); bubble.append(preview);
+                } else {
+                    const link = chatElement('a', 'chat-file-link', `${file.name} · ${Math.ceil(file.size / 1024)} KB`);
+                    link.href = file.url;
+                    bubble.append(link);
                 }
-                bubble.append(link);
             });
             if (message.poll) {
                 const poll = chatElement('div', 'chat-poll');
@@ -754,7 +814,8 @@
                 thread.dataset.latestUserId = latest?.user_id || '0';
                 const group = messengerGroupButtons.find((item) => item.dataset.chatId === String(record.id));
                 if (group && latest) {
-                    group.querySelector('.messenger-group-copy > span').textContent = latest.body || latest.poll?.question || latest.attachments?.[0]?.name || latest.link || 'New message';
+                    const attachment = latest.attachments?.[0];
+                    group.querySelector('.messenger-group-copy > span').textContent = latest.body || latest.poll?.question || (attachment?.image ? 'Shared an image' : attachment?.name) || latest.link || 'New message';
                     group.querySelector('time').textContent = new Date(latest.created_at).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
                 }
                 if (atBottom || Number(latest?.user_id) === currentUserId) scrollThreadToBottom(thread);
@@ -868,6 +929,11 @@
         document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshChat(); });
 
         document.addEventListener("keydown", (event) => {
+            if (event.key === 'Escape' && imagePreview?.open) {
+                event.preventDefault();
+                closeImagePreview();
+                return;
+            }
             if (event.key === "Escape" && messengerDock.classList.contains("is-open")) {
                 closeMessenger();
             }
@@ -878,7 +944,7 @@
                 return;
             }
 
-            if (messengerDock.contains(event.target)) {
+            if (messengerDock.contains(event.target) || imagePreview?.contains(event.target)) {
                 return;
             }
 

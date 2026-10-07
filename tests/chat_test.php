@@ -31,6 +31,8 @@ check_chat(!classroom_belongs_to_user($classroom, ['id' => 6, 'role' => 'teacher
 echo "Chat validation, permissions, voting, and privacy checks passed.\n";
 check_chat(chat_message_excerpt(['body' => '', 'poll' => ['question' => 'Review?']]) === 'Review?', 'Polls need a conversation preview.');
 check_chat(chat_message_excerpt(['body' => '', 'attachments' => [['name' => 'Lesson.pdf']]]) === 'Lesson.pdf', 'Files need a conversation preview.');
+check_chat(chat_message_excerpt(['body' => '', 'attachments' => [['name' => 'PrivateScreenshot.png', 'image' => true]]]) === 'Shared an image', 'Image filenames should not appear in the conversation preview.');
+check_chat(chat_message_excerpt(['body' => 'See this', 'attachments' => [['name' => 'Screenshot.png', 'image' => true]]]) === 'See this', 'Image captions should remain the conversation preview.');
 if (in_array('--database', $argv, true)) {
     $pdo = db();
     $pdo->beginTransaction();

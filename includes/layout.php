@@ -383,7 +383,14 @@ function render_messenger_dock(): void
                                                             </div>
                                                             <time datetime="<?php echo esc($message['created_at'] ?? now_iso()); ?>"><?php echo esc(format_date($message['created_at'] ?? now_iso())); ?></time>
                                                         </div>
-                                                        <p><?php echo nl2br(esc($message['body'] ?? '')); ?></p>
+                                                        <?php if (!empty($message['body'])): ?><p><?php echo nl2br(esc($message['body'])); ?></p><?php endif; ?>
+                                                        <?php foreach (chat_public_message($message, (int) $classroom['id'], (int) $user['id'])['attachments'] ?? [] as $file): ?>
+                                                            <?php if (!empty($file['image'])): ?>
+                                                                <button type="button" class="chat-image-open" data-chat-image-open data-image-url="<?php echo esc($file['url']); ?>" data-image-name="<?php echo esc($file['name']); ?>" aria-label="Preview shared image"><img class="chat-image" src="<?php echo esc($file['url'] . '&view=1'); ?>" alt="Shared image" loading="lazy"></button>
+                                                            <?php else: ?>
+                                                                <a class="chat-file-link" href="<?php echo esc($file['url']); ?>"><?php echo esc($file['name']); ?> · <?php echo (int) ceil($file['size'] / 1024); ?> KB</a>
+                                                            <?php endif; ?>
+                                                        <?php endforeach; ?>
                                                     </div>
                                                 </div>
                                             <?php endforeach; ?>
