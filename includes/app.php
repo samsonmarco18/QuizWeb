@@ -16,11 +16,18 @@ define('ATTEMPTS_FILE', DATA_DIR . '/attempts.json');
 define('UPLOADS_DIR', DATA_DIR . '/uploads');
 define('ANNOUNCEMENT_UPLOADS_DIR', UPLOADS_DIR . '/announcements');
 define('ANNOUNCEMENT_MAX_FILE_SIZE', 10 * 1024 * 1024);
-define('DB_HOST', getenv('QUIZWEB_DB_HOST') ?: '127.0.0.1');
-define('DB_PORT', getenv('QUIZWEB_DB_PORT') ?: '5432');
-define('DB_NAME', getenv('QUIZWEB_DB_NAME') ?: 'quizweb');
-define('DB_USER', getenv('QUIZWEB_DB_USER') ?: 'root');
-define('DB_PASS', getenv('QUIZWEB_DB_PASS') ?: '');
+$localDatabase = getenv('RENDER') !== 'true' && is_file(__DIR__ . '/database.local.php')
+    ? require __DIR__ . '/database.local.php' : [];
+define('DB_DRIVER', getenv('QUIZWEB_DB_DRIVER') ?: ($localDatabase['driver'] ?? 'pgsql'));
+if (!in_array(DB_DRIVER, ['pgsql', 'mysql'], true)) {
+    throw new RuntimeException('Unsupported database driver. Use pgsql or mysql.');
+}
+define('DB_HOST', getenv('QUIZWEB_DB_HOST') ?: ($localDatabase['host'] ?? '127.0.0.1'));
+define('DB_PORT', getenv('QUIZWEB_DB_PORT') ?: ($localDatabase['port'] ?? (DB_DRIVER === 'mysql' ? '3306' : '5432')));
+define('DB_NAME', getenv('QUIZWEB_DB_NAME') ?: ($localDatabase['name'] ?? 'quizweb'));
+define('DB_USER', getenv('QUIZWEB_DB_USER') ?: ($localDatabase['user'] ?? 'root'));
+define('DB_PASS', getenv('QUIZWEB_DB_PASS') !== false ? getenv('QUIZWEB_DB_PASS') : ($localDatabase['password'] ?? ''));
+unset($localDatabase);
 
 function ensure_storage(): void
 {
@@ -61,7 +68,8 @@ function write_json(string $file, array $data): void
 
 function database_dsn(): string
 {
-    return sprintf('pgsql:host=%s;port=%s;dbname=%s', DB_HOST, DB_PORT, DB_NAME);
+    return sprintf('%s:host=%s;port=%s;dbname=%s', DB_DRIVER, DB_HOST, DB_PORT, DB_NAME)
+        . (DB_DRIVER === 'mysql' ? ';charset=utf8mb4' : '');
 }
 
 function db_json_encode(array $value): string
@@ -107,9 +115,9 @@ function ensure_database_schema(PDO $pdo): void
         return;
     }
 
-    $schema = file_get_contents(__DIR__ . '/../database/schema.sql');
+    $schema = file_get_contents(__DIR__ . '/../database/' . (DB_DRIVER === 'mysql' ? 'schema.mysql.sql' : 'schema.sql'));
     if ($schema === false || !str_contains($schema, '-- DEMO ADMIN: explicit import only')) {
-        throw new RuntimeException('The main PostgreSQL schema file is missing or invalid.');
+        throw new RuntimeException('The selected database schema file is missing or invalid.');
     }
     // Web requests apply schema only. Render's CLI bootstrap explicitly imports
     // the demo section before Apache starts.
@@ -122,7 +130,7 @@ function table_has_column(PDO $pdo, string $table, string $column): bool
 {
     $statement = $pdo->prepare('
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = :table AND column_name = :column
+        WHERE table_schema = ' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'DATABASE()' : 'current_schema()') . ' AND table_name = :table AND column_name = :column
     ');
     $statement->execute(['table' => $table, 'column' => $column]);
 
@@ -142,21 +150,39 @@ function table_is_empty(PDO $pdo, string $table): bool
     return (int) $statement->fetchColumn() === 0;
 }
 
+function database_upsert_record(PDO $pdo, string $table, string $key, array $record): void
+{
+    $keys = ['users' => 'id', 'classrooms' => 'id', 'attempts' => 'id', 'gradebooks' => 'classroom_id'];
+    if (($keys[$table] ?? null) !== $key || !array_key_exists($key, $record)) {
+        throw new InvalidArgumentException('Unsupported record table or primary key.');
+    }
+    foreach (array_keys($record) as $column) {
+        if (!preg_match('/^[a-z_]+$/', $column)) throw new InvalidArgumentException('Invalid record column.');
+    }
+    $columns = array_keys($record);
+    $updates = array_values(array_diff($columns, [$key]));
+    $sql = 'INSERT INTO ' . $table . ' (' . implode(', ', $columns) . ') VALUES ('
+        . implode(', ', array_map(fn($column) => ':' . $column, $columns)) . ')';
+    if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+        // Match PostgreSQL's primary-key conflict target. MySQL's duplicate-key
+        // clause also catches email/code collisions, which must remain errors.
+        $existing = $pdo->prepare('SELECT ' . $key . ' FROM ' . $table . ' WHERE ' . $key . ' = ?');
+        $existing->execute([$record[$key]]);
+        if ($existing->fetchColumn() !== false) {
+            $sql = 'UPDATE ' . $table . ' SET '
+                . implode(', ', array_map(fn($column) => $column . ' = :' . $column, $updates))
+                . ' WHERE ' . $key . ' = :' . $key;
+        }
+    } else {
+        $sql .= ' ON CONFLICT (' . $key . ') DO UPDATE SET '
+            . implode(', ', array_map(fn($column) => $column . ' = EXCLUDED.' . $column, $updates));
+    }
+    $pdo->prepare($sql)->execute($record);
+}
+
 function insert_user_record(PDO $pdo, array $user): void
 {
-    $statement = $pdo->prepare('
-        INSERT INTO users (id, name, email, password, role, created_at, profile, account_status)
-        VALUES (:id, :name, :email, :password, :role, :created_at, :profile, :account_status)
-        ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            email = EXCLUDED.email,
-            password = EXCLUDED.password,
-            role = EXCLUDED.role,
-            created_at = EXCLUDED.created_at,
-            profile = EXCLUDED.profile,
-            account_status = EXCLUDED.account_status
-    ');
-    $statement->execute([
+    database_upsert_record($pdo, 'users', 'id', [
         'id' => (int) $user['id'],
         'name' => $user['name'],
         'email' => strtolower($user['email']),
@@ -170,26 +196,7 @@ function insert_user_record(PDO $pdo, array $user): void
 
 function insert_classroom_record(PDO $pdo, array $classroom): void
 {
-    $statement = $pdo->prepare('
-        INSERT INTO classrooms (
-            id, teacher_id, name, subject, description, code, student_ids, quizzes, announcements, chat_messages, created_at, updated_at
-        ) VALUES (
-            :id, :teacher_id, :name, :subject, :description, :code, :student_ids, :quizzes, :announcements, :chat_messages, :created_at, :updated_at
-        )
-        ON CONFLICT (id) DO UPDATE SET
-            teacher_id = EXCLUDED.teacher_id,
-            name = EXCLUDED.name,
-            subject = EXCLUDED.subject,
-            description = EXCLUDED.description,
-            code = EXCLUDED.code,
-            student_ids = EXCLUDED.student_ids,
-            quizzes = EXCLUDED.quizzes,
-            announcements = EXCLUDED.announcements,
-            chat_messages = EXCLUDED.chat_messages,
-            created_at = EXCLUDED.created_at,
-            updated_at = EXCLUDED.updated_at
-    ');
-    $statement->execute([
+    database_upsert_record($pdo, 'classrooms', 'id', [
         'id' => (int) $classroom['id'],
         'teacher_id' => (int) $classroom['teacher_id'],
         'name' => $classroom['name'],
@@ -207,25 +214,7 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
 
 function insert_attempt_record(PDO $pdo, array $attempt): void
 {
-    $statement = $pdo->prepare('
-        INSERT INTO attempts (
-            id, student_id, classroom_id, quiz_id, quiz_title, game_type, answers, score, max_score, elapsed_seconds, played_at
-        ) VALUES (
-            :id, :student_id, :classroom_id, :quiz_id, :quiz_title, :game_type, :answers, :score, :max_score, :elapsed_seconds, :played_at
-        )
-        ON CONFLICT (id) DO UPDATE SET
-            student_id = EXCLUDED.student_id,
-            classroom_id = EXCLUDED.classroom_id,
-            quiz_id = EXCLUDED.quiz_id,
-            quiz_title = EXCLUDED.quiz_title,
-            game_type = EXCLUDED.game_type,
-            answers = EXCLUDED.answers,
-            score = EXCLUDED.score,
-            max_score = EXCLUDED.max_score,
-            elapsed_seconds = EXCLUDED.elapsed_seconds,
-            played_at = EXCLUDED.played_at
-    ');
-    $statement->execute([
+    database_upsert_record($pdo, 'attempts', 'id', [
         'id' => (int) $attempt['id'],
         'student_id' => (int) $attempt['student_id'],
         'classroom_id' => (int) $attempt['classroom_id'],

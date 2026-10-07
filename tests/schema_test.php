@@ -1,5 +1,7 @@
 <?php
 session_save_path(sys_get_temp_dir());
+// Verify the PostgreSQL contract even when a developer opts into local MySQL.
+putenv('QUIZWEB_DB_DRIVER=pgsql');
 require_once __DIR__ . '/../includes/app.php';
 class CapturedSchemaPDO extends PDO {
     public string $executed = '';

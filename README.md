@@ -1,5 +1,10 @@
 # QuizWeb / CHALK
 
+All PostgreSQL table definitions, indexes, constraints, and compatible upgrades
+are in **[database/schema.sql](database/schema.sql)**. Open or import this one
+file in pgAdmin. Application startup, Docker, and Render use the same file.
+For local MySQL/MariaDB testing, use **[database/schema.mysql.sql](database/schema.mysql.sql)**.
+
 For the complete teacher, student, and administrator workflows, game mechanics,
 scoring formulas, leaderboards, and grade publication, see
 [System workflow guide](docs/SYSTEM_WORKFLOW.md).
@@ -73,7 +78,29 @@ permissions, and logs out each account. It does not create accounts or alter gra
 Existing accounts with rotated passwords retain those passwords; the sample test
 credentials apply to newly provisioned accounts.
 
-## Legacy XAMPP setup
+## Local XAMPP setup with MySQL/MariaDB
+
+1. Start Apache and MySQL in XAMPP.
+2. In `http://localhost/phpmyadmin/`, create a fresh database named `quizweb`
+   and import **`database/schema.mysql.sql`**. The file contains all six tables,
+   indexes, foreign keys, and the sample admin. Reimporting preserves records and
+   credentials; it does not migrate older MySQL schemas.
+3. Copy `includes/database.local.example.php` to `includes/database.local.php`.
+   Set your local host, port, database, user, and password in that file.
+4. Open `http://localhost/QuizWeb/`. Use the sample administrator from the table
+   above, or register teacher/student accounts. Optionally run
+   `C:\xampppp\php\php.exe scripts/seed_sample_data.php` for sample classrooms.
+
+The local config is ignored by Git and ignored on Render. Environment variables
+override it. Without local config or `QUIZWEB_DB_DRIVER=mysql`, PostgreSQL remains
+the default. MySQL uses port 3306 by default; PostgreSQL uses 5432.
+
+To verify the MySQL schema, run `php tests/mysql_test.php`. Add `--database`
+to check persistence against your configured MySQL server. That test creates and
+removes a separate randomly named test database; the connection user needs
+permission to create databases. It does not use the `quizweb` database.
+
+## XAMPP setup with PostgreSQL
 
 - XAMPP with Apache, PHP, and PostgreSQL PDO support
 - Project folder located at `C:\xampp\htdocs\QuizWeb`

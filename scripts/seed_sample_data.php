@@ -6,8 +6,8 @@ if (PHP_SAPI === 'cli') {
 
 require_once __DIR__ . '/../includes/app.php';
 
-if (PHP_SAPI === 'cli' && !in_array('pgsql', PDO::getAvailableDrivers(), true)) {
-    fwrite(STDERR, "The pdo_pgsql PHP extension is required to seed the PostgreSQL database.\n");
+if (PHP_SAPI === 'cli' && !in_array(DB_DRIVER, PDO::getAvailableDrivers(), true)) {
+    fwrite(STDERR, 'The pdo_' . DB_DRIVER . " PHP extension is required to seed the selected database.\n");
     exit(1);
 }
 

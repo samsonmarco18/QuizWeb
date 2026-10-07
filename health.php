@@ -6,7 +6,7 @@ try {
     db()->query('SELECT 1')->fetchColumn();
     echo json_encode([
         'status' => 'ok',
-        'storage' => 'postgresql',
+        'storage' => DB_DRIVER === 'mysql' ? 'mysql' : 'postgresql',
         'environment' => getenv('RENDER') === 'true' ? 'render' : 'other',
         'revision' => getenv('RENDER_GIT_COMMIT') ?: null,
     ]);

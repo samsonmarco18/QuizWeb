@@ -1,3 +1,4 @@
 .env
 .env.*
 !.env.example
+includes/database.local.php

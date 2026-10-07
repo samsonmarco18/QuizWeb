@@ -157,8 +157,9 @@ function grading_calculate(array $book, int $studentId, array $attempts): array
 
 function grading_write(PDO $pdo, int $classroomId, array $book): void
 {
-    $statement = $pdo->prepare('INSERT INTO gradebooks (classroom_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT (classroom_id) DO UPDATE SET data = EXCLUDED.data, updated_at = EXCLUDED.updated_at');
-    $statement->execute([$classroomId, db_json_encode($book), now_iso()]);
+    database_upsert_record($pdo, 'gradebooks', 'classroom_id', [
+        'classroom_id' => $classroomId, 'data' => db_json_encode($book), 'updated_at' => now_iso(),
+    ]);
 }
 
 function grading_audit(PDO $pdo, int $classroomId, int $actorId, string $action, $previous, $next, ?int $studentId = null, ?string $itemId = null): void
