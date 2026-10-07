@@ -34,7 +34,7 @@ render_header('Register', 'auth-page signup-page');
 <section class="signup-layout">
     <aside class="signup-brand-panel">
         <a class="signup-brand" href="/QuizWeb/login.php" aria-label="<?php echo esc(APP_NAME); ?> home">
-            <span class="brand-badge brand-badge-minimal">CH</span>
+            <span class="brand-badge brand-badge-logo"><img class="brand-logo" src="/QuizWeb/assets/images/chalklogo.png" alt="" width="1355" height="1161" aria-hidden="true"></span>
             <span class="brand-copy">
                 <strong>CHALK</strong>
                 <small>Classroom quiz space</small>
@@ -52,7 +52,7 @@ render_header('Register', 'auth-page signup-page');
     <?php else: ?>
     <form method="post" class="signup-card" id="signup-form">
         <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['signup_csrf']); ?>">
-        <div class="signup-card-top"><span class="signup-mini-brand"><span>CH</span> CHALK</span><small data-step-counter aria-live="polite">Step 1 of 4</small></div>
+        <div class="signup-card-top"><span class="signup-mini-brand"><span class="brand-badge brand-badge-logo"><img class="brand-logo" src="/QuizWeb/assets/images/chalklogo.png" alt="" width="1355" height="1161" aria-hidden="true"></span> CHALK</span><small data-step-counter aria-live="polite">Step 1 of 4</small></div>
         <ol class="signup-progress" aria-label="Registration progress">
             <?php foreach (['Account', 'Personal Info', 'Academic Info', 'Review'] as $index => $label): ?><li data-progress-step="<?php echo $index; ?>"><span><?php echo $index + 1; ?></span><?php echo esc($label); ?></li><?php endforeach; ?>
         </ol>

@@ -98,6 +98,7 @@ function render_header(string $title, string $pageClass = ''): void
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?php echo esc($title . ' | ' . APP_NAME); ?></title>
+        <link rel="icon" type="image/png" href="/QuizWeb/assets/images/chalklogo.png">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -120,7 +121,7 @@ function render_header(string $title, string $pageClass = ''): void
         <?php if ($showHeader): ?>
         <header class="site-header glass">
             <a class="brand" href="<?php echo $user ? '/QuizWeb/dashboard.php' : '/QuizWeb/login.php'; ?>">
-                <span class="brand-badge brand-badge-minimal">CH</span>
+                <span class="brand-badge brand-badge-logo"><img class="brand-logo" src="/QuizWeb/assets/images/chalklogo.png" alt="" width="1355" height="1161" aria-hidden="true"></span>
                 <span class="brand-copy">
                     <strong><?php echo esc(APP_NAME); ?></strong>
                 </span>

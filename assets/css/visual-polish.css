@@ -201,3 +201,18 @@ body.ui-refined:not(.auth-page):not(.game-page) :is(.empty-state, .hero-note-car
 @media (prefers-reduced-motion: reduce) {
     body.ui-refined :is(.button, .quiz-card, .classroom-card) { transform: none !important; }
 }
+
+/* Keep the supplied CHALK artwork clear at each existing responsive badge size. */
+body.ui-refined :is(.brand, .signup-brand, .signup-mini-brand) .brand-badge.brand-badge-logo {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.brand-badge-logo .brand-logo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}

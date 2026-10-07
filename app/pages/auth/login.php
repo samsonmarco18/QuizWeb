@@ -29,7 +29,7 @@ render_header('Login', 'auth-page login-page');
 <section class="auth-layout">
     <aside class="auth-branding">
         <a class="brand auth-brand" href="/QuizWeb/login.php" aria-label="<?php echo esc(APP_NAME); ?> home">
-            <span class="brand-badge brand-badge-minimal">CH</span>
+            <span class="brand-badge brand-badge-logo"><img class="brand-logo" src="/QuizWeb/assets/images/chalklogo.png" alt="" width="1355" height="1161" aria-hidden="true"></span>
             <span class="brand-copy">
                 <strong><?php echo esc(APP_NAME); ?></strong>
                 <small>Classroom quiz space</small>
