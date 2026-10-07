@@ -231,6 +231,8 @@ body.ui-refined:not(.auth-page) :is(.panel-grid, .dashboard-primary-grid, .dashb
     align-items: start;
 }
 body.ui-refined:not(.auth-page) :is(.dashboard-primary-grid, .dashboard-bottom-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Recent progress is the only panel in the student's bottom row. */
+body.ui-refined.student-dashboard .dashboard-bottom-grid { grid-template-columns: minmax(0, 1fr); }
 body.ui-refined:not(.auth-page) :is(.dashboard-overview, .classroom-page .dashboard-hero) { margin-bottom: 24px; }
 body.ui-refined:not(.auth-page) .dashboard-overview .stat-grid { gap: 18px; margin-top: 20px; }
 body.ui-refined:not(.auth-page) .dashboard-overview .stat-card { min-height: 88px; gap: 6px 14px; }

@@ -359,6 +359,7 @@ if ($user['role'] === 'teacher') {
                     <h2>Your latest runs</h2>
                 </div>
             </div>
+            <?php render_score_game_legend($recentAttempts); ?>
             <figure class="dashboard-score-chart<?php echo $recentAttempts ? '' : ' is-empty'; ?>" aria-labelledby="recent-score-chart-title">
                 <figcaption id="recent-score-chart-title">Score trend</figcaption>
                 <div class="dashboard-chart-plot">
@@ -368,9 +369,9 @@ if ($user['role'] === 'teacher') {
                     <div class="dashboard-chart-bars">
                         <?php if ($recentAttempts): ?>
                             <?php foreach (array_reverse($recentAttempts) as $index => $attempt): ?>
-                                <?php $scorePercent = percentage((int) $attempt['score'], (int) $attempt['max_score']); ?>
-                                <div class="dashboard-chart-column">
-                                    <span class="dashboard-chart-value" style="--score: <?php echo esc((string) $scorePercent); ?>" title="<?php echo esc($attempt['quiz_title'] . ': ' . $scorePercent . '%'); ?>"><i><?php echo esc((string) $scorePercent); ?>%</i></span>
+                                <?php $scorePercent = percentage((int) $attempt['score'], (int) $attempt['max_score']); $scoreGame = score_game_type((string) ($attempt['game_type'] ?? '')); ?>
+                                <div class="dashboard-chart-column game-score-type" data-game-type="<?php echo esc($scoreGame['type']); ?>">
+                                    <span class="dashboard-chart-value" style="--score: <?php echo esc((string) $scorePercent); ?>" title="<?php echo esc($attempt['quiz_title'] . ' - ' . $scoreGame['label'] . ': ' . $scorePercent . '%'); ?>"><i><?php echo esc((string) $scorePercent); ?>%</i></span>
                                     <small>Run <?php echo esc((string) ($index + 1)); ?></small>
                                 </div>
                             <?php endforeach; ?>
@@ -395,9 +396,10 @@ if ($user['role'] === 'teacher') {
             <div class="recent-list">
                 <?php if ($recentAttempts): ?>
                     <?php foreach (array_slice($recentAttempts, 0, 4) as $attempt): ?>
-                        <div class="recent-item">
-                            <strong><?php echo esc($attempt['quiz_title']); ?></strong>
-                            <span><?php echo esc(percentage((int) $attempt['score'], (int) $attempt['max_score']) . '% score'); ?></span>
+                        <?php $scoreGame = score_game_type((string) ($attempt['game_type'] ?? '')); ?>
+                        <div class="recent-item game-score-type" data-game-type="<?php echo esc($scoreGame['type']); ?>">
+                            <div class="recent-game-title"><strong><?php echo esc($attempt['quiz_title']); ?></strong><small class="game-type-badge"><?php echo esc($scoreGame['label']); ?></small></div>
+                            <span class="game-type-score"><?php echo esc(percentage((int) $attempt['score'], (int) $attempt['max_score']) . '% score'); ?></span>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>

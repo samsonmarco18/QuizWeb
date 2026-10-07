@@ -269,3 +269,50 @@ body.ui-refined .site-header .compact-nav .nav-link:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     body.ui-refined .site-header .compact-nav .nav-link .nav-label { transition: none; }
 }
+
+/* One game palette for score history, recent runs, and score-trend bars. */
+.game-score-type[data-game-type="standard"] { --game-color-light: #126b5c; --game-color-dark: #62d7bc; }
+.game-score-type[data-game-type="time_attack"] { --game-color-light: #b33350; --game-color-dark: #ff8395; }
+.game-score-type[data-game-type="rocket_rush"] { --game-color-light: #a0510c; --game-color-dark: #ffc074; }
+.game-score-type[data-game-type="memory_flip"] { --game-color-light: #6940aa; --game-color-dark: #b8a4ff; }
+.game-score-type[data-game-type="treasure_dive"] { --game-color-light: #1d6597; --game-color-dark: #80caff; }
+.game-score-type[data-game-type="boss_battle"] { --game-color-light: #a74223; --game-color-dark: #ff9f80; }
+.game-score-type[data-game-type="crossword"] { --game-color-light: #0f6c78; --game-color-dark: #6fdae5; }
+.game-score-type[data-game-type="master_ladder"] { --game-color-light: #79610a; --game-color-dark: #efcf71; }
+.game-score-type[data-game-type="fill_blank"] { --game-color-light: #4d52a2; --game-color-dark: #a6b8ff; }
+.game-score-type[data-game-type="emoji_quiz"] { --game-color-light: #973b82; --game-color-dark: #f4a1df; }
+.game-score-type[data-game-type="flip_match"] { --game-color-light: #4f6f16; --game-color-dark: #badd83; }
+.game-score-type[data-game-type="focus_training"] { --game-color-light: #586f65; --game-color-dark: #bbcad0; }
+body.ui-refined .game-score-type { --game-color: var(--game-color-light, #586f65); }
+body.ui-refined.theme-dark .game-score-type { --game-color: var(--game-color-dark, #bbcad0); }
+.score-game-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 20px; }
+.score-game-legend > strong { color: var(--text-secondary); font-size: 11px; }
+.score-game-legend ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+body.ui-refined .game-score-type .game-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 3px 8px;
+    border: 1px solid color-mix(in srgb, var(--game-color) 25%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--game-color) 8%, var(--surface));
+    color: var(--game-color);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.game-type-badge::before { content: ''; flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+body.ui-refined .results-table-row.game-score-type,
+body.ui-refined .recent-item.game-score-type {
+    border-left: 3px solid var(--game-color);
+    background: color-mix(in srgb, var(--game-color) 4%, var(--surface));
+}
+body.ui-refined .game-score-type .game-type-score { color: var(--game-color); }
+.recent-game-title { display: grid; gap: 5px; min-width: 0; }
+body.ui-refined .recent-item.game-score-type .game-type-score { flex-shrink: 0; }
+body.ui-refined .dashboard-chart-column.game-score-type .dashboard-chart-value {
+    background: var(--game-color);
+    background: linear-gradient(180deg, var(--game-color), color-mix(in srgb, var(--game-color) 72%, var(--surface)));
+}
+body.ui-refined .dashboard-chart-column.game-score-type .dashboard-chart-value i { color: var(--game-color); }

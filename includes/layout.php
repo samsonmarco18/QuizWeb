@@ -3,6 +3,29 @@
 require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/profile.php';
 
+function score_game_type(string $type): array
+{
+    $modes = game_modes();
+    if ($type === 'focus_training') return ['type' => $type, 'label' => 'Focus Training'];
+    if (isset($modes[$type])) return ['type' => $type, 'label' => $modes[$type]['label']];
+    return ['type' => 'other', 'label' => 'Other Quiz'];
+}
+
+function render_score_game_legend(array $attempts): void
+{
+    $types = [];
+    foreach ($attempts as $attempt) {
+        $game = score_game_type((string) ($attempt['game_type'] ?? ''));
+        $types[$game['type']] = $game;
+    }
+    if (!$types) return;
+    echo '<div class="score-game-legend"><strong>Game types</strong><ul aria-label="Game type colors">';
+    foreach ($types as $game) {
+        echo '<li class="game-score-type" data-game-type="' . esc($game['type']) . '"><span class="game-type-badge">' . esc($game['label']) . '</span></li>';
+    }
+    echo '</ul></div>';
+}
+
 function nav_links(?array $user): array
 {
     if (!$user) {
