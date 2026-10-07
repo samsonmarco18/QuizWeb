@@ -128,11 +128,12 @@ function render_header(string $title, string $pageClass = ''): void
             </a>
             <?php if ($user): ?><button class="sidebar-toggle" type="button" aria-expanded="false" aria-controls="classroom-sidebar" aria-label="Open navigation"><?php echo nav_icon('menu'); ?></button><?php endif; ?>
             <div class="header-actions">
-                <nav class="top-nav" aria-label="Main navigation">
+                <nav class="top-nav compact-nav" id="primary-navigation" aria-label="Main navigation">
                     <?php foreach (nav_links($user) as [$href, $label]): ?>
-                            <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>" <?php echo str_contains(nav_link_class($href), 'is-active') ? 'aria-current="page"' : ''; ?>><?php echo nav_icon($label); ?><span><?php echo esc($label); ?></span></a>
+                            <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>" aria-label="<?php echo esc($label); ?>" <?php echo str_contains(nav_link_class($href), 'is-active') ? 'aria-current="page"' : ''; ?>><?php echo nav_icon($label); ?><span class="nav-label" aria-hidden="true"><?php echo esc($label); ?></span></a>
                     <?php endforeach; ?>
                 </nav>
+                <button class="nav-label-toggle" type="button" data-nav-label-toggle aria-controls="primary-navigation" aria-expanded="false" aria-label="Show navigation labels" title="Show navigation labels" hidden><?php echo nav_icon('menu'); ?></button>
                 <?php if ($user): ?>
                     <div class="account-menu">
                         <button class="account-toggle" type="button" aria-expanded="false" aria-controls="account-dropdown">

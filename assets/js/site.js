@@ -12,6 +12,28 @@
     const classroomSidebar = document.getElementById("classroom-sidebar");
     const themeStorageKey = "quizweb-theme";
 
+    const primaryNavigation = document.getElementById("primary-navigation");
+    const navLabelToggle = document.querySelector("[data-nav-label-toggle]");
+    const navLabelStorageKey = "quizweb-navigation-labels";
+    function setNavigationLabels(expanded) {
+        primaryNavigation?.classList.toggle("labels-expanded", expanded);
+        const label = expanded ? "Hide navigation labels" : "Show navigation labels";
+        navLabelToggle?.setAttribute("aria-expanded", String(expanded));
+        navLabelToggle?.setAttribute("aria-label", label);
+        if (navLabelToggle) navLabelToggle.title = label;
+    }
+    if (primaryNavigation && navLabelToggle) {
+        let expanded = false;
+        try { expanded = localStorage.getItem(navLabelStorageKey) === "expanded"; } catch (error) {}
+        setNavigationLabels(expanded);
+        navLabelToggle.hidden = false;
+        navLabelToggle.addEventListener("click", () => {
+            const next = !primaryNavigation.classList.contains("labels-expanded");
+            setNavigationLabels(next);
+            try { localStorage.setItem(navLabelStorageKey, next ? "expanded" : "compact"); } catch (error) {}
+        });
+    }
+
     document.querySelectorAll('.flash').forEach((notification) => {
         window.setTimeout(() => notification.remove(), 2000);
     });
