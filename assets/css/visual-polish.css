@@ -217,12 +217,16 @@ body.ui-refined :is(.brand, .signup-brand, .signup-mini-brand) .brand-badge.bran
     object-fit: contain;
 }
 
-/* Compact navigation keeps labels available on hover, focus, and touch toggling. */
+/* Each navigation icon expands its own label on hover or keyboard focus. */
 body.ui-refined .site-header { display: flex; }
-body.ui-refined .site-header .header-actions { display: flex; gap: 12px; }
+body.ui-refined .site-header .header-actions { display: flex; justify-content: flex-start; gap: 12px; }
+body.ui-refined .site-header .account-menu { margin-left: auto; }
 body.ui-refined .site-header .compact-nav {
     display: flex;
     flex-wrap: wrap;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    margin: 0;
     min-width: 0;
     gap: 5px;
 }
@@ -239,66 +243,26 @@ body.ui-refined .site-header .compact-nav .nav-link {
 }
 body.ui-refined .site-header .compact-nav .nav-link .nav-label {
     display: block;
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 7px 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text-primary);
-    box-shadow: var(--app-shadow);
+    max-width: 0;
+    margin-left: 0;
+    overflow: hidden;
     white-space: nowrap;
-    pointer-events: none;
-    visibility: hidden;
     opacity: 0;
-    z-index: 1;
-    transition: opacity 140ms ease;
+    transition: max-width 180ms ease, margin-left 180ms ease, opacity 140ms ease;
 }
-body.ui-refined .site-header .compact-nav .nav-link:first-child .nav-label { left: 0; transform: none; }
-body.ui-refined .site-header .compact-nav .nav-link:last-child .nav-label { left: auto; right: 0; transform: none; }
-body.ui-refined .site-header .compact-nav .nav-link:is(:hover, :focus-visible) .nav-label {
-    visibility: visible;
-    opacity: 1;
-}
-body.ui-refined .site-header .compact-nav.labels-expanded .nav-link .nav-label {
-    position: static;
+body.ui-refined .site-header .compact-nav .nav-link:hover .nav-label,
+body.ui-refined .site-header .compact-nav .nav-link:focus-visible .nav-label {
+    max-width: 180px;
     margin-left: 8px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    box-shadow: none;
-    transform: none;
-    visibility: visible;
     opacity: 1;
 }
-body.ui-refined .site-header .nav-label-toggle {
-    display: inline-grid;
-    place-items: center;
-    flex: 0 0 44px;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text-secondary);
-    cursor: pointer;
-}
-body.ui-refined .site-header .nav-label-toggle:is(:hover, [aria-expanded="true"]) {
-    background: var(--surface-hover);
-    color: var(--accent);
-}
-body.ui-refined .site-header :is(.nav-label-toggle, .compact-nav .nav-link):focus-visible {
+body.ui-refined .site-header .compact-nav .nav-link:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
 }
 @media (max-width: 760px) {
     body.ui-refined .site-header .header-actions { display: grid; grid-template-columns: 1fr auto; width: 100%; }
     body.ui-refined .site-header .compact-nav { grid-row: 2; grid-column: 1 / -1; justify-content: center; }
-    body.ui-refined .site-header .nav-label-toggle { grid-row: 1; grid-column: 1; justify-self: end; }
     body.ui-refined .site-header .account-menu,
     body.ui-refined .site-header .header-actions > .theme-toggle { grid-row: 1; grid-column: 2; }
 }
