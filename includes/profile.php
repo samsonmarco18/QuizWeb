@@ -1,4 +1,75 @@
 <?php
+function profile_photo_metadata(array $user): ?array {
+    $photo = $user['profile']['avatar'] ?? null;
+    if (!is_array($photo) || !is_string($photo['file'] ?? null) || !preg_match('/^[a-f0-9]{48}$/D', $photo['file'])
+        || !in_array($photo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)) return null;
+    return ['file' => $photo['file'], 'mime' => $photo['mime']];
+}
+function profile_photo_url(array $user): ?string {
+    $photo = profile_photo_metadata($user);
+    return $photo ? '/QuizWeb/profile_photo.php?id=' . (int) $user['id'] . '&v=' . $photo['file'] : null;
+}
+function render_profile_avatar(array $user, string $class = 'account-avatar'): void {
+    $name = trim((string) ($user['name'] ?? 'Member'));
+    $initial = function_exists('mb_substr') ? mb_substr($name, 0, 1) : substr($name, 0, 1);
+    echo '<span class="' . esc($class) . ' profile-photo-avatar" aria-hidden="true">' . esc(strtoupper($initial) ?: 'M');
+    if ($url = profile_photo_url($user)) echo '<img class="profile-avatar-image" src="' . esc($url) . '" alt="">';
+    echo '</span>';
+}
+function can_view_profile_photo(array $viewer, array $target, array $classrooms): bool {
+    if ((int) $viewer['id'] === (int) $target['id'] || ($viewer['role'] ?? '') === 'admin') return true;
+    foreach ($classrooms as $classroom) {
+        if (classroom_belongs_to_user($classroom, $viewer) && classroom_belongs_to_user($classroom, $target)) return true;
+    }
+    return false;
+}
+function profile_validate_photo(string $path): array {
+    $size = is_file($path) ? filesize($path) : 0;
+    if (!$size || $size > 2 * 1024 * 1024) throw new InvalidArgumentException('Choose a profile photo smaller than 2 MB.');
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+    $image = @getimagesize($path);
+    if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true) || !$image || ($image['mime'] ?? '') !== $mime) {
+        throw new InvalidArgumentException('Choose a valid JPG, PNG, or WebP image.');
+    }
+    if ($image[0] > 4096 || $image[1] > 4096 || $image[0] * $image[1] > 12000000) {
+        throw new InvalidArgumentException('Use a photo up to 4096 pixels per side and 12 megapixels.');
+    }
+    return ['mime' => $mime];
+}
+function profile_store_photo(array $file): array {
+    if (!is_int($file['error'] ?? null) || $file['error'] !== UPLOAD_ERR_OK || !is_string($file['tmp_name'] ?? null) || !is_uploaded_file($file['tmp_name'])) {
+        throw new InvalidArgumentException('Choose a photo and try uploading it again (maximum 2 MB).');
+    }
+    $photo = profile_validate_photo($file['tmp_name']);
+    $directory = UPLOADS_DIR . '/profiles';
+    if (!is_dir($directory) && !mkdir($directory, 0777, true)) throw new RuntimeException('Profile photo storage is unavailable.');
+    $photo['file'] = bin2hex(random_bytes(24));
+    if (!move_uploaded_file($file['tmp_name'], $directory . '/' . $photo['file'])) throw new RuntimeException('The profile photo could not be saved.');
+    return $photo;
+}
+function profile_delete_photo(array $profile): void {
+    $photo = profile_photo_metadata(['profile' => $profile]);
+    if ($photo) @unlink(UPLOADS_DIR . '/profiles/' . $photo['file']);
+}
+function profile_save_changes(PDO $pdo, int $userId, array $changes, bool $removePhoto = false): array {
+    $pdo->beginTransaction();
+    try {
+        $select = $pdo->prepare('SELECT profile FROM users WHERE id = ? FOR UPDATE');
+        $select->execute([$userId]);
+        $row = $select->fetch();
+        if (!$row) throw new RuntimeException('Account not found.');
+        $previous = db_json_decode($row['profile']);
+        $next = array_replace($previous, $changes);
+        if ($removePhoto) unset($next['avatar']);
+        $pdo->prepare('UPDATE users SET profile = ? WHERE id = ?')->execute([json_encode((object) $next, JSON_UNESCAPED_SLASHES), $userId]);
+        $pdo->commit();
+        return $previous;
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+}
+
 function profile_labels(): array {
     return ['student_number' => 'Student Number', 'birthdate' => 'Birthdate', 'gender' => 'Gender', 'program' => 'Program / Course', 'year_level' => 'Year Level'];
 }

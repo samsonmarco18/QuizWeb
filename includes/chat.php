@@ -1,6 +1,21 @@
 <?php
 
 require_once __DIR__ . '/app.php';
+require_once __DIR__ . '/profile.php';
+
+function chat_public_members(array $classroom, array $viewer, array $allUsers): array
+{
+    if (!classroom_belongs_to_user($classroom, $viewer)) throw new InvalidArgumentException('Classroom access denied.');
+    $members = [];
+    foreach ($allUsers as $member) {
+        if (!classroom_belongs_to_user($classroom, $member)) continue;
+        $members[(int) $member['id']] = ['id' => (int) $member['id'], 'name' => (string) $member['name'],
+            'role' => (string) $member['role'], 'avatar_url' => profile_photo_url($member)];
+    }
+    $members = array_values($members);
+    usort($members, static fn($a, $b) => ($a['role'] === 'teacher' ? 0 : 1) <=> ($b['role'] === 'teacher' ? 0 : 1) ?: strcasecmp($a['name'], $b['name']));
+    return $members;
+}
 
 function chat_text(array $input, string $key): string
 {
@@ -39,9 +54,10 @@ function chat_vote(array $message, int $userId, int $option): array
     return $message;
 }
 
-function chat_public_message(array $message, int $classroomId, int $userId): array
+function chat_public_message(array $message, int $classroomId, int $userId, ?string $avatarUrl = null): array
 {
     unset($message['request_id']);
+    $message['avatar_url'] = $avatarUrl;
     foreach ($message['attachments'] ?? [] as $index => $attachment) {
         $message['attachments'][$index] = [
             'name' => $attachment['name'], 'size' => $attachment['size'], 'image' => $attachment['image'],

@@ -129,6 +129,21 @@ QUIZWEB_ADMIN_EMAIL and QUIZWEB_ADMIN_PASSWORD supplied through its environment.
 
 ### Classroom messenger
 
+Click **Members** in a conversation header to see its teacher and enrolled
+students. Names, roles, and profile photos update with the conversation; private
+profile fields and email addresses are not included in the member list.
+
+In **Profile Settings → Edit Profile**, upload, replace, or remove a JPG, PNG,
+or WebP profile photo (up to 2 MB). Photos appear in the account menu, member
+lists, and messages. Photo updates preserve profile details, and editing details
+preserves the photo. Metadata uses `users.profile`; protected image files use
+`data/uploads/profiles`, with access limited to the owner, classroom members,
+and administrators. No additional tables are required.
+
+Run `php tests/profile_photo_test.php` and
+`node tests/member_profile_workflow_test.cjs` for photo permissions, safe image
+validation, profile preservation, and member-list/preview interactions.
+
 The floating chat button opens classroom conversations. Messages send without a page reload, and conversations refresh every five seconds while the tab is visible. Search and the Unread filter work across the current user's classrooms.
 
 - Enter sends; Shift+Enter adds a line break. Failed sends retain the draft.
@@ -196,6 +211,20 @@ On Render, the web container runs the admin-and-sample bootstrap during startup 
 All newly created student and teacher demo accounts use the password `Sample123!`. The script prints each demo email and is safe to rerun without duplicating its quiz attempts.
 
 ## Game Testing Checklist
+
+Game entry and active play fill the viewport, with a compact score/timer header
+and a scrollable play area for long questions and puzzles. Open **Activity
+details** or **Game instructions** before starting; starting collapses the
+details while instructions remain available. Focus Practice uses the same layout.
+Run `node tests/game_experience_test.cjs` for game flows using the actual PHP
+templates, and `node tests/quiz_security_browser_test.cjs` for fullscreen security.
+
+Game entry and active play fill the viewport, with a compact score/timer header
+and a scrollable play area for long questions and puzzles. Open **Activity
+details** or **Game instructions** before starting; starting collapses the
+details while instructions remain available. Focus Practice uses the same layout.
+Run `node tests/game_experience_test.cjs` for game flows using the actual PHP
+templates, and `node tests/quiz_security_browser_test.cjs` for fullscreen security.
 
 - Time Attack: timer counts down per question and timeout marks the item wrong.
 - Rocket Rush: answers can be selected by mouse or keys `1` to `4`.

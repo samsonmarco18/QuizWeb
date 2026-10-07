@@ -90,16 +90,13 @@ $_SESSION['focus_training_return'] = $practiceReturn;
 render_header('Focus Practice', 'game-page mode-time_attack practice-page');
 ?>
 
-<section class="game-shell glass">
+<section class="game-shell" aria-label="Focus practice game">
     <div class="game-hud">
-        <div>
-            <span class="eyebrow">Self-learning coach</span>
-            <h1>Focus Practice</h1>
-            <p class="lead compact">A no-grade round built from your weakest recent multiple-choice items.</p>
-            <div class="feature-pills">
-                <span><?php echo esc(count($practiceQuestions) . ' practice questions'); ?></span>
-                <span>Recorded as training</span>
-                <span><?php echo esc((string) $profile['overall_accuracy']); ?>% current accuracy</span>
+        <div class="game-identity">
+            <a class="button button-secondary game-exit" href="<?php echo esc($practiceReturn); ?>"><?php echo nav_icon('arrow-left'); ?><span>Exit</span></a>
+            <div class="game-title">
+                <span class="eyebrow">Self-learning coach</span>
+                <h1>Focus Practice</h1>
             </div>
         </div>
         <div class="hud-stats">
@@ -107,7 +104,6 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
             <div class="hud-pill"><span>Score</span><strong data-score-value>0</strong></div>
             <div class="hud-pill"><span>Streak</span><strong data-streak-value>0x</strong></div>
             <div class="hud-pill"><span>Timer</span><strong data-timer-value>0s</strong></div>
-            <a class="button button-secondary game-exit-button" href="<?php echo esc($practiceReturn); ?>">Exit</a>
         </div>
     </div>
 
@@ -139,10 +135,21 @@ render_header('Focus Practice', 'game-page mode-time_attack practice-page');
             </div>
         </div>
         <div class="mode-stage">
+            <div class="game-help" data-game-help>
+                <details class="game-briefing" data-game-briefing>
+                    <summary>Activity details</summary>
+                    <p class="lead compact">A no-grade round built from your weakest recent multiple-choice items.</p>
+                    <div class="feature-pills">
+                        <span><?php echo esc(count($practiceQuestions) . ' practice questions'); ?></span>
+                        <span>Recorded as training</span>
+                        <span><?php echo esc((string) $profile['overall_accuracy']); ?>% current accuracy</span>
+                    </div>
+                </details>
+            </div>
             <div class="mode-decoration mode-decoration-one"></div>
             <div class="mode-decoration mode-decoration-two"></div>
             <div class="mode-decoration mode-decoration-three"></div>
-            <article class="question-stage glass">
+            <article class="question-stage">
                 <span class="question-points" data-question-points></span>
                 <h2 data-question-text>Loading question...</h2>
                 <p class="question-helper" data-question-helper></p>

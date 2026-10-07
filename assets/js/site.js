@@ -12,6 +12,48 @@
     const classroomSidebar = document.getElementById("classroom-sidebar");
     const themeStorageKey = "quizweb-theme";
 
+    document.addEventListener('error', (event) => {
+        if (event.target instanceof HTMLImageElement && event.target.classList.contains('profile-avatar-image')) event.target.remove();
+    }, true);
+    document.querySelectorAll('[data-profile-photo-form]').forEach((form) => {
+        const input = form.querySelector('[data-profile-photo-input]');
+        const preview = form.querySelector('[data-profile-photo-preview] .profile-photo-avatar');
+        const status = form.querySelector('[data-profile-photo-status]');
+        const savedPhotoUrl = preview.querySelector('img')?.getAttribute('src');
+        let previewUrl;
+        function restorePhoto() {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = null;
+            preview.querySelector('img')?.remove();
+            if (savedPhotoUrl) {
+                const image = document.createElement('img');
+                image.className = 'profile-avatar-image'; image.alt = ''; image.src = savedPhotoUrl; preview.append(image);
+            }
+        }
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (!file) { restorePhoto(); status.textContent = ''; return; }
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+                status.textContent = 'Choose a JPG, PNG, or WebP photo smaller than 2 MB.';
+                input.value = '';
+                restorePhoto();
+                return;
+            }
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = URL.createObjectURL(file);
+            preview.querySelector('img')?.remove();
+            const image = document.createElement('img');
+            image.className = 'profile-avatar-image'; image.alt = ''; image.src = previewUrl;
+            preview.append(image);
+            status.textContent = 'Photo selected. Upload it to save your changes.';
+        });
+        form.addEventListener('submit', (event) => {
+            if (event.submitter?.value === 'photo_upload' && !input.files?.length) {
+                event.preventDefault(); status.textContent = 'Choose a photo before uploading.'; input.focus();
+            }
+        });
+    });
+
     document.querySelectorAll('.flash').forEach((notification) => {
         window.setTimeout(() => notification.remove(), 2000);
     });
@@ -510,6 +552,7 @@
             }
 
             messengerThreads.forEach((thread) => {
+                setMembersOpen(thread, false);
                 thread.classList.toggle("is-active", thread === targetThread);
             });
 
@@ -533,6 +576,7 @@
         }
 
         function closeMessenger() {
+            messengerThreads.forEach((thread) => setMembersOpen(thread, false));
             messengerDock.classList.remove("is-open");
             messengerPanel?.setAttribute("aria-hidden", "true");
             messengerPanel.hidden = true;
@@ -577,10 +621,62 @@
             return element;
         }
 
+        function chatAvatar(name, url, className) {
+            const initial = (Array.from(String(name || 'Member').trim())[0] || 'M').toUpperCase();
+            const avatar = chatElement('span', `${className} profile-photo-avatar`, initial);
+            avatar.setAttribute('aria-hidden', 'true');
+            if (typeof url === 'string' && /^\/QuizWeb\/profile_photo\.php\?id=\d+&v=[a-f0-9]{48}$/.test(url)) {
+                const image = chatElement('img', 'profile-avatar-image');
+                image.alt = ''; image.src = url; avatar.append(image);
+            }
+            return avatar;
+        }
+        function setMembersOpen(thread, open, returnFocus = false) {
+            const panel = thread.querySelector('[data-chat-members-panel]');
+            const toggle = thread.querySelector('[data-chat-members-toggle]');
+            if (!panel || !toggle) return;
+            panel.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+            if (open) {
+                panel.style.top = `${thread.querySelector('.messenger-thread-top')?.offsetHeight || 66}px`;
+                panel.querySelector('[data-chat-members-close]')?.focus();
+            }
+            else if (returnFocus) toggle.focus();
+        }
+        messengerThreads.forEach((thread) => {
+            const toggle = thread.querySelector('[data-chat-members-toggle]');
+            const panel = thread.querySelector('[data-chat-members-panel]');
+            toggle?.addEventListener('click', () => setMembersOpen(thread, panel.hidden));
+            panel?.querySelector('[data-chat-members-close]')?.addEventListener('click', () => setMembersOpen(thread, false, true));
+            panel?.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') { event.stopPropagation(); setMembersOpen(thread, false, true); }
+            });
+        });
+        function applyChatMembers(record, thread) {
+            if (!Array.isArray(record.members)) return;
+            const signature = JSON.stringify(record.members);
+            if (thread.memberSignature === signature) return;
+            thread.memberSignature = signature;
+            const list = thread.querySelector('[data-chat-member-list]');
+            if (!list) return;
+            const fragment = document.createDocumentFragment();
+            record.members.forEach((member) => {
+                const row = chatElement('li', 'messenger-member');
+                row.append(chatAvatar(member.name, member.avatar_url, 'messenger-member-avatar'));
+                const info = chatElement('div');
+                info.append(chatElement('strong', '', `${member.name}${Number(member.id) === currentUserId ? ' (You)' : ''}`));
+                info.append(chatElement('small', '', member.role === 'teacher' ? 'Teacher' : 'Student'));
+                row.append(info); fragment.append(row);
+            });
+            list.replaceChildren(fragment);
+            const count = thread.querySelector('[data-chat-member-count]');
+            if (count) count.textContent = String(record.members.length);
+        }
+
         function renderChatMessage(message, thread) {
             const self = Number(message.user_id) === currentUserId;
             const row = chatElement('div', `messenger-message ${self ? 'is-self' : 'is-student'}`);
-            row.append(chatElement('span', 'messenger-message-avatar', (message.user_name || 'M').slice(0, 1).toUpperCase()));
+            row.append(chatAvatar(message.user_name, message.avatar_url, 'messenger-message-avatar'));
             const bubble = chatElement('div', 'messenger-message-bubble');
             const meta = chatElement('div', 'messenger-message-meta');
             meta.append(chatElement('strong', '', self ? 'You' : message.user_name));
@@ -634,6 +730,7 @@
             threads.forEach((record) => {
                 const thread = messengerThreads.find((item) => Number(item.dataset.chatId) === record.id);
                 if (!thread) return;
+                applyChatMembers(record, thread);
                 const signature = JSON.stringify(record.messages);
                 if (thread.chatSignature === signature) return;
                 thread.chatSignature = signature;

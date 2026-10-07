@@ -71,30 +71,14 @@ $quizData = [
 render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
 ?>
 
-<section class="game-shell glass">
+<section class="game-shell" aria-label="Quiz game">
     <div class="game-hud">
-        <div>
-            <a class="button button-secondary game-exit" href="/QuizWeb/classroom.php?id=<?php echo (int) $classroomId; ?>&amp;tab=quizzes">Back to Classroom</a>
-            <span class="eyebrow"><?php echo esc($modes[$quiz['game_type']]['label'] ?? 'Quiz Mode'); ?></span>
-            <h1><?php echo esc($quiz['title']); ?></h1>
-            <p class="lead compact"><?php echo esc($quiz['description'] ?: $modes[$quiz['game_type']]['description']); ?></p>
-            <div class="feature-pills">
-                <span><?php echo esc(count($quiz['questions']) . (($quiz['game_type'] ?? '') === 'crossword' ? ' words' : ' questions')); ?></span>
-                <span><?php echo esc($isPreview ? 'Teacher preview' : 'Live student run'); ?></span>
-                <span><?php echo esc($classroom['name']); ?></span>
-                <?php if (($quiz['game_type'] ?? '') === 'crossword'): ?>
-                    <span>Intersecting word grid</span>
-                <?php endif; ?>
-                <?php if (($quiz['game_type'] ?? '') === 'master_ladder'): ?>
-                    <span><?php echo esc((string) mastery_threshold_for_quiz($quiz)); ?>% to unlock next level</span>
-                <?php endif; ?>
+        <div class="game-identity">
+            <a class="button button-secondary game-exit" href="/QuizWeb/classroom.php?id=<?php echo (int) $classroomId; ?>&amp;tab=quizzes"><?php echo nav_icon('arrow-left'); ?><span>Classroom</span></a>
+            <div class="game-title">
+                <span class="eyebrow"><?php echo esc($modes[$quiz['game_type']]['label'] ?? 'Quiz Mode'); ?></span>
+                <h1><?php echo esc($quiz['title']); ?></h1>
             </div>
-        </div>
-        <div class="game-intro-info">
-            <span><?php echo (int) array_sum(array_column($quiz['questions'], 'points')); ?> possible points</span>
-            <span><?php echo empty($quiz['grade_category_id']) ? 'Practice · outside classroom grades' : 'Graded · attempt policy: ' . esc($quiz['grade_attempt_policy'] ?? 'highest'); ?></span>
-            <?php if (!$isPreview): ?><span><?php echo count(array_filter(student_attempts((int) $user['id']), static fn($attempt) => (int) $attempt['classroom_id'] === $classroomId && (int) $attempt['quiz_id'] === $quizId)); ?> completed attempts · Retry available</span><?php endif; ?>
-            <?php if (!empty($quiz['due_at'])): ?><span>Due <?php echo esc(format_date($quiz['due_at'])); ?> · reminder, submissions remain open</span><?php endif; ?>
         </div>
         <div class="hud-stats">
             <div class="hud-pill"><span>Question</span><strong data-progress-count>1 / <?php echo esc((string) count($quiz['questions'])); ?></strong></div>
@@ -102,6 +86,7 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
             <div class="hud-pill"><span>Streak</span><strong data-streak-value>0x</strong></div>
             <div class="hud-pill"><span>Timer</span><strong data-timer-value>0s</strong></div>
         </div>
+        <div class="game-security-status" data-game-security></div>
     </div>
 
     <div
@@ -134,10 +119,29 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
             </div>
         </div>
         <div class="mode-stage">
+            <div class="game-help" data-game-help>
+                <details class="game-briefing" data-game-briefing>
+                    <summary>Activity details</summary>
+                    <p class="lead compact"><?php echo esc($quiz['description'] ?: $modes[$quiz['game_type']]['description']); ?></p>
+                    <div class="feature-pills">
+                        <span><?php echo esc(count($quiz['questions']) . (($quiz['game_type'] ?? '') === 'crossword' ? ' words' : ' questions')); ?></span>
+                        <span><?php echo esc($isPreview ? 'Teacher preview' : 'Live student run'); ?></span>
+                        <span><?php echo esc($classroom['name']); ?></span>
+                        <?php if (($quiz['game_type'] ?? '') === 'crossword'): ?><span>Intersecting word grid</span><?php endif; ?>
+                        <?php if (($quiz['game_type'] ?? '') === 'master_ladder'): ?><span><?php echo esc((string) mastery_threshold_for_quiz($quiz)); ?>% to unlock next level</span><?php endif; ?>
+                    </div>
+                    <div class="game-intro-info">
+                        <span><?php echo (int) array_sum(array_column($quiz['questions'], 'points')); ?> possible points</span>
+                        <span><?php echo empty($quiz['grade_category_id']) ? 'Practice · outside classroom grades' : 'Graded · attempt policy: ' . esc($quiz['grade_attempt_policy'] ?? 'highest'); ?></span>
+                        <?php if (!$isPreview): ?><span><?php echo count(array_filter(student_attempts((int) $user['id']), static fn($attempt) => (int) $attempt['classroom_id'] === $classroomId && (int) $attempt['quiz_id'] === $quizId)); ?> completed attempts · Retry available</span><?php endif; ?>
+                        <?php if (!empty($quiz['due_at'])): ?><span>Due <?php echo esc(format_date($quiz['due_at'])); ?> · reminder, submissions remain open</span><?php endif; ?>
+                    </div>
+                </details>
+            </div>
             <div class="mode-decoration mode-decoration-one"></div>
             <div class="mode-decoration mode-decoration-two"></div>
             <div class="mode-decoration mode-decoration-three"></div>
-            <article class="question-stage glass">
+            <article class="question-stage">
                 <span class="question-points" data-question-points></span>
                 <h2 data-question-text>Loading question...</h2>
                 <p class="question-helper" data-question-helper></p>

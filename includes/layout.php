@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/profile.php';
+require_once __DIR__ . '/chat.php';
 
 function score_game_type(string $type): array
 {
@@ -85,6 +86,7 @@ function nav_icon(string $name): string
         'search' => '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
         'close' => '<path d="m6 6 12 12M6 18 18 6"/>',
         'arrow-right' => '<path d="M5 12h14m-6-6 6 6-6 6"/>',
+        'arrow-left' => '<path d="M19 12H5m6-6-6 6 6 6"/>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
@@ -159,12 +161,12 @@ function render_header(string $title, string $pageClass = ''): void
                 <?php if ($user): ?>
                     <div class="account-menu">
                         <button class="account-toggle" type="button" aria-expanded="false" aria-controls="account-dropdown">
-                            <span class="account-avatar"><?php echo nav_icon('user'); ?></span>
+                            <?php render_profile_avatar($user); ?>
                             <strong><?php echo esc($user['name']); ?></strong>
                             <?php echo nav_icon('chevron'); ?>
                         </button>
                         <div class="account-dropdown" id="account-dropdown" hidden>
-                            <div class="account-summary"><span class="account-avatar"><?php echo nav_icon('user'); ?></span><div><strong><?php echo esc($user['name']); ?></strong><small><?php echo esc(ucfirst($user['role'])); ?></small></div></div>
+                            <div class="account-summary"><?php render_profile_avatar($user); ?><div><strong><?php echo esc($user['name']); ?></strong><small><?php echo esc(ucfirst($user['role'])); ?></small></div></div>
                             <button class="account-item" type="button" data-profile-open><?php echo nav_icon('settings'); ?><span>Profile Settings</span></button>
                             <button class="account-item theme-toggle" id="theme-toggle" type="button" aria-pressed="false"><?php echo nav_icon('moon'); ?><span class="theme-toggle-label">Dark Mode</span><span class="theme-switch" aria-hidden="true"></span></button>
                             <a class="account-item" href="/QuizWeb/logout.php"><?php echo nav_icon('logout'); ?><span>Logout</span></a>
@@ -181,6 +183,7 @@ function render_header(string $title, string $pageClass = ''): void
         <?php if ($user): ?>
         <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-title">
             <h2 id="profile-title">Profile Settings</h2>
+            <div class="profile-dialog-photo"><?php render_profile_avatar($user, 'profile-photo-preview'); ?></div>
             <dl><dt>Name</dt><dd><?php echo esc($user['name']); ?></dd><dt>Email</dt><dd><?php echo esc($user['email'] ?? ''); ?></dd><dt>Role</dt><dd><?php echo esc(ucfirst($user['role'])); ?></dd></dl>
             <dl class="profile-details"><?php foreach (profile_labels() as $field => $label): ?><dt><?php echo esc($label); ?></dt><dd><?php echo esc(($user['profile'][$field] ?? '') ?: 'Not provided'); ?></dd><?php endforeach; ?></dl>
             <a class="button button-secondary" href="/QuizWeb/profile.php">Edit Profile</a>
@@ -246,6 +249,7 @@ function render_messenger_dock(): void
     }
 
     $classrooms = user_classrooms($user);
+    $allChatUsers = users();
     usort($classrooms, function (array $a, array $b) {
         return strcmp($b['updated_at'] ?? '', $a['updated_at'] ?? '');
     });
@@ -315,6 +319,8 @@ function render_messenger_dock(): void
                                 <?php
                                 $latestMessage = classroom_latest_chat_message($classroom);
                                 $messages = array_slice(classroom_chat_messages($classroom), -20);
+                                $members = chat_public_members($classroom, $user, $allChatUsers);
+                                $membersById = array_column($members, null, 'id');
                                 $isActive = $defaultClassroomId
                                     ? (int) $classroom['id'] === $defaultClassroomId
                                     : $index === 0;
@@ -326,8 +332,21 @@ function render_messenger_dock(): void
                                             <span class="eyebrow"><?php echo esc($classroom['subject'] ?: 'Classroom'); ?></span>
                                             <h3><?php echo esc($classroom['name']); ?></h3>
                                         </div>
+                                        <button class="messenger-members-toggle" type="button" data-chat-members-toggle aria-expanded="false" aria-controls="messenger-members-<?php echo esc((string) $classroom['id']); ?>"><?php echo nav_icon('Join Class'); ?><span>Members (<span data-chat-member-count><?php echo count($members); ?></span>)</span></button>
                                         <a class="messenger-open-link" aria-label="Open classroom" title="Open classroom" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>"><?php echo nav_icon('arrow-right'); ?></a>
                                     </div>
+
+                                    <section class="messenger-members-panel" id="messenger-members-<?php echo esc((string) $classroom['id']); ?>" data-chat-members-panel aria-label="Classroom members" hidden>
+                                        <div class="messenger-members-heading"><h4>Classroom members</h4><button type="button" data-chat-members-close aria-label="Close member list"><?php echo nav_icon('close'); ?></button></div>
+                                        <ul data-chat-member-list>
+                                            <?php foreach ($members as $member): ?>
+                                                <li class="messenger-member">
+                                                    <span class="messenger-member-avatar profile-photo-avatar" aria-hidden="true"><?php echo esc(strtoupper(function_exists('mb_substr') ? mb_substr($member['name'], 0, 1) : substr($member['name'], 0, 1))); ?><?php if ($member['avatar_url']): ?><img class="profile-avatar-image" src="<?php echo esc($member['avatar_url']); ?>" alt=""><?php endif; ?></span>
+                                                    <div><strong><?php echo esc($member['name']); ?><?php echo $member['id'] === (int) $user['id'] ? ' (You)' : ''; ?></strong><small><?php echo esc(ucfirst($member['role'])); ?></small></div>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </section>
 
                                     <div class="messenger-thread-messages">
                                         <?php if ($messages): ?>
@@ -344,7 +363,7 @@ function render_messenger_dock(): void
                                                 $initial = strtoupper($initial);
                                                 ?>
                                                 <div class="messenger-message <?php echo $isSelf ? 'is-self' : ($isTeacher ? 'is-teacher' : 'is-student'); ?>">
-                                                    <span class="messenger-message-avatar" aria-hidden="true"><?php echo esc($initial ?: 'M'); ?></span>
+                                                    <span class="messenger-message-avatar profile-photo-avatar" aria-hidden="true"><?php echo esc($initial ?: 'M'); ?><?php if ($avatarUrl = $membersById[(int) ($message['user_id'] ?? 0)]['avatar_url'] ?? null): ?><img class="profile-avatar-image" src="<?php echo esc($avatarUrl); ?>" alt=""><?php endif; ?></span>
                                                     <div class="messenger-message-bubble">
                                                         <div class="messenger-message-meta">
                                                             <div>

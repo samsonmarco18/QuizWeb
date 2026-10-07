@@ -9,11 +9,6 @@ body.ui-refined .builder-steps button { min-width: 0; white-space: normal; }
 body.ui-refined .builder-step-summary { font-weight: 700; margin: 8px 0; }
 body.ui-refined .builder-toolbar { position: static; padding: 16px 0 0; }
 body.ui-refined .builder-panel .remove-question { color: var(--danger); background: var(--surface-soft); border: 1px solid var(--border); }
-body.ui-refined .game-page .page-shell { height: auto; }
-body.ui-refined.game-page .page-shell { height: auto; min-height: 100dvh; }
-body.ui-refined.game-page .game-shell { height: auto; }
-body.ui-refined.game-page .game-hud { max-height: none; overflow: visible; }
-body.ui-refined.game-page .mode-stage { overflow: visible; flex: 0 0 auto; }
 body.ui-refined .preview-play-test { padding: 16px; }
 body.ui-refined #builder-game-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
 body.ui-refined #builder-game-cards > details { grid-column: 1 / -1; }
@@ -99,3 +94,150 @@ body.game-page:fullscreen, html:fullscreen { background: var(--bg, #0b1628); ove
 .match-image-editor img[hidden] { display: none; }
 .match-image-editor input[type="file"] { width: 100%; min-width: 0; }
 @media (max-width: 480px) { .match-card-image { height: 108px; } }
+
+/* The game occupies the viewport; long content scrolls inside the play area. */
+body.ui-refined.game-page { margin: 0; overflow: hidden; }
+body.ui-refined.game-page .page-shell {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+}
+body.ui-refined.game-page .game-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg-primary);
+}
+body.ui-refined.game-page .game-shell::before { display: none; }
+body.ui-refined.game-page .game-hud {
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 24px;
+    max-height: 40vh;
+    max-height: 40dvh;
+    overflow: auto;
+    margin: 0;
+    padding: 14px clamp(16px, 3vw, 48px);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+body.ui-refined.game-page .game-identity { display: flex; align-items: center; gap: 20px; min-width: 0; }
+body.ui-refined.game-page .game-title { min-width: 0; }
+body.ui-refined.game-page .game-hud h1 { margin: 4px 0 0; font-size: clamp(18px, 1.6vw, 25px); line-height: 1.25; }
+body.ui-refined.game-page .game-hud .eyebrow { display: block; font-size: 10px; }
+body.ui-refined.game-page .game-exit { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; }
+body.ui-refined.game-page .game-exit .nav-icon { width: 18px; height: 18px; }
+body.ui-refined.game-page .hud-stats { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+body.ui-refined.game-page .hud-pill {
+    min-width: 80px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-soft);
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+body.ui-refined.game-page .hud-pill strong { font-size: 16px; }
+body.ui-refined.game-page .game-security-status { grid-column: 1 / -1; text-align: right; }
+body.ui-refined.game-page .game-security-status:empty { display: none; }
+body.ui-refined.game-page .quiz-warning-count { margin: 0; font-size: 12px; color: var(--text-secondary); }
+body.ui-refined.game-page .game-board { flex: 1 1 0; min-height: 0; }
+body.ui-refined.game-page .game-progress { height: 4px; border-radius: 0; background: var(--border); }
+body.ui-refined.game-page .battle-strip { margin: 12px clamp(16px, 3vw, 48px) 0; }
+body.ui-refined.game-page .question-clock { flex-shrink: 0; margin: 0; height: 8px; }
+body.ui-refined.game-page .mode-stage {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+    padding: 16px clamp(16px, 3vw, 48px) 24px;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    border-radius: 0;
+}
+body.ui-refined.game-page .game-help { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: flex-start; gap: 8px 24px; margin-bottom: 16px; }
+body.ui-refined.game-page :is(.game-instructions, .game-briefing) {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+body.ui-refined.game-page .game-help details[open] { flex: 1 0 100%; border-bottom: 1px solid var(--border); }
+body.ui-refined.game-page .game-help summary { min-height: 24px; font-weight: 600; color: var(--text-secondary); }
+body.ui-refined.game-page .game-help p { line-height: 1.6; }
+body.ui-refined.game-page .game-intro-info { margin: 12px 0; font-size: 13px; }
+body.ui-refined.game-page .question-stage {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 8px 0 24px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+body.ui-refined.game-page .question-points { align-self: flex-start; margin-bottom: 14px; }
+body.ui-refined.game-page .question-stage h2 { margin-bottom: 12px; font-size: clamp(24px, 2.3vw, 38px); line-height: 1.35; }
+body.ui-refined.game-page .question-helper { margin-bottom: 16px; font-size: 15px; line-height: 1.6; }
+body.ui-refined.game-page .answers-grid { gap: 16px; margin-top: 8px; }
+body.ui-refined.game-page .answer-button { min-height: 88px; padding: 20px 24px; font-size: 17px; }
+body.ui-refined.game-page .game-controls { gap: 12px; margin-top: 24px; }
+body.ui-refined.game-page .game-controls .button { min-height: 48px; padding: 12px 24px; }
+body.ui-refined.game-page :is(.start-card, .finish-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
+body.ui-refined.game-page .start-card strong { font-size: 18px; }
+body.ui-refined.game-page .start-card p { margin-top: 10px; font-size: 14px; line-height: 1.6; }
+body.ui-refined.game-page .game-note { margin: 0; padding: 10px clamp(16px, 3vw, 48px); border-top: 1px solid var(--border); background: var(--surface); }
+body.ui-refined.game-page .game-note:empty { display: none; }
+body.ui-refined.game-page .is-playing .game-hud { padding-top: 10px; padding-bottom: 10px; }
+body.ui-refined.game-page .activity-answer input { min-height: 56px; font-size: 18px; }
+body.ui-refined.game-page .match-card { min-height: 140px; font-size: 16px; }
+/* The sandboxed builder preview uses its own main instead of the game shell. */
+body.ui-refined.game-page .preview-play-test { display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; padding: 12px; }
+@media (max-width: 900px) {
+    body.ui-refined.game-page .game-hud { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    body.ui-refined.game-page .game-hud > .hud-stats { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+    body.ui-refined.game-page .hud-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+    body.ui-refined.game-page .hud-pill { min-width: 0; padding: 7px 8px; }
+    body.ui-refined.game-page .game-security-status { text-align: left; }
+}
+@media (max-width: 600px) {
+    body.ui-refined.game-page .game-identity { gap: 12px; }
+    body.ui-refined.game-page .game-hud { padding: 10px 16px; }
+    body.ui-refined.game-page .hud-pill strong { font-size: 14px; }
+    body.ui-refined.game-page .mode-stage { padding: 8px 16px 16px; }
+    body.ui-refined.game-page .game-help { gap: 8px 16px; margin-bottom: 8px; }
+    body.ui-refined.game-page .question-stage h2 { font-size: 24px; }
+    body.ui-refined.game-page .answers-grid { gap: 10px; }
+    body.ui-refined.game-page .answer-button { min-height: 72px; padding: 14px; font-size: 15px; }
+    body.ui-refined.game-page .game-controls { margin-top: 18px; }
+    body.ui-refined.game-page .match-card { min-height: 112px; }
+}

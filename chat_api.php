@@ -63,8 +63,12 @@ try {
         $saved = [];
     }
     $threads = [];
+    $allUsers = users();
     foreach (user_classrooms($user) as $classroom) {
-        $threads[] = ['id' => (int) $classroom['id'], 'messages' => array_map(static fn($m) => chat_public_message($m, (int) $classroom['id'], (int) $user['id']), classroom_chat_messages($classroom))];
+        $members = chat_public_members($classroom, $user, $allUsers);
+        $membersById = array_column($members, null, 'id');
+        $threads[] = ['id' => (int) $classroom['id'], 'members' => $members,
+            'messages' => array_map(static fn($m) => chat_public_message($m, (int) $classroom['id'], (int) $user['id'], $membersById[(int) ($m['user_id'] ?? 0)]['avatar_url'] ?? null), classroom_chat_messages($classroom))];
     }
     chat_reply(['threads' => $threads]);
 } catch (Throwable $error) {

@@ -21,8 +21,15 @@
             const instructions = document.createElement('details'); instructions.className = 'game-instructions';
             const label = document.createElement('summary'); label.textContent = 'Game instructions';
             const text = document.createElement('p'); text.textContent = mechanics[mode] || mechanics.standard;
-            instructions.append(label, text); stage?.before(instructions);
+            instructions.append(label, text);
+            const help = root.querySelector('[data-game-help]');
+            if (help) help.append(instructions); else stage?.before(instructions);
             if (quiz.description) { const teacher = document.createElement('p'); teacher.textContent = `Teacher instructions: ${quiz.description}`; instructions.append(teacher); }
+            const securityNotice = root.querySelector('.quiz-security-notice');
+            if (securityNotice) instructions.append(securityNotice);
+            const securityStatus = root.closest('.game-shell')?.querySelector('[data-game-security]');
+            const warningCount = root.querySelector('.quiz-warning-count');
+            if (securityStatus && warningCount) securityStatus.append(warningCount);
             root.querySelector('[data-game-note]')?.setAttribute('role', 'status');
             const timer = document.querySelector('[data-timer-value]');
             timer?.setAttribute('aria-label', mode === 'time_attack' ? 'Elapsed time and question countdown' : 'Elapsed time');
@@ -31,12 +38,12 @@
                 const journey = document.createElement('div'); journey.className = 'game-journey';
                 journey.innerHTML = '<strong data-journey-label></strong><div class="journey-track"><span class="journey-marker" aria-hidden="true"></span><progress max="100" value="0" aria-label="Visual journey progress"></progress></div><small>Visual progress · points are scored separately</small>';
                 journey.querySelector('.journey-marker').textContent = mode === 'rocket_rush' ? '🚀' : '🤿';
-                instructions.after(journey);
+                (help || instructions).after(journey);
             }
             if (mode === 'master_ladder') {
                 const ladder = document.createElement('ol'); ladder.className = 'mastery-ladder';
                 ['Easy', 'Medium', 'Hard', 'Master'].forEach((level, index) => { const item = document.createElement('li'); item.dataset.ladderLevel = index; item.textContent = `${level} · ${index ? 'Locked' : 'Current'}`; ladder.append(item); });
-                instructions.after(ladder);
+                (help || instructions).after(ladder);
             }
             const feedback = document.createElement('div'); feedback.className = 'answer-feedback'; feedback.hidden = true; feedback.dataset.answerFeedback = ''; feedback.setAttribute('role', 'status');
             const feedbackControls = stage?.querySelector("[data-game-controls]");
@@ -44,6 +51,11 @@
         },
         start(root) {
             document.querySelectorAll('.game-hud .game-intro-info, .game-hud .lead, .game-hud .feature-pills').forEach(element => { element.hidden = true; });
+            root.querySelectorAll('[data-game-briefing], .game-instructions').forEach(element => { element.open = false; });
+            root.querySelectorAll('[data-game-briefing]').forEach(element => { element.hidden = true; });
+            root.closest('.game-shell')?.classList.add('is-playing');
+            const modeStage = root.querySelector('.mode-stage');
+            if (modeStage) modeStage.scrollTop = 0;
             root.dataset.playing = '1';
         },
         timer(root, left) {

@@ -1,10 +1,12 @@
 const {JSDOM} = require('../data/qa/node_modules/jsdom');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
+const {execFileSync} = require('node:child_process');
 const source = name => fs.readFileSync(`assets/js/${name}.js`, 'utf8');
 const question = (points = 10, level = 'easy') => ({id: 1, prompt: 'Which answer?', options: ['Yes', 'No', 'Maybe', 'Other'], correct_index: 0, points, level});
-const markup = `<div class="game-hud"><div class="hud-stats">${['progress-count','score-value','streak-value','timer-value'].map(key => `<div class="hud-pill"><span>${key}</span><strong data-${key}></strong></div>`).join('')}</div></div><div data-game-root class="game-board" data-submit-url="/QuizWeb/submit_game.php" data-classroom-id="1" data-csrf="csrf" data-run-token="run"><div class="game-progress"><div data-progress-bar></div></div><div data-battle-strip hidden><div data-boss-health></div><div data-player-health></div></div><article class="question-stage"><span data-question-points></span><h2 data-question-text></h2><p data-question-helper></p><div data-answer-grid></div><div data-game-controls></div></article><p data-game-note></p></div>`;
 function setup(quiz, preview = true, practice = false) {
+    const php = process.env.PHP_BINARY || (process.platform === 'win32' ? 'C:/xampppp/php/php.exe' : 'php');
+    const markup = execFileSync(php, ['tests/game_page_fixture.php', practice ? 'practice' : 'play'], {input: JSON.stringify(quiz), encoding: 'utf8'});
     const dom = new JSDOM(markup, {url: 'http://localhost/QuizWeb/', runScripts: 'outside-only', pretendToBeVisual: true});
     const w = dom.window, doc = w.document, root = doc.querySelector('[data-game-root]');
     root.dataset.quiz = JSON.stringify(quiz); root.dataset.isPreview = preview ? '1' : '0'; root.dataset.practiceMode = practice ? '1' : '0'; root.dataset.integrityUrl = '/QuizWeb/quiz_integrity.php';
@@ -22,7 +24,19 @@ function setup(quiz, preview = true, practice = false) {
 (async () => {
     for (const mode of ['standard','rocket_rush','treasure_dive','memory_flip','boss_battle']) {
         const a = setup({title: mode, game_type: mode, questions: [question(20), {...question(30), id: 2}]}, false);
-        await a.start(); a.answer(0); a.answer(0);
+        const briefing = a.root.querySelector('[data-game-briefing]');
+        const instructions = a.root.querySelector('.game-instructions');
+        assert(briefing && !briefing.hidden, 'Activity details are available before starting');
+        assert(instructions.contains(a.doc.querySelector('.quiz-security-notice')), 'Full security rules remain accessible in instructions');
+        assert(a.doc.querySelector('[data-game-security] .quiz-warning-count'), 'Warning status remains visible in the game header');
+        briefing.open = true; instructions.open = true; a.root.querySelector('.mode-stage').scrollTop = 200;
+        await a.start();
+        assert(briefing.hidden && !briefing.open, 'Starting collapses and hides the introduction');
+        assert(!instructions.open, 'Instructions collapse while remaining accessible during play');
+        assert(a.root.closest('.game-shell').classList.contains('is-playing'));
+        assert.equal(a.root.querySelector('.mode-stage').scrollTop, 0, 'Play starts at the top of the expanded stage');
+        assert.equal(a.fullscreen(), 1, 'Live play retains the fullscreen gate');
+        a.answer(0); a.answer(0);
         assert.equal(a.doc.querySelector('[data-score-value]').textContent, '20', 'Locked answers cannot award twice');
         assert.match(a.doc.querySelector('[data-answer-feedback]').textContent, /Correct! \+20 points/);
         if (['rocket_rush','treasure_dive'].includes(mode)) assert.equal(a.doc.querySelector('.game-journey progress').value, 50);
@@ -80,5 +94,5 @@ function setup(quiz, preview = true, practice = false) {
     const practice = setup({title:'Practice', game_type:'time_attack',questions:[question()]},false,true);
     await practice.start(); practice.w.dispatchEvent(new practice.w.Event('blur'));
     assert.equal(practice.fullscreen(),0); assert(!practice.doc.querySelector('.quiz-integrity-dialog')); practice.close();
-    console.log('Enhanced games: locked answers, visual-only scoring, completion, duplicate submission, timer states, mastery, written review, matching lock/reset, crossword secrecy/progress, preview isolation, and practice focus exemption passed.');
+    console.log('Actual play/practice templates: expanded play state, collapsed briefing, accessible instructions, visible security status, locked answers, scoring, completion, submission, timer, mastery, written review, matching, crossword secrecy, preview isolation, and practice exemption passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -421,33 +421,33 @@ render_header($classroom['name'], 'classroom-page');
         <div class="quiz-grid">
             <?php if (!empty($classroom['quizzes'])): ?>
                 <?php foreach ($quizPage['items'] as $quiz): ?>
-                    <?php $latest = latest_attempt_for_quiz((int) $user['id'], (int) $classroom['id'], (int) $quiz['id']); ?>
-                    <article class="quiz-card mode-<?php echo esc($quiz['game_type']); ?>">
+                    <?php $latest = latest_attempt_for_quiz((int) $user['id'], (int) $classroom['id'], (int) $quiz['id']); $cardGame = score_game_type((string) $quiz['game_type']); ?>
+                    <article class="quiz-card assigned-game-card game-score-type mode-<?php echo esc($quiz['game_type']); ?>" data-game-type="<?php echo esc($cardGame['type']); ?>">
                         <div class="quiz-card-head">
-                            <span class="mode-badge"><?php echo esc($modes[$quiz['game_type']]['label'] ?? 'Game'); ?></span>
-                            <strong><?php echo esc($quiz['title']); ?></strong>
+                            <span class="game-type-badge"><?php echo esc($cardGame['label']); ?></span>
+                            <h3 class="quiz-card-title"><?php echo esc($quiz['title']); ?></h3>
                         </div>
-                        <p><?php echo esc($quiz['description'] ?: 'Custom quiz game ready to play.'); ?></p>
-                        <div class="card-meta">
-                            <span><?php echo esc(count($quiz['questions'] ?? []) . ' questions'); ?></span>
-                            <span><?php echo esc(array_sum(array_map(function (array $question) {
-                                return (int) ($question['points'] ?? 10);
-                            }, $quiz['questions'] ?? [])) . ' pts'); ?></span>
-                        </div>
-                        <?php if ($user['role'] === 'teacher'): ?>
-                            <div class="action-row">
-                                <a class="button button-secondary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $quiz['id']); ?>">Edit Quiz</a>
-                                <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $quiz['id']); ?>">Preview</a>
+                        <p class="quiz-card-description"><?php echo esc($quiz['description'] ?: 'Custom quiz game ready to play.'); ?></p>
+                        <div class="quiz-card-footer">
+                            <div class="card-meta">
+                                <span><?php echo esc(count($quiz['questions'] ?? []) . ' questions'); ?></span>
+                                <span><?php echo esc(array_sum(array_map(function (array $question) {
+                                    return (int) ($question['points'] ?? 10);
+                                }, $quiz['questions'] ?? [])) . ' pts'); ?></span>
                             </div>
-                        <?php else: ?>
-                            <?php if ($latest): ?>
-                                <div class="recent-item">
-                                    <strong>Latest Score</strong>
-                                    <span><?php echo esc($latest['score'] . '/' . $latest['max_score']); ?></span>
+                            <?php if ($user['role'] === 'teacher'): ?>
+                                <div class="action-row">
+                                    <a class="button button-secondary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $quiz['id']); ?>">Edit Quiz</a>
+                                    <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $quiz['id']); ?>">Preview</a>
                                 </div>
+                            <?php else: ?>
+                                <div class="quiz-latest-score">
+                                    <span>Latest score</span>
+                                    <?php if ($latest): ?><strong class="game-type-score"><?php echo esc($latest['score'] . '/' . $latest['max_score']); ?></strong><?php else: ?><span class="quiz-not-played">Not played yet</span><?php endif; ?>
+                                </div>
+                                <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $quiz['id']); ?>">Play Game</a>
                             <?php endif; ?>
-                            <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $quiz['id']); ?>">Play Game</a>
-                        <?php endif; ?>
+                        </div>
                     </article>
                 <?php endforeach; ?>
             <?php else: ?>
