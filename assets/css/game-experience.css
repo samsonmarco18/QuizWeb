@@ -97,6 +97,7 @@ body.game-page:fullscreen, html:fullscreen { background: var(--bg, #0b1628); ove
 
 /* The game occupies the viewport; long content scrolls inside the play area. */
 body.ui-refined.game-page { margin: 0; overflow: hidden; }
+body.ui-refined.game-page :is(.site-header, .messenger-dock) { display: none; }
 body.ui-refined.game-page .page-shell {
     display: flex;
     width: 100%;

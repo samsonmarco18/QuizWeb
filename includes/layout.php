@@ -87,6 +87,15 @@ function nav_icon(string $name): string
         'close' => '<path d="m6 6 12 12M6 18 18 6"/>',
         'arrow-right' => '<path d="M5 12h14m-6-6 6 6-6 6"/>',
         'arrow-left' => '<path d="M19 12H5m6-6-6 6 6 6"/>',
+        'copy' => '<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/>',
+        'document' => '<path d="M14 2H5v20h14V7l-5-5Zm0 0v6h5M8 13h8m-8 4h6"/>',
+        'star' => '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+        'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        'check' => '<path d="m5 12 4 4L19 6"/>',
+        'calendar' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-12 4h6"/>',
+        'filter' => '<path d="M3 5h18M6 12h12m-9 7h6"/>',
+        'more' => '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+        'play' => '<path d="m8 4 12 8-12 8V4Z"/>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
@@ -111,7 +120,7 @@ function nav_link_class(string $href): string
     return implode(' ', $classes);
 }
 
-function render_header(string $title, string $pageClass = ''): void
+function render_header(string $title, string $pageClass = '', array $styles = []): void
 {
     $user = current_user();
     $flash = flash_get();
@@ -131,6 +140,7 @@ function render_header(string $title, string $pageClass = ''): void
         <link rel="stylesheet" href="/QuizWeb/assets/css/refinements.css">
         <link rel="stylesheet" href="/QuizWeb/assets/css/visual-polish.css">
         <link rel="stylesheet" href="/QuizWeb/assets/css/game-experience.css">
+        <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc($style); ?>"><?php endforeach; ?>
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>

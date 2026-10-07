@@ -127,6 +127,22 @@ QUIZWEB_ADMIN_EMAIL and QUIZWEB_ADMIN_PASSWORD supplied through its environment.
 
 ## Teacher Test Flow
 
+### Classroom layout
+
+Classrooms open on **Quizzes**, with an illustrated subject banner, searchable
+game cards, completion/game-mode filters, and title/due-date sorting. Filtering
+covers all classroom quizzes before pagination and works through regular GET
+forms as well as live updates. Students see their own best attempts; zero-point
+attempts still count as completed. Teacher pages retain Create, Edit, Preview,
+and the roster. The side column shows the host, actual progress, upcoming due
+dates, and announcements. Due dates remain reminders with submissions open.
+
+The join-code button copies the real code, and the host message button opens the
+current classroom conversation. Artwork and exact generation prompts are in
+[`assets/images/classroom/README.md`](assets/images/classroom/README.md).
+Run `php tests/classroom_ui_test.php` and `node tests/classroom_layout_test.cjs`
+for score isolation, deadlines, filters, pagination, and the interactive controls.
+
 ### Classroom messenger
 
 Click **Members** in a conversation header to see its teacher and enrolled
