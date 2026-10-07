@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 854 484" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="wave"><stop stop-color="#0b544d" stop-opacity=".6"/><stop offset="1" stop-color="#0c7160" stop-opacity=".1"/></linearGradient>
+    <linearGradient id="leaf" x2="1" y2="1"><stop stop-color="#319d70"/><stop offset="1" stop-color="#073d3c"/></linearGradient>
+    <linearGradient id="glass" x2="1" y2="1"><stop stop-color="#56d3ac" stop-opacity=".45"/><stop offset="1" stop-color="#106151" stop-opacity=".1"/></linearGradient>
+    <linearGradient id="book" x2="1" y2="1"><stop stop-color="#3c9480"/><stop offset="1" stop-color="#135f56"/></linearGradient>
+    <g id="spark"><path d="M0-8Q1-1 7 0Q1 1 0 8Q-1 1-7 0Q-1-1 0-8" fill="#268d78"/></g>
+    <g id="sprig"><path d="M1 68Q6 28 2 0" fill="none" stroke="#247f60" stroke-width="2"/><path d="M2 29Q-29 15-18-5Q4 4 2 29M4 48Q29 23 31 7Q8 6 4 48M3 63Q-27 49-23 29Q-4 32 3 63" fill="url(#leaf)"/><path d="m-17-1 19 30M28 12 4 48m-25-15 24 30" fill="none" stroke="#7cc37e" stroke-opacity=".3"/></g>
+  </defs>
+  <path d="M58 0H528Q370 89 158 66T0 175V129Q80 42 183 40T420 0" fill="url(#wave)"/>
+  <path d="M550 0Q293 98 130 87T0 195V165Q81 96 188 107T620 0" fill="#0d6960" opacity=".18"/>
+  <path d="M0 361Q93 298 185 409T436 431Q564 303 660 349T854 305V484H0Z" fill="url(#wave)" opacity=".65"/>
+  <path d="M0 461Q84 373 185 456T420 466Q519 383 614 395T854 348V393Q733 448 644 426T458 483H0Z" fill="#0b6658" opacity=".22"/>
+  <g opacity=".65"><use href="#spark" x="124" y="80"/><use href="#spark" x="68" y="105" transform="translate(25 38) scale(.65)"/><use href="#spark" x="20" y="142"/><use href="#spark" x="281" y="27"/><use href="#spark" x="369" y="60"/><use href="#spark" x="89" y="173"/><use href="#spark" x="59" y="255"/><use href="#spark" x="780" y="309"/><use href="#spark" x="739" y="326" transform="translate(260 107) scale(.65)"/></g>
+  <use href="#sprig" transform="translate(25 202) rotate(18) scale(.9)" opacity=".8"/>
+  <use href="#sprig" transform="translate(14 281) rotate(-22) scale(1.05)" opacity=".75"/>
+  <use href="#sprig" transform="translate(68 299) rotate(34) scale(.7)" opacity=".7"/>
+  <use href="#sprig" transform="translate(780 342) rotate(-27) scale(.8)" opacity=".65"/>
+  <g transform="translate(-16 342) rotate(-11 43 39)" opacity=".85">
+    <path d="m4 62 67-3 10 10-68 8Z" fill="#0c4a49" stroke="#286e63"/>
+    <path d="m13 51 64-3-6 11-62 4Z" fill="#86a98b"/><path d="m7 46 67-4 4 6-65 6Z" fill="url(#book)"/>
+    <path d="m1 30 66-3 13 9-65 7Z" fill="#166c59"/><path d="m15 43 64-7-7 12-63 7Z" fill="#c4cba0"/><path d="m1 30 14 13-5 12-10-10Z" fill="#236b59"/>
+    <path d="m8 14 61-3 12 12-66 8Z" fill="url(#book)" stroke="#398a70"/><path d="m15 31 65-8-6 12-60 6Z" fill="#b5c4a0"/>
+    <path d="m8 14 7 17-1 10-8-13Z" fill="#18554d"/>
+    <text x="21" y="39" transform="rotate(-8 21 39)" fill="#255951" font-size="10" font-weight="700" font-family="sans-serif">SCIENCE</text>
+  </g>
+  <g transform="translate(799 299) rotate(-9 22 50)" opacity=".7">
+    <path d="M13 6H36V36L53 86Q58 105 27 108Q-3 108 1 91L13 37Z" fill="url(#glass)" stroke="#62bc96" stroke-width="3"/>
+    <path d="M9 9Q22 14 38 9L37 1Q23-4 10 1Z" fill="#287c65" stroke="#63bb92" stroke-width="3"/>
+    <path d="M8 76Q29 83 47 76L53 92Q53 102 27 102Q3 102 6 92Z" fill="#289967" opacity=".65"/>
+    <path d="M20 18V39L8 79M39 53l9 30" fill="none" stroke="#8bd3a5" stroke-opacity=".4" stroke-width="3"/>
+    <g fill="#9be2af" opacity=".45"><circle cx="19" cy="90" r="3"/><circle cx="38" cy="95" r="2"/><circle cx="29" cy="84" r="2"/></g>
+  </g>
+</svg>

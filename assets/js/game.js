@@ -89,6 +89,7 @@
     };
     const guard = window.chalkQuizIntegrity?.create(root, {onDisqualify: disqualifyAttempt});
     let startingGame = false;
+    let crosswordSurface = null;
     window.chalkGameUI?.init(root, quiz);
 
     const modeNotes = {
@@ -204,8 +205,8 @@
             progressBar.style.width = `${Math.min(Math.max(percent, 0), 100)}%`;
         }
 
-        if (crosswordMode && state.started && !state.finished) {
-            if (progressCount) progressCount.textContent = `${state.crosswordFilled} / ${questions.length} words`;
+        if (crosswordMode && !state.finished) {
+            if (progressCount) progressCount.textContent = `${state.crosswordFilled} / ${questions.length}`;
             if (progressBar) progressBar.style.width = `${state.crosswordFilled / Math.max(1, questions.length) * 100}%`;
         }
         updateBattleMeters();
@@ -265,6 +266,7 @@
 
     function disqualifyAttempt(reason, warningCount) {
         if (state.finished) return;
+        resetCrosswordSurface();
         state.finished = true;
         state.score = 0;
         state.answers = [];
@@ -388,19 +390,62 @@
 
         crosswordPlacements().forEach((placement) => {
             const key = `${placement.row}:${placement.col}`;
-            const prefix = placement.direction === "across" ? "A" : "D";
-            labels[key] = labels[key] ? `${labels[key]} ${prefix}${placement.number}` : `${prefix}${placement.number}`;
+            const number = String(Number(placement.number));
+            labels[key] = labels[key] && labels[key] !== number ? `${labels[key]}/${number}` : number;
         });
 
         return labels;
     }
 
-    function focusNextCrosswordCell(input) {
-        const row = Number(input.dataset.row);
-        const col = Number(input.dataset.col);
-        const next = answerGrid.querySelector(`.crossword-cell-input[data-row="${row}"][data-col="${col + 1}"]`)
-            || answerGrid.querySelector(`.crossword-cell-input[data-row="${row + 1}"]`);
-        next?.focus();
+    // Keep shared controls and security instructions alive when leaving the puzzle surface.
+    function resetCrosswordSurface() {
+        if (!crosswordSurface) return;
+        crosswordSurface.resize?.disconnect();
+        crosswordSurface.originals.slice().reverse().forEach(({element, parent, next}) => {
+            parent.insertBefore(element, next?.parentNode === parent ? next : null);
+        });
+        crosswordSurface.footer.remove();
+        root.classList.remove('crossword-running');
+        questionStage?.classList.remove('crossword-stage-active');
+        crosswordSurface = null;
+    }
+
+    function mountCrosswordSurface(placements) {
+        const footer = document.createElement('div');
+        footer.className = 'crossword-footer';
+        footer.innerHTML = `<div class="crossword-progress"><span>Progress</span><div class="crossword-progress-track" role="progressbar" aria-label="Words filled" aria-valuemin="0" aria-valuemax="${placements.length}" aria-valuenow="0"><div class="crossword-progress-dots" aria-hidden="true">${placements.map(placement => `<span data-word-dot="${Number(placement.question_id)}"></span>`).join('')}</div></div><strong data-crossword-filled>0 / ${placements.length} words</strong></div>`;
+        const originals = [];
+        const move = (element, destination) => {
+            if (!element) return;
+            originals.push({element, parent: element.parentNode, next: element.nextSibling});
+            destination.append(element);
+        };
+        move(progressBar?.closest('.game-progress'), footer.querySelector('.crossword-progress-track'));
+        move(controls, footer);
+        move(root.querySelector('[data-game-help]') || root.querySelector('.game-instructions'), answerGrid.querySelector('.crossword-help'));
+        root.append(footer);
+        move(note, footer);
+        root.classList.add('crossword-running');
+        questionStage?.classList.add('crossword-stage-active');
+        crosswordSurface = {footer, originals};
+
+        const board = answerGrid.querySelector('.crossword-board-scroll');
+        const grid = board.querySelector('.crossword-grid');
+        const fit = () => {
+            const bounds = board.getBoundingClientRect();
+            if (!bounds.width || !bounds.height) return;
+            const cols = Number(crosswordLayout.cols) || 1;
+            const rows = crosswordLayout.cells.length || 1;
+            const size = Math.floor(Math.min((bounds.width - 32) / cols, (bounds.height - 24) / rows));
+            const cellSize = Math.max(36, Math.min(64, size));
+            grid.style.setProperty('--crossword-cell-size', `${cellSize}px`);
+            board.classList.toggle('crossword-board-overflow', cols * cellSize > bounds.width - 32 || rows * cellSize > bounds.height - 24);
+        };
+        if (window.ResizeObserver) {
+            crosswordSurface.resize = new ResizeObserver(fit);
+            crosswordSurface.resize.observe(board);
+        }
+        fit();
     }
 
     function focusCrosswordCell(row, col) {
@@ -434,6 +479,8 @@
         const cells = Array.isArray(crosswordLayout.cells) ? crosswordLayout.cells : [];
         const acrossClues = placements.filter((placement) => placement.direction === "across").sort((a, b) => a.number - b.number);
         const downClues = placements.filter((placement) => placement.direction === "down").sort((a, b) => a.number - b.number);
+        const lengthOf = placement => placement.question.word_length || normalizeCrosswordWord(placement.question.answer || placement.question.options?.[0] || '').length;
+        const clueMarkup = list => list.map(placement => `<button type="button" class="clue-button" data-clue-id="${Number(placement.question_id)}" aria-pressed="false"><span class="crossword-clue-number">${Number(placement.number)}.</span><span class="crossword-clue-prompt">${escapeHtml(placement.question.prompt)}</span><span class="crossword-clue-length">${lengthOf(placement)} letters</span></button>`).join('');
 
         answerGrid.innerHTML = `
             <div class="crossword-play-shell">
@@ -447,28 +494,28 @@
                         return `
                             <label class="crossword-cell">
                                 ${label ? `<span class="crossword-cell-number">${label}</span>` : ""}
-                                <input class="crossword-cell-input" maxlength="1" autocomplete="off" data-row="${rowIndex}" data-col="${colIndex}" aria-label="Crossword cell row ${rowIndex + 1} column ${colIndex + 1}">
+                                <input class="crossword-cell-input" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" data-row="${rowIndex}" data-col="${colIndex}" aria-label="Crossword cell row ${rowIndex + 1} column ${colIndex + 1}">
                             </label>
                         `;
                     }).join("")).join("")}
                 </div></div>
                 <div class="crossword-clues">
-                    <div class="action-row"><button type="button" class="button button-secondary" data-clue-tab="across" aria-pressed="true">Across</button><button type="button" class="button button-secondary" data-clue-tab="down" aria-pressed="false">Down</button></div>
+                    <div class="crossword-clue-tabs" role="group" aria-label="Clue direction"><button type="button" class="button button-secondary" data-clue-tab="across" aria-pressed="true">Across</button><button type="button" class="button button-secondary" data-clue-tab="down" aria-pressed="false">Down</button></div>
                     <p data-current-clue role="status"></p>
                     <section data-clue-section="across">
                         <h3>Across</h3>
-                        ${acrossClues.map((placement) => `<button type="button" class="clue-button" data-clue-id="${Number(placement.question_id)}" aria-pressed="false">${placement.number}. ${escapeHtml(placement.question.prompt)}</button>`).join("") || "<p>No across clues.</p>"}
+                        ${clueMarkup(acrossClues) || '<p class="crossword-empty-clues">No across clues in this puzzle.</p>'}
                     </section>
                     <section data-clue-section="down" hidden>
                         <h3>Down</h3>
-                        ${downClues.map((placement) => `<button type="button" class="clue-button" data-clue-id="${Number(placement.question_id)}" aria-pressed="false">${placement.number}. ${escapeHtml(placement.question.prompt)}</button>`).join("") || "<p>No down clues.</p>"}
+                        ${clueMarkup(downClues) || '<p class="crossword-empty-clues">No down clues in this puzzle.</p>'}
                     </section>
+                    <div class="crossword-help"></div>
                 </div>
             </div>
         `;
 
         let activeWord = placements[0];
-        const lengthOf = placement => placement.question.word_length || normalizeCrosswordWord(placement.question.answer || placement.question.options?.[0] || '').length;
         const contains = (placement, row, col) => Array.from({length: lengthOf(placement)}, (_, index) => [Number(placement.row) + (placement.direction === 'down' ? index : 0), Number(placement.col) + (placement.direction === 'across' ? index : 0)]).some(cell => cell[0] === row && cell[1] === col);
         function activate(placement, focus = false) {
             activeWord = placement;
@@ -481,26 +528,38 @@
         }
         answerGrid.querySelectorAll('[data-clue-id]').forEach(clue => clue.addEventListener('click', () => activate(placements.find(placement => Number(placement.question_id) === Number(clue.dataset.clueId)), true)));
         answerGrid.querySelectorAll('[data-clue-tab]').forEach(tab => tab.addEventListener('click', () => {
+            const firstWord = placements.find(placement => placement.direction === tab.dataset.clueTab);
+            if (firstWord) { activate(firstWord, true); return; }
             answerGrid.querySelectorAll('[data-clue-section]').forEach(section => { section.hidden = section.dataset.clueSection !== tab.dataset.clueTab; });
             answerGrid.querySelectorAll('[data-clue-tab]').forEach(item => item.setAttribute('aria-pressed', String(item === tab)));
+            answerGrid.querySelector('[data-current-clue]').textContent = `No ${tab.dataset.clueTab} clues in this puzzle.`;
         }));
         function completion() {
-            const count = placements.filter(placement => {
+            const filled = placements.filter(placement => {
                 for (let index = 0; index < lengthOf(placement); index++) {
                     const row = Number(placement.row) + (placement.direction === 'down' ? index : 0), col = Number(placement.col) + (placement.direction === 'across' ? index : 0);
                     if (!answerGrid.querySelector(`[data-row="${row}"][data-col="${col}"]`)?.value) return false;
                 }
                 return true;
-            }).length;
+            });
+            const count = filled.length;
             questionPoints.textContent = `${count} / ${placements.length} words filled`;
             state.crosswordFilled = count;
-            progressCount.textContent = `${count} / ${placements.length} words`;
-            progressBar.style.width = `${count / placements.length * 100}%`;
+            if (progressCount) progressCount.textContent = `${count} / ${placements.length}`;
+            if (progressBar) progressBar.style.width = `${count / placements.length * 100}%`;
+            const footer = crosswordSurface?.footer;
+            if (footer) {
+                footer.querySelector('[data-crossword-filled]').textContent = `${count} / ${placements.length} words`;
+                footer.querySelector('[role="progressbar"]').setAttribute('aria-valuenow', String(count));
+                footer.querySelectorAll('[data-word-dot]').forEach(dot => dot.classList.toggle('is-filled', filled.some(placement => Number(placement.question_id) === Number(dot.dataset.wordDot))));
+            }
         }
         answerGrid.querySelectorAll(".crossword-cell-input").forEach((input) => {
             input.addEventListener('focus', () => {
+                input.select();
                 const row = Number(input.dataset.row), col = Number(input.dataset.col);
                 if (!contains(activeWord, row, col)) activate(placements.find(placement => contains(placement, row, col)) || activeWord);
+                else if (answerGrid.querySelector('[data-clue-tab][aria-pressed="true"]')?.dataset.clueTab !== activeWord.direction) activate(activeWord);
             });
             input.addEventListener("input", () => {
                 input.value = normalizeCrosswordWord(input.value).slice(0, 1);
@@ -528,17 +587,25 @@
                     event.preventDefault();
                     focusCrosswordCell(row - 1, col);
                 } else if (event.key === "Backspace" && !input.value) {
-                    focusCrosswordCell(row, col - 1);
+                    event.preventDefault();
+                    const previousRow = row - (activeWord.direction === 'down' ? 1 : 0);
+                    const previousCol = col - (activeWord.direction === 'across' ? 1 : 0);
+                    if (contains(activeWord, previousRow, previousCol)) focusCrosswordCell(previousRow, previousCol);
                 }
             });
         });
 
         setControls([
-            button("Submit Crossword", "button button-primary", gradeCrossword),
+            button("Submit Answer", "button button-primary crossword-submit", gradeCrossword),
         ]);
-        setNote("Fill the grid, then submit your crossword.");
+        const sendIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        sendIcon.setAttribute('viewBox', '0 0 24 24'); sendIcon.setAttribute('aria-hidden', 'true');
+        sendIcon.innerHTML = '<path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/>';
+        controls.firstChild.prepend(sendIcon);
+        mountCrosswordSurface(placements);
+        setNote("");
         updateHud();
-        activate(activeWord); completion();
+        activate(activeWord, true); completion();
         if (isPreview) {
             let showingKey = false;
             const savedValues = new Map();
@@ -875,6 +942,7 @@
             return;
         }
 
+        resetCrosswordSurface();
         state.finished = true;
         guard?.complete();
         state.awaitingNext = false;

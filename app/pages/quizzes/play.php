@@ -68,23 +68,29 @@ $quizData = [
     }, $publicQuiz['questions']),
 ];
 
-render_header($quiz['title'], 'game-page mode-' . $quiz['game_type']);
+render_header($quiz['title'], 'game-page mode-' . $quiz['game_type'], $quiz['game_type'] === 'crossword' ? ['/QuizWeb/assets/css/crossword.css'] : []);
 ?>
 
 <section class="game-shell" aria-label="Quiz game">
     <div class="game-hud">
         <div class="game-identity">
-            <a class="button button-secondary game-exit" href="/QuizWeb/classroom.php?id=<?php echo (int) $classroomId; ?>&amp;tab=quizzes"><?php echo nav_icon('arrow-left'); ?><span>Classroom</span></a>
+            <a class="button button-secondary game-exit" href="/QuizWeb/classroom.php?id=<?php echo (int) $classroomId; ?>&amp;tab=quizzes"><?php echo nav_icon('arrow-left'); ?><span><?php echo $quiz['game_type'] === 'crossword' ? 'Exit Quiz' : 'Classroom'; ?></span></a>
             <div class="game-title">
                 <span class="eyebrow"><?php echo esc($modes[$quiz['game_type']]['label'] ?? 'Quiz Mode'); ?></span>
                 <h1><?php echo esc($quiz['title']); ?></h1>
             </div>
         </div>
         <div class="hud-stats">
+            <?php if ($quiz['game_type'] === 'crossword'): ?>
+            <div class="hud-pill crossword-word-count"><?php echo nav_icon('puzzle'); ?><div><strong data-progress-count>0 / <?php echo count($quiz['questions']); ?></strong><span>Words filled</span></div></div>
+            <div class="hud-pill crossword-score"><?php echo nav_icon('star'); ?><div><span>Score</span><strong data-score-value>0</strong></div></div>
+            <div class="hud-pill crossword-timer"><?php echo nav_icon('clock'); ?><div><span>Elapsed</span><strong data-timer-value>0s</strong></div></div>
+            <?php else: ?>
             <div class="hud-pill"><span>Question</span><strong data-progress-count>1 / <?php echo esc((string) count($quiz['questions'])); ?></strong></div>
             <div class="hud-pill"><span>Score</span><strong data-score-value>0</strong></div>
             <div class="hud-pill"><span>Streak</span><strong data-streak-value>0x</strong></div>
             <div class="hud-pill"><span>Timer</span><strong data-timer-value>0s</strong></div>
+            <?php endif; ?>
         </div>
         <div class="game-security-status" data-game-security></div>
     </div>

@@ -34,7 +34,7 @@
         csp.content = `default-src 'none'; script-src ${location.origin}; style-src ${location.origin} 'unsafe-inline'; img-src ${location.origin} data:; connect-src 'none'; form-action 'none';`;
         doc.head.append(csp);
         const viewport = doc.createElement('meta'); viewport.name = 'viewport'; viewport.content = 'width=device-width,initial-scale=1'; doc.head.append(viewport);
-        for (const path of ['site.css', 'refinements.css', 'visual-polish.css', 'game-experience.css']) {
+        for (const path of ['site.css', 'refinements.css', 'visual-polish.css', 'game-experience.css', ...(quiz.game_type === 'crossword' ? ['crossword.css'] : [])]) {
             const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = `${location.origin}/QuizWeb/assets/css/${path}`; doc.head.append(link);
         }
         doc.body.className = `ui-refined game-page mode-${quiz.game_type}${document.body.classList.contains('theme-dark') ? ' theme-dark' : ''}`;

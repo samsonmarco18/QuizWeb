@@ -8,7 +8,9 @@ function setup(mode, preview = false, practice = false) {
     const dom = new JSDOM(html, {url:'https://example.com/QuizWeb/',runScripts:'outside-only',pretendToBeVisual:true});
     const w=dom.window, d=w.document, root=d.querySelector('[data-game-root]');
     const questions = mode === 'flip_match' ? [{id:1,prompt:'One',answer:'First',points:10},{id:2,prompt:'Two',answer:'Second',points:10}] : [{id:1,prompt:'Question',answer:'Yes',options:['Yes','No','Other','Unknown'],correct_index:0,points:10,level:'easy'}];
-    root.dataset.quiz=JSON.stringify({id:1,title:'Security fixture',game_type:mode,questions});
+    if (mode === 'crossword') questions[0].word_length = 3;
+    const crossword_layout = mode === 'crossword' ? {cols:3,cells:[[1,1,1]],placements:[{question_id:1,row:0,col:0,direction:'across',number:1}]} : null;
+    root.dataset.quiz=JSON.stringify({id:1,title:'Security fixture',game_type:mode,questions,crossword_layout});
     root.dataset.isPreview=preview?'1':'0'; root.dataset.practiceMode=practice?'1':'0';
     let rejectFullscreen=false, fullscreenCalls=0, failWarning=false, warnings=0;
     const requests=[], submits=[], beacons=[], events=new Set(), intervals=new Map(); let timerId=0;
