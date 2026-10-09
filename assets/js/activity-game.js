@@ -179,6 +179,6 @@
         const form = node('form'); form.method = 'post'; form.action = root.dataset.submitUrl;
         const fields = {classroom_id: root.dataset.classroomId, quiz_id: quiz.id, elapsed_seconds: elapsed(), answers: JSON.stringify(submittedAnswers), csrf: root.dataset.csrf, run_token: root.dataset.runToken, ...extra};
         Object.entries(fields).forEach(([name, value]) => { const input = node('input'); input.type = 'hidden'; input.name = name; input.value = value; form.append(input); });
-        document.body.append(form); window.chalkLoading?.begin('Submitting...', 0, 'quiz'); form.submit();
+        document.body.append(form); window.chalkLoading?.carry(); window.chalkLoading?.begin('Submitting...', 0, 'quiz'); form.submit();
     }
 })();

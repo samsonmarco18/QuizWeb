@@ -5,11 +5,15 @@
   notice.innerHTML = '<div class="chalk-loading-content"><img class="chalk-loading-art" src="/QuizWeb/assets/images/academic-loading.svg" alt="" width="240" height="190"><strong data-loading-label>Loading...</strong><p data-loading-description>Please wait while we prepare your content.</p><div class="chalk-loading-track" role="progressbar" aria-label="Operation in progress"><span></span></div></div>';
   document.body.append(notice);
   function position() {
-    const main = document.querySelector('.page-shell');
+    if (document.body.classList.contains('auth-page')) {
+      notice.style.left = '0px'; notice.style.top = '0px'; return;
+    }
+    const sidebar = document.querySelector('.classroom-sidebar');
     const header = document.querySelector('.site-header');
-    const left = main ? Math.max(0, main.getBoundingClientRect().left - 20) : 0;
-    notice.style.left = `${left}px`;
-    notice.style.top = `${Math.max(0, header?.getBoundingClientRect().bottom || 0)}px`;
+    const side = sidebar?.getBoundingClientRect();
+    const top = header?.getBoundingClientRect();
+    notice.style.left = `${side && side.width > 0 && side.left <= 0 && side.right > 0 ? Math.min(window.innerWidth, side.right) : 0}px`;
+    notice.style.top = `${top && top.height > 0 ? Math.max(0, top.bottom) : 0}px`;
   }
   const scenes = {
     grades: ['academic-loading.svg', 'your grades', 'academic records'],
@@ -54,15 +58,17 @@
     position();
   }
   window.addEventListener('resize', position);
-  const pending = new Map(); let sequence = 0, hideTimer;
-  function begin(label = 'Loading...', delay = 180, scene = context()) {
+  window.addEventListener('scroll', position, {passive:true});
+  const pending = new Map(); let sequence = 0, hideTimer, visibleUntil = 0;
+  function begin(label = 'Loading...', delay = 180, scene = context(), minimum = 900) {
     const id = ++sequence;
     const entry = {label, scene, visible: false, timer: null}; pending.set(id, entry);
-    entry.timer = setTimeout(() => { if (!pending.has(id)) return; entry.visible = true; clearTimeout(hideTimer); describe(label, scene); notice.classList.add('is-visible'); }, delay);
-    return () => { clearTimeout(entry.timer); pending.delete(id); const remaining = [...pending.values()].filter(item => item.visible); if (remaining.length) { const current = remaining[remaining.length - 1]; describe(current.label, current.scene); } else hideTimer = setTimeout(() => notice.classList.remove('is-visible'), 120); };
+    entry.timer = setTimeout(() => { if (!pending.has(id)) return; entry.visible = true; visibleUntil = Math.max(visibleUntil, Date.now() + minimum); clearTimeout(hideTimer); describe(label, scene); notice.classList.add('is-visible'); }, delay);
+    return () => { clearTimeout(entry.timer); pending.delete(id); const remaining = [...pending.values()].filter(item => item.visible); if (remaining.length) { const current = remaining[remaining.length - 1]; describe(current.label, current.scene); } else hideTimer = setTimeout(() => notice.classList.remove('is-visible'), Math.max(120, visibleUntil - Date.now())); };
   }
-  function reset() { pending.forEach(entry => clearTimeout(entry.timer)); pending.clear(); clearTimeout(hideTimer); notice.classList.remove('is-visible'); document.documentElement.classList.remove('is-navigating'); }
-  window.chalkLoading = {begin, reset, context};
+  function reset() { pending.forEach(entry => clearTimeout(entry.timer)); pending.clear(); visibleUntil = 0; clearTimeout(hideTimer); notice.classList.remove('is-visible'); document.documentElement.classList.remove('is-navigating'); }
+  function carry() { try { sessionStorage.setItem('chalk-loading-until', String(Date.now() + 1400)); } catch (_) {} }
+  window.chalkLoading = {begin, reset, context, carry};
   const background = (url, method) => method === 'GET' && /chat_api\.php/.test(url) || /quiz_progress\.php|quiz_integrity\.php/.test(url);
   if (window.fetch) {
     const original = window.fetch;
@@ -82,6 +88,7 @@
     const form = event.target;
     queueMicrotask(() => {
       if (event.defaultPrevented || form.method === 'dialog' || form.target && form.target !== '_self') return;
+      carry();
       const end = begin(form.method.toLowerCase() === 'post' ? 'Submitting...' : 'Loading...', 0, context(form.action, form.method, new FormData(form)));
       setTimeout(end, 20000);
     });
@@ -91,8 +98,12 @@
     if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.hasAttribute('download') || link.target && link.target !== '_self') return;
     const url = new URL(link.href, location.href);
     if (url.origin !== location.origin || !/^https?:$/.test(url.protocol) || url.hash && url.pathname === location.pathname && url.search === location.search || /upload\.php|export=|download=/.test(url.href)) return;
-    queueMicrotask(() => { if (!event.defaultPrevented) { document.documentElement.classList.add('is-navigating'); const end = begin('Loading page...', 0, context(url.href)); setTimeout(() => { end(); document.documentElement.classList.remove('is-navigating'); }, 20000); } });
+    queueMicrotask(() => { if (!event.defaultPrevented) { document.documentElement.classList.add('is-navigating'); carry(); const end = begin('Loading page...', 0, context(url.href)); setTimeout(() => { end(); document.documentElement.classList.remove('is-navigating'); }, 20000); } });
   });
-  window.addEventListener('pageshow', reset);
+  window.addEventListener('pageshow', event => {
+    reset();
+    let until = 0; try { until = Number(sessionStorage.getItem('chalk-loading-until')); sessionStorage.removeItem('chalk-loading-until'); } catch (_) {}
+    if (!event.persisted && until > Date.now()) { const end = begin('Loading...', 0, context(), Math.min(1400, until - Date.now())); setTimeout(end, 20); }
+  });
   window.addEventListener('pagehide', reset);
 })();

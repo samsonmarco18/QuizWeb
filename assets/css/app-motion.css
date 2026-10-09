@@ -14,8 +14,10 @@
 dialog { transition: opacity var(--motion-time), translate var(--motion-time), display var(--motion-time) allow-discrete, overlay var(--motion-time) allow-discrete; }
 dialog:not([open]) { opacity: 0; translate: 0 8px; }
 @starting-style { dialog[open] { opacity: 0; translate: 0 8px; } }
-.chalk-loading { position: fixed; inset: 64px 0 0; z-index: 99999; display: grid; place-items: center; padding: 24px; background: rgba(4, 23, 32, .65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); color: #e5f2f5; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 240ms ease, visibility 240ms; }
+.chalk-loading { position: fixed; inset: 0; width: auto; height: auto; box-sizing: border-box; z-index: 99999; display: grid; place-items: center; padding: 24px; background: rgba(4, 23, 32, .65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); color: #e5f2f5; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 240ms ease, visibility 240ms; }
 .chalk-loading.is-visible { opacity: 1; visibility: visible; pointer-events: auto; }
+.auth-page .chalk-loading { inset: 0 !important; width: 100%; height: 100dvh; box-sizing: border-box; background: rgba(4, 23, 32, .78); }
+.auth-page .chalk-loading-content { width: min(420px, 100%); }
 .submission-confirm { width: min(420px, calc(100vw - 40px)); padding: 26px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text-primary); box-shadow: 0 20px 60px #0005; }
 .submission-confirm::backdrop { background: #061d2780; backdrop-filter: blur(3px); }
 .submission-confirm-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--accent); background: var(--surface-hover); font-size: 24px; }
@@ -31,9 +33,9 @@ dialog:not([open]) { opacity: 0; translate: 0 8px; }
 .chalk-loading-content p { margin: 5px 0 18px; font-size: 12px; line-height: 1.6; color: #a6bec8; }
 .chalk-loading-track { width: 210px; height: 9px; overflow: hidden; border-radius: 20px; background: #29434e; }
 .chalk-loading-track > span { display: block; width: 64%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22e0b4, #58c8c6); animation: chalk-progress 1.6s ease-in-out infinite; }
-@keyframes chalk-progress { from { transform: translateX(-100%); } to { transform: translateX(160%); } }
+@keyframes chalk-progress { from { transform: translateX(-30%); } to { transform: translateX(160%); } }
 @keyframes chalk-float { 50% { transform: translateY(-6px); } }
-@media (max-width: 600px) { .chalk-loading { left: 0 !important; } .chalk-loading-art { width: 190px; height: 150px; } }
+@media (max-width: 600px) { .chalk-loading-art { width: 190px; height: 150px; } }
 html.is-navigating .page-shell { opacity: .65; transition: opacity 160ms; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }

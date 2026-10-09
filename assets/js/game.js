@@ -261,7 +261,7 @@
 
         document.body.appendChild(form);
 
-        window.chalkLoading?.begin('Submitting...', 0, 'quiz');
+        window.chalkLoading?.carry(); window.chalkLoading?.begin('Submitting...', 0, 'quiz');
         form.submit();
     }
 
