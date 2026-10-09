@@ -8,7 +8,13 @@
     stage = document.createElement('div'); stage.className = 'academic-detail-layout';
     slot = document.createElement('aside'); slot.className = 'academic-detail-slot';
     slot.setAttribute('aria-label', 'Grade breakdown');
-    table.before(stage); stage.append(table, slot); panels.forEach(panel => slot.append(panel));
+    if (document.body.classList.contains('grades-page')) {
+      const left = document.createElement('div'); left.className = 'academic-student-main';
+      const heading = document.querySelector('.page-shell > .page-heading');
+      const filter = document.querySelector('form[data-auto-filter]');
+      (heading || table).before(stage); stage.append(left, slot);
+      if (heading) left.append(heading); if (filter) left.append(filter); left.append(table);
+    } else { table.before(stage); stage.append(table, slot); } panels.forEach(panel => slot.append(panel));
   }
   const closePanel = () => {
     if (!active) return;
@@ -36,6 +42,7 @@
   });
   document.querySelectorAll('[data-close-grade]').forEach(button => button.addEventListener('click', closePanel));
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && active) { event.preventDefault(); closePanel(); } });
+  if (document.body.classList.contains('grades-page')) document.querySelector('[data-open-grade]')?.click();
   document.querySelectorAll('form[data-auto-filter] select').forEach(select => select.addEventListener('change', () => select.form.requestSubmit()));
   document.querySelectorAll('.academic-page form').forEach(form => form.addEventListener('submit', event => {
     if (event.defaultPrevented || (!form.noValidate && !form.checkValidity())) return;
