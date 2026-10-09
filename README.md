@@ -80,6 +80,21 @@ credentials apply to newly provisioned accounts.
 
 ## Local XAMPP setup with MySQL/MariaDB
 
+Profile pictures uploaded through Profile are stored in `users.profile` along with
+their image bytes, so they survive web redeployments while the database is retained.
+Older pictures stored in `data/uploads/profiles` remain readable and are copied
+into the database when that profile is saved. Save those profiles or re-upload
+their pictures before redeploying to preserve older uploads.
+
+Chat files and announcement attachments are stored in the `uploaded_files`
+database table. Quiz images are already embedded in database quiz records.
+New uploads survive web redeployments while the same database is retained.
+For older filesystem uploads, run `php scripts/migrate_uploads.php` on the
+existing server **before redeploying**. The command copies referenced attachments
+and profile pictures without deleting originals, skips files already migrated,
+and reports files that are already missing. Uploaded files keep the existing
+file type and size limits; database storage does not enable additional file types.
+
 1. Start Apache and MySQL in XAMPP.
 2. In `http://localhost/phpmyadmin/`, create a fresh database named `quizweb`
    and import **`database/schema.mysql.sql`**. The file contains all six tables,
@@ -126,6 +141,17 @@ run scripts/create_admin.php inside the intended service with
 QUIZWEB_ADMIN_EMAIL and QUIZWEB_ADMIN_PASSWORD supplied through its environment.
 
 ## Teacher Test Flow
+
+In Classroom → Grades → Grading structure, teachers can select Balanced
+(quizzes 30%, assignments/projects 30%, exams 40%), Coursework Focus
+(20% / 50% / 30%), or Exam Focus (20% / 20% / 60%). Each template is editable,
+with a default passing grade of 75% and missing scores excluded until graded.
+Choose Custom to build categories, weights, grade bands, and rules manually.
+Review and save the structure, add activities or graded quizzes, then publish
+grades when ready. Template changes preserve scores and published releases;
+categories used by active activities cannot be removed until reassigned/archived.
+Importing the schema gives Test Classroom the Balanced structure without
+overwriting any existing gradebook.
 
 ### Classroom layout
 

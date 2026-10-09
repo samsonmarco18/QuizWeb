@@ -5,6 +5,18 @@ function grade_assert(bool $condition, string $message): void { if (!$condition)
 function grade_reject(callable $action, string $message): void { try { $action(); } catch (InvalidArgumentException $error) { return; } throw new RuntimeException($message); }
 function grade_near($actual, float $expected, string $message): void { grade_assert($actual !== null && abs($actual - $expected) < .00001, $message . ': ' . var_export($actual, true)); }
 $book = grading_empty_book();
+grade_assert(count(grading_templates()) >= 3, 'At least three templates are required.');
+foreach (grading_templates() as $template) {
+    $templateBook = grading_empty_book();
+    $templateBook['config'] = grading_validate_config($template['config'], $templateBook);
+    foreach ($templateBook['config']['categories'] as $category) {
+        $id = 'test-' . $category['id'];
+        $templateBook['items'][$id] = ['id' => $id, 'name' => $category['name'], 'category_id' => $category['id'], 'source' => 'manual', 'max_score' => 100];
+        $templateBook['scores'][$id]['1'] = ['quiz' => 80, 'work' => 90, 'exam' => 70][$category['id']];
+    }
+    $expected = array_sum(array_map(fn($c) => $c['weight'] * ['quiz' => 80, 'work' => 90, 'exam' => 70][$c['id']] / 100, $templateBook['config']['categories']));
+    grade_near(grading_calculate($templateBook, 1, [])['overall'], $expected, $template['name'] . ' calculation');
+}
 $config = ['categories' => [['id' => 'quiz', 'name' => 'Quizzes', 'weight' => 30], ['id' => 'work', 'name' => 'Assignments', 'weight' => 20], ['id' => 'exam', 'name' => 'Exams', 'weight' => 50]], 'scale' => [['min' => 0, 'label' => 'Needs improvement'], ['min' => 75, 'label' => 'Passed'], ['min' => 90, 'label' => 'Excellent']], 'passing' => 75, 'missing_policy' => 'exclude'];
 $book['config'] = grading_validate_config($config, $book);
 $class = ['id' => 1, 'teacher_id' => 5, 'student_ids' => [1, 2]]; $teacher = ['id' => 5, 'role' => 'teacher'];

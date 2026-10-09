@@ -86,6 +86,14 @@ CREATE TABLE IF NOT EXISTS grade_changes (
 );
 CREATE INDEX IF NOT EXISTS idx_grade_changes_classroom ON grade_changes(classroom_id, id);
 
+-- Uploaded attachment bytes persist independently of the web container.
+CREATE TABLE IF NOT EXISTS uploaded_files (
+    scope VARCHAR(20) NOT NULL,
+    stored_name VARCHAR(100) NOT NULL,
+    data TEXT NOT NULL,
+    PRIMARY KEY (scope, stored_name)
+);
+
 -- DEMO ADMIN: explicit import only
 -- Sample administrator: admin@chalk.local / ChalkAdmin!2026
 -- PHP password_verify-compatible bcrypt hash; existing emails are never reset.
@@ -105,3 +113,39 @@ WITH created_admin AS (
 INSERT INTO audit_logs (actor_id, target_id, action, occurred_at)
 SELECT id, id, 'admin_created', CURRENT_TIMESTAMP::text FROM created_admin;
 COMMIT;
+
+-- TEST CLASSROOM: one teacher and two enrolled students, explicit import only.
+-- All three accounts use password ChalkAdmin!2026. Reimports preserve credentials.
+BEGIN;
+LOCK TABLE users, classrooms IN EXCLUSIVE MODE;
+INSERT INTO users (id, name, email, password, role, created_at, profile, account_status)
+SELECT (SELECT COALESCE(MAX(id), 0) FROM users) + ROW_NUMBER() OVER (ORDER BY seed.email),
+       seed.name, seed.email,
+       '$2y$10$x/Z24ak.NUHsnwh8n9A/V.1igvVSEOp.HREJmUwIJvWF/btZ3a4T.',
+       seed.role, CURRENT_TIMESTAMP::text, '{}'::jsonb, 'active'
+FROM (VALUES
+    ('Test Teacher', 'teacher@chalk.test', 'teacher'),
+    ('Test Student One', 'student1@chalk.test', 'student'),
+    ('Test Student Two', 'student2@chalk.test', 'student')
+) AS seed(name, email, role)
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = seed.email);
+
+INSERT INTO classrooms (id, teacher_id, name, subject, description, code,
+                        student_ids, quizzes, announcements, chat_messages, created_at, updated_at)
+SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM classrooms), teacher.id,
+       'Test Classroom', 'General Education', 'Shared classroom for testing teacher and student logins.',
+       'TESTCLASS', jsonb_build_array(student1.id, student2.id),
+       '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, CURRENT_TIMESTAMP::text, CURRENT_TIMESTAMP::text
+FROM users teacher, users student1, users student2
+WHERE teacher.email = 'teacher@chalk.test' AND teacher.role = 'teacher'
+  AND student1.email = 'student1@chalk.test' AND student1.role = 'student'
+  AND student2.email = 'student2@chalk.test' AND student2.role = 'student'
+ON CONFLICT (code) DO NOTHING;
+COMMIT;
+
+-- Give the test classroom an editable Balanced grading structure.
+INSERT INTO gradebooks (classroom_id, data, updated_at)
+SELECT classroom.id, '{"config":{"method":"weighted_categories","category_method":"points","categories":[{"id":"quiz","name":"Quizzes","weight":30},{"id":"work","name":"Assignments / Projects","weight":30},{"id":"exam","name":"Exams","weight":40}],"scale":[{"min":0,"label":"Below passing"},{"min":75,"label":"Passed"},{"min":90,"label":"Excellent"}],"passing":75,"missing_policy":"exclude"},"items":{},"scores":{},"overrides":{},"revision":0,"next_item_id":1,"published":null}'::jsonb, CURRENT_TIMESTAMP::text
+FROM classrooms classroom JOIN users teacher ON teacher.id = classroom.teacher_id
+WHERE classroom.code = 'TESTCLASS' AND teacher.email = 'teacher@chalk.test' AND teacher.role = 'teacher'
+ON CONFLICT (classroom_id) DO NOTHING;

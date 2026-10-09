@@ -8,12 +8,12 @@ if (!$target) { http_response_code(404); exit; }
 if (!can_view_profile_photo($viewer, $target, user_classrooms($viewer))) { http_response_code(403); exit; }
 $photo = profile_photo_metadata($target);
 if (!$photo) { http_response_code(404); exit; }
-$path = UPLOADS_DIR . '/profiles/' . $photo['file'];
-if (!is_file($path)) { http_response_code(404); exit; }
+$bytes = profile_photo_bytes($target);
+if ($bytes === null) { http_response_code(404); exit; }
 session_write_close();
 header('Content-Type: ' . $photo['mime']);
 header('Content-Disposition: inline');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: private, no-store');
-header('Content-Length: ' . filesize($path));
-readfile($path);
+header('Content-Length: ' . strlen($bytes));
+echo $bytes;

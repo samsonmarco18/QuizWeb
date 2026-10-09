@@ -88,6 +88,14 @@ CREATE TABLE IF NOT EXISTS grade_changes (
     CONSTRAINT fk_grade_changes_actor_id FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+-- LONGTEXT accommodates base64-encoded attachments up to 10 MB.
+CREATE TABLE IF NOT EXISTS uploaded_files (
+    scope VARCHAR(20) NOT NULL,
+    stored_name VARCHAR(100) NOT NULL,
+    data LONGTEXT NOT NULL,
+    PRIMARY KEY (scope, stored_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
 -- DEMO ADMIN: explicit import only
 -- Same sample administrator as PostgreSQL: admin@chalk.local / ChalkAdmin!2026
 -- Existing emails, passwords, roles, and status are preserved.
@@ -102,3 +110,36 @@ INSERT INTO audit_logs (actor_id, target_id, action, occurred_at)
 SELECT @created_admin_id, @created_admin_id, 'admin_created', CURRENT_TIMESTAMP
 WHERE @created_admin_id IS NOT NULL;
 COMMIT;
+
+-- TEST CLASSROOM: one teacher and two enrolled students, explicit import only.
+-- All three accounts use password ChalkAdmin!2026. Reimports preserve credentials.
+START TRANSACTION;
+INSERT INTO users (name, email, password, role, created_at, profile, account_status)
+SELECT seed.name, seed.email,
+       '$2y$10$x/Z24ak.NUHsnwh8n9A/V.1igvVSEOp.HREJmUwIJvWF/btZ3a4T.',
+       seed.role, CURRENT_TIMESTAMP, '{}', 'active'
+FROM (
+    SELECT 'Test Teacher' AS name, 'teacher@chalk.test' AS email, 'teacher' AS role
+    UNION ALL SELECT 'Test Student One', 'student1@chalk.test', 'student'
+    UNION ALL SELECT 'Test Student Two', 'student2@chalk.test', 'student'
+) seed
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = seed.email);
+
+INSERT INTO classrooms (teacher_id, name, subject, description, code,
+                        student_ids, quizzes, announcements, chat_messages, created_at, updated_at)
+SELECT teacher.id, 'Test Classroom', 'General Education',
+       'Shared classroom for testing teacher and student logins.', 'TESTCLASS',
+       JSON_ARRAY(student1.id, student2.id), '[]', '[]', '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM users teacher, users student1, users student2
+WHERE teacher.email = 'teacher@chalk.test' AND teacher.role = 'teacher'
+  AND student1.email = 'student1@chalk.test' AND student1.role = 'student'
+  AND student2.email = 'student2@chalk.test' AND student2.role = 'student'
+  AND NOT EXISTS (SELECT 1 FROM classrooms WHERE code = 'TESTCLASS');
+COMMIT;
+
+-- Give the test classroom an editable Balanced grading structure.
+INSERT INTO gradebooks (classroom_id, data, updated_at)
+SELECT classroom.id, '{"config":{"method":"weighted_categories","category_method":"points","categories":[{"id":"quiz","name":"Quizzes","weight":30},{"id":"work","name":"Assignments / Projects","weight":30},{"id":"exam","name":"Exams","weight":40}],"scale":[{"min":0,"label":"Below passing"},{"min":75,"label":"Passed"},{"min":90,"label":"Excellent"}],"passing":75,"missing_policy":"exclude"},"items":{},"scores":{},"overrides":{},"revision":0,"next_item_id":1,"published":null}', CURRENT_TIMESTAMP
+FROM classrooms classroom JOIN users teacher ON teacher.id = classroom.teacher_id
+WHERE classroom.code = 'TESTCLASS' AND teacher.email = 'teacher@chalk.test' AND teacher.role = 'teacher'
+  AND NOT EXISTS (SELECT 1 FROM gradebooks WHERE classroom_id = classroom.id);

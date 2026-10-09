@@ -73,6 +73,6 @@ try {
     chat_reply(['threads' => $threads]);
 } catch (Throwable $error) {
     if ($pdo && $pdo->inTransaction()) $pdo->rollBack();
-    foreach ($saved as $file) @unlink(UPLOADS_DIR . '/chat/' . $file['stored_name']);
+    foreach ($saved as $file) persistent_upload_delete('chat', $file['stored_name']);
     chat_reply(['error' => $error instanceof InvalidArgumentException ? $error->getMessage() : 'Messaging is unavailable. Please try again.'], $error instanceof InvalidArgumentException ? 422 : 500);
 }

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/activity.php';
 require_once __DIR__ . '/admin.php';
 require_once __DIR__ . '/grading.php';
+require_once __DIR__ . '/uploads.php';
 
 session_start();
 
@@ -712,15 +713,20 @@ function store_announcement_attachments(array $files): array
 
         $safeName = sanitize_filename($originalName);
         $storedName = bin2hex(random_bytes(16)) . ($extension !== '' ? '.' . $extension : '');
-        $destination = ANNOUNCEMENT_UPLOADS_DIR . '/' . $storedName;
-
-        if (!move_uploaded_file($tmpName, $destination)) {
+        if (!is_uploaded_file($tmpName)) {
             $errors[] = 'The server could not store ' . $safeName . '.';
             continue;
         }
-
-        $savedPaths[] = $destination;
-        $mimeType = $finfo ? (finfo_file($finfo, $destination) ?: 'application/octet-stream') : 'application/octet-stream';
+        $mimeType = $finfo ? (finfo_file($finfo, $tmpName) ?: 'application/octet-stream') : 'application/octet-stream';
+        try {
+            $bytes = file_get_contents($tmpName);
+            if ($bytes === false) throw new RuntimeException('Upload read failed.');
+            persistent_upload_store('announcements', $storedName, $bytes);
+        } catch (Throwable $error) {
+            $errors[] = 'The server could not store ' . $safeName . '.';
+            continue;
+        }
+        $savedPaths[] = $storedName;
 
         $attachments[] = [
             'original_name' => $safeName,
@@ -736,11 +742,7 @@ function store_announcement_attachments(array $files): array
     }
 
     if ($errors) {
-        foreach ($savedPaths as $path) {
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
+        foreach ($savedPaths as $name) persistent_upload_delete('announcements', $name);
 
         return [
             'attachments' => [],

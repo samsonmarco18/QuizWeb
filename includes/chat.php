@@ -78,9 +78,6 @@ function chat_store_files(array $files): array
 {
     if (empty($files['name'])) return [];
     if (!is_array($files['name']) || count($files['name']) > 4) throw new InvalidArgumentException('Attach up to four files at a time.');
-    $directory = UPLOADS_DIR . '/chat';
-    if (!is_dir($directory) && !mkdir($directory, 0777, true)) throw new RuntimeException('Upload storage is unavailable.');
-    if (file_put_contents($directory . '/.htaccess', "Require all denied\n") === false) throw new RuntimeException('Upload storage is unavailable.');
     $saved = [];
     try {
         foreach ($files['name'] as $i => $name) {
@@ -92,15 +89,21 @@ function chat_store_files(array $files): array
             if ($size < 1 || $size > 10 * 1024 * 1024) throw new InvalidArgumentException('Each file must be between 1 byte and 10 MB.');
             if (!in_array($extension, ['pdf','txt','csv','doc','docx','ppt','pptx','xls','xlsx','zip','png','jpg','jpeg','gif','webp'], true)) throw new InvalidArgumentException('Unsupported file type. Choose a document, ZIP, or image.');
             $tmp = $files['tmp_name'][$i];
+            if (!is_uploaded_file($tmp)) throw new InvalidArgumentException('Choose a file and upload it again.');
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
             $isImage = in_array($extension, ['png','jpg','jpeg','gif','webp'], true);
             if ($isImage && (!in_array($mime, ['image/png','image/jpeg','image/gif','image/webp'], true) || !@getimagesize($tmp))) throw new InvalidArgumentException('This image is not valid.');
             $stored = bin2hex(random_bytes(24));
-            if (!move_uploaded_file($tmp, $directory . '/' . $stored)) throw new RuntimeException('The file could not be saved.');
+            $bytes = file_get_contents($tmp);
+            if ($bytes === false) throw new RuntimeException('The file could not be saved.');
+            persistent_upload_store('chat', $stored, $bytes);
             $saved[] = ['name' => sanitize_filename($name), 'stored_name' => $stored, 'size' => $size, 'mime' => $mime, 'image' => $isImage];
         }
     } catch (Throwable $error) {
-        foreach ($saved as $file) @unlink($directory . '/' . $file['stored_name']);
+        // The API rolls back its transaction, including any stored upload bytes.
+        if (!db()->inTransaction()) {
+            foreach ($saved as $file) persistent_upload_delete('chat', $file['stored_name']);
+        }
         throw $error;
     }
     return $saved;

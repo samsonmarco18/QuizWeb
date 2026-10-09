@@ -10,6 +10,27 @@ function grading_empty_book(): array
     return ['config' => null, 'items' => [], 'scores' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null];
 }
 
+function grading_templates(): array
+{
+    $templates = [];
+    foreach ([
+        'balanced' => ['Balanced', 'A mix of quizzes, coursework, and exams.', [30, 30, 40]],
+        'coursework' => ['Coursework Focus', 'Give more weight to assignments and projects.', [20, 50, 30]],
+        'exams' => ['Exam Focus', 'Give more weight to major examinations.', [20, 20, 60]],
+    ] as $id => [$name, $description, $weights]) {
+        $templates[$id] = ['name' => $name, 'description' => $description, 'config' => [
+            'categories' => [
+                ['id' => 'quiz', 'name' => 'Quizzes', 'weight' => $weights[0]],
+                ['id' => 'work', 'name' => 'Assignments / Projects', 'weight' => $weights[1]],
+                ['id' => 'exam', 'name' => 'Exams', 'weight' => $weights[2]],
+            ],
+            'scale' => [['min' => 0, 'label' => 'Below passing'], ['min' => 75, 'label' => 'Passed'], ['min' => 90, 'label' => 'Excellent']],
+            'passing' => 75, 'missing_policy' => 'exclude',
+        ]];
+    }
+    return $templates;
+}
+
 function grading_load(PDO $pdo, int $classroomId): array
 {
     $select = $pdo->prepare('SELECT data FROM gradebooks WHERE classroom_id = ?');

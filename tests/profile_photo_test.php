@@ -51,6 +51,18 @@ $pdo->exec("CREATE TRIGGER reject_profile BEFORE UPDATE ON users BEGIN SELECT RA
 try { profile_save_changes($pdo, 6, [], true); throw new RuntimeException('Failed save should throw.'); } catch (PDOException $expected) {}
 photo_check(!$pdo->inTransaction() && db_json_decode($pdo->query('SELECT profile FROM users WHERE id = 6')->fetchColumn()) === $saved, 'Failed edit changed profile or left a transaction open.');
 $pdo->exec('DROP TRIGGER reject_profile');
+$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=');
+$persistentAvatar = $avatar + ['data' => base64_encode($png)];
+profile_save_changes($pdo, 6, ['avatar' => $persistentAvatar]);
+$reloaded = ['id' => 6, 'profile' => db_json_decode($pdo->query('SELECT profile FROM users WHERE id = 6')->fetchColumn())];
+photo_check(profile_photo_bytes($reloaded) === $png, 'Database photo was not readable without an uploaded file.');
+profile_save_changes($pdo, 6, ['program' => 'Math']);
+$reloaded['profile'] = db_json_decode($pdo->query('SELECT profile FROM users WHERE id = 6')->fetchColumn());
+photo_check(profile_photo_bytes($reloaded) === $png, 'Details save lost persistent image bytes.');
+$reloaded['profile']['avatar']['data'] = 'invalid base64!';
+photo_check(profile_photo_bytes($reloaded) === null, 'Corrupt database image accepted.');
+$reloaded['profile']['avatar']['data'] = base64_encode('<script>unsafe</script>');
+photo_check(profile_photo_bytes($reloaded) === null, 'Non-image database content accepted.');
 profile_save_changes($pdo, 6, [], true);
 $removed = db_json_decode($pdo->query('SELECT profile FROM users WHERE id = 6')->fetchColumn());
 photo_check(!isset($removed['avatar']) && $removed['program'] === 'Math', 'Photo removal changed profile details.');

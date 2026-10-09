@@ -7,15 +7,15 @@ foreach ($classroom['chat_messages'] ?? [] as $message) {
     if ((int) $message['id'] !== (int) ($_GET['message_id'] ?? 0)) continue;
     foreach ($message['attachments'] ?? [] as $file) {
         if ($file['stored_name'] !== ($_GET['file'] ?? '') || !preg_match('/^[a-f0-9]{48}$/D', $file['stored_name'])) continue;
-        $path = UPLOADS_DIR . '/chat/' . $file['stored_name'];
-        if (!is_file($path)) break;
+        $bytes = persistent_upload_read('chat', $file['stored_name']);
+        if ($bytes === null) break;
         $inline = !empty($file['image']) && ($_GET['view'] ?? '') === '1';
         header('Content-Type: ' . ($inline ? $file['mime'] : 'application/octet-stream'));
         header('X-Content-Type-Options: nosniff');
         header('Cache-Control: private, no-store');
         header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . "; filename*=UTF-8''" . rawurlencode($file['name']));
-        header('Content-Length: ' . filesize($path));
-        readfile($path);
+        header('Content-Length: ' . strlen($bytes));
+        echo $bytes;
         exit;
     }
 }

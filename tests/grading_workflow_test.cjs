@@ -10,9 +10,41 @@ const w = dom.window, d = w.document;
 w.structuredClone = structuredClone;
 w.gradingConfigSeed = {categories: [{id: 'quiz', name: 'Quizzes', weight: 30}, {id: 'work', name: 'Assignments', weight: 20}, {id: 'exam', name: 'Exams', weight: 50}], scale: [{min: 0, label: 'Below passing'}, {min: 75, label: 'Passed'}], passing: 75, missing_policy: 'exclude'};
 w.confirm = () => false;
+w.gradingTemplates = Object.fromEntries([
+  ['balanced', 'Balanced', [30, 20, 50]],
+  ['coursework', 'Coursework Focus', [20, 50, 30]],
+  ['exams', 'Exam Focus', [20, 20, 60]],
+].map(([id, name, weights]) => [id, {name, description: name + ' description', config: {
+  ...structuredClone(w.gradingConfigSeed), categories: w.gradingConfigSeed.categories.map((category, index) => ({...category, weight: weights[index]}))
+}}]));
 w.eval(fs.readFileSync('assets/js/grading.js', 'utf8'));
 const click = id => d.getElementById(id).click();
 const input = (element, value) => { element.value = value; element.dispatchEvent(new w.Event('input', {bubbles: true})); };
+const chooseTemplate = value => {
+  const select = d.getElementById('grading-template');
+  select.value = value; select.dispatchEvent(new w.Event('change'));
+  click('apply-grading-template');
+};
+// The PHP option loop is stripped by this fixture; add its three choices.
+for (const [id, template] of Object.entries(w.gradingTemplates)) {
+  const option = d.createElement('option'); option.value = id; option.textContent = template.name;
+  d.getElementById('grading-template').append(option);
+}
+chooseTemplate('exams');
+assert.deepEqual([...d.querySelectorAll('#grading-weights input')].map(element => element.value), ['20', '20', '60']);
+assert.match(d.getElementById('grading-template-summary').textContent, /Exams: 60%/);
+let templateUnload = new w.Event('beforeunload', {cancelable: true}); w.dispatchEvent(templateUnload);
+assert(templateUnload.defaultPrevented, 'Applied template must be saved');
+chooseTemplate('coursework');
+assert.equal(d.querySelectorAll('#grading-weights input')[1].value, '50');
+w.gradingUsedCategories = ['quiz'];
+chooseTemplate('custom');
+assert.match(d.getElementById('grading-setup-status').textContent, /used by active activities/);
+assert.equal(d.querySelectorAll('#grading-categories input').length, 3, 'Blocked template preserved categories');
+w.gradingUsedCategories = [];
+chooseTemplate('custom');
+assert.equal(d.querySelectorAll('#grading-categories input').length, 0, 'Manual grading starts empty');
+chooseTemplate('balanced');
 let unload = new w.Event('beforeunload', {cancelable: true}); w.dispatchEvent(unload); assert(!unload.defaultPrevented, 'Unchanged setup has no false unsaved warning');
 assert.match(d.getElementById('grading-weight-total').textContent, /100.00%.*Ready/);
 input(d.querySelector('#grading-categories input'), 'Knowledge checks');

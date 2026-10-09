@@ -66,6 +66,38 @@
     setup.querySelectorAll('[data-grading-step]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.gradingStep))));
     byId('grading-previous').addEventListener('click', () => show(step - 1)); byId('grading-next').addEventListener('click', () => show(step + 1));
     passing.addEventListener('input', update); missing.addEventListener('change', update);
+    const templateSelect = byId('grading-template');
+    if (templateSelect) {
+      const templates = window.gradingTemplates || {};
+      const summary = byId('grading-template-summary');
+      const apply = byId('apply-grading-template');
+      function describeTemplate() {
+        summary.replaceChildren();
+        const template = templates[templateSelect.value];
+        apply.disabled = !template && templateSelect.value !== 'custom';
+        if (template) {
+          summary.append(node('p', template.description));
+          template.config.categories.forEach(category => summary.append(node('p', `${category.name}: ${category.weight}%`)));
+          summary.append(node('p', `Passing grade: ${template.config.passing}% · Missing scores excluded until graded. All settings can be edited.`));
+        } else if (templateSelect.value === 'custom') summary.append(node('p', 'Start with your own categories, weights, grade bands, and passing grade.'));
+      }
+      templateSelect.addEventListener('change', describeTemplate);
+      apply.addEventListener('click', () => {
+        const template = templates[templateSelect.value];
+        if (!template && templateSelect.value !== 'custom') return;
+        const next = template ? structuredClone(template.config) : {categories: [], scale: [{min: 0, label: 'Below passing'}, {min: 75, label: 'Passed'}], passing: 75, missing_policy: 'exclude'};
+        const used = window.gradingUsedCategories || [];
+        if (used.some(id => !next.categories.some(category => category.id === id))) {
+          status.textContent = 'This choice would remove categories used by active activities. Edit the current structure manually, or reassign/archive those activities first.';
+          return;
+        }
+        Object.assign(state, next);
+        passing.value = String(next.passing); missing.value = next.missing_policy;
+        render(); show(0);
+        status.textContent = template ? `${template.name} loaded. Customize it, then review and save.` : 'Custom grading started. Add your categories and set weights totaling 100%.';
+      });
+      describeTemplate();
+    }
     setup.addEventListener('submit', event => {
       update();
       const names = state.categories.map(category => category.name.trim().toLowerCase());

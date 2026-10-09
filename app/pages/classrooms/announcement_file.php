@@ -36,9 +36,9 @@ if (!$attachment) {
     exit('Attachment not found.');
 }
 
-$path = announcement_attachment_path($attachment);
+$bytes = persistent_upload_read('announcements', $attachment['stored_name']);
 
-if (!is_file($path)) {
+if ($bytes === null) {
     http_response_code(404);
     exit('Attachment file is missing.');
 }
@@ -48,9 +48,9 @@ $mimeType = (string) ($attachment['mime_type'] ?? 'application/octet-stream');
 $disposition = $viewInline && is_image_attachment($attachment) ? 'inline' : 'attachment';
 
 header('Content-Type: ' . $mimeType);
-header('Content-Length: ' . filesize($path));
+header('Content-Length: ' . strlen($bytes));
 header('X-Content-Type-Options: nosniff');
 header('Content-Disposition: ' . $disposition . '; filename="' . addslashes($filename) . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
 
-readfile($path);
+echo $bytes;
 exit;

@@ -25,8 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     catch (Throwable $exception) { error_log('Gradebook save failed: ' . $exception->getMessage()); $error = 'Could not save grades. Your entered values are still here. Please retry.'; }
 }
 $book = grading_load(db(), $classroomId);
-$select = db()->prepare('SELECT id, name, email FROM users WHERE id IN (SELECT CAST(value AS BIGINT) FROM jsonb_array_elements_text((SELECT student_ids FROM classrooms WHERE id = ?))) ORDER BY name, id');
-$select->execute([$classroomId]); $students = $select->fetchAll();
+$students = classroom_students($classroom);
+usort($students, fn($a, $b) => [$a['name'], $a['id']] <=> [$b['name'], $b['id']]);
 $select = db()->prepare('SELECT * FROM attempts WHERE classroom_id = ? ORDER BY id'); $select->execute([$classroomId]); $attempts = array_map('hydrate_attempt', $select->fetchAll());
 $rows = [];
 if ($book['config']) foreach ($students as $student) $rows[(int) $student['id']] = grading_calculate($book, (int) $student['id'], $attempts);
@@ -47,6 +47,12 @@ render_header('Gradebook', 'gradebook-page');
 <section class="glass panel">
     <form method="post" id="grading-setup" class="stack-form" novalidate>
         <?php render_grade_form_fields($book); ?><input type="hidden" name="action" value="config"><input type="hidden" name="config_payload" id="grading-config-payload">
+        <h2>Choose a grading template or build your own</h2>
+        <p>Templates are editable starting points. Review the categories, weights, scale, and passing grade, then save your classroom grading structure.</p>
+        <label><span>Grading template</span><select id="grading-template"><option value="">Choose a template</option><?php foreach (grading_templates() as $id => $template): ?><option value="<?php echo esc($id); ?>"><?php echo esc($template['name']); ?></option><?php endforeach; ?><option value="custom">Custom — build manually</option></select></label>
+        <div id="grading-template-summary" class="learning-summary-grid"></div>
+        <button type="button" id="apply-grading-template" class="button button-secondary">Use Selected Template</button>
+        <p>Changing a template updates the draft only after you save. Existing activity scores remain; categories used by active activities must be retained.</p>
         <nav class="builder-steps" aria-label="Grading setup steps"><?php foreach (['Categories', 'Weights', 'Grade Scale', 'Review'] as $index => $label): ?><button type="button" data-grading-step="<?php echo $index; ?>"><?php echo ($index + 1) . '. ' . esc($label); ?></button><?php endforeach; ?></nav>
         <p id="grading-setup-status" role="status" aria-live="polite"></p>
         <section data-grading-panel="0"><h2>Your grading categories</h2><p>Rename and reorder categories. Categories used by active items must be reassigned or archived before removal.</p><div id="grading-categories"></div><button type="button" class="button button-secondary" id="add-grading-category">Add Category</button></section>
@@ -59,7 +65,7 @@ render_header('Gradebook', 'gradebook-page');
     </form>
 </section>
 <?php $configSeed = $book['config'] ?? ['categories' => [], 'scale' => [['min' => 0, 'label' => 'Below passing'], ['min' => 75, 'label' => 'Passed']], 'passing' => 75, 'missing_policy' => 'exclude']; if ($error && isset($input['config']) && is_array($input['config'])) $configSeed = $input['config']; ?>
-<script>window.gradingConfigSeed = <?php echo json_encode($configSeed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>; window.gradingPostedDraft = <?php echo $error ? 'true' : 'false'; ?>;</script>
+<script>window.gradingConfigSeed = <?php echo json_encode($configSeed, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>; window.gradingTemplates = <?php echo json_encode(grading_templates(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>; window.gradingUsedCategories = <?php echo json_encode(array_values(array_unique(array_column(array_filter($book['items'], fn($item) => empty($item['archived'])), 'category_id'))), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>; window.gradingPostedDraft = <?php echo $error ? 'true' : 'false'; ?>;</script>
 <?php elseif ($view === 'overview'): ?>
 <section class="glass panel">
     <details class="grade-filters"><summary>Search &amp; filters</summary><form method="get" class="action-row"><input type="hidden" name="classroom_id" value="<?php echo $classroomId; ?>"><label><span>Student search</span><input type="search" name="q" value="<?php echo esc(is_string($_GET['q'] ?? null) ? $_GET['q'] : ''); ?>"></label><label><span>Category</span><select name="category_id"><option value="">All categories</option><?php render_grading_category_options($book, is_string($_GET['category_id'] ?? null) ? $_GET['category_id'] : ''); ?></select></label><label><span>Activity</span><select name="activity"><option value="">All activities</option><?php foreach ($book['items'] as $id => $entry): if (!empty($entry['archived'])) continue; ?><option value="<?php echo esc($id); ?>" <?php echo ($_GET['activity'] ?? '') === $id ? 'selected' : ''; ?>><?php echo esc($entry['name']); ?></option><?php endforeach; ?></select></label><label><span>Grading status</span><select name="status"><option value="">All statuses</option><?php foreach (['Not Graded', 'Missing', 'Partial', 'Complete'] as $state): ?><option <?php echo ($_GET['status'] ?? '') === $state ? 'selected' : ''; ?>><?php echo esc($state); ?></option><?php endforeach; ?></select></label><button class="button button-primary">Apply Filters</button></form></details>
