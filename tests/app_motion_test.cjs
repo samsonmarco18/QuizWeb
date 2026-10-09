@@ -10,6 +10,23 @@ const assert = require('node:assert/strict');
   const wait = ms => new Promise(r=>setTimeout(r,ms));
   const loading = () => d.querySelector('.chalk-loading').classList.contains('is-visible');
   await wait(20); // Allow the initial pageshow event to finish before starting a request.
+  const contexts = {
+    'grades.php': 'grades', 'gradebook.php': 'grades', 'play.php': 'quiz',
+    'classroom.php': 'classroom', 'upload.php': 'upload', 'chat_api.php': 'message',
+    'profile.php': 'profile', 'dashboard.php': 'page'
+  };
+  for (const [url, expected] of Object.entries(contexts)) assert.equal(w.chalkLoading.context(url), expected);
+  assert.equal(w.chalkLoading.context('dashboard.php', 'POST'), 'save');
+  const files = new w.FormData(); files.append('file', new w.Blob(['picture']));
+  assert.equal(w.chalkLoading.context('classroom.php', 'POST', files), 'upload');
+  for (const scene of ['grades','quiz','classroom','upload','message','profile','save','page']) {
+    const end = w.chalkLoading.begin('Loading...', 0, scene); await wait(10);
+    assert.equal(d.querySelector('.chalk-loading').dataset.scene, scene);
+    const filename = d.querySelector('.chalk-loading-art').getAttribute('src').split('/').pop();
+    assert(fs.existsSync('assets/images/' + filename), `Missing illustration for ${scene}`);
+    end();
+  }
+  w.chalkLoading.reset();
   const saving = w.fetch('/save.php',{method:'POST'});
   await wait(200); assert(loading(), 'Pending save needs visible feedback');
   resolve({ok:true}); await saving; await wait(150); assert(!loading(), 'Successful save must clear feedback');
