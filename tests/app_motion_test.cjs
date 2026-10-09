@@ -17,6 +17,9 @@ const assert = require('node:assert/strict');
   };
   for (const [url, expected] of Object.entries(contexts)) assert.equal(w.chalkLoading.context(url), expected);
   assert.equal(w.chalkLoading.context('dashboard.php', 'POST'), 'save');
+  assert.equal(w.chalkLoading.context('http://localhost/QuizWeb/login.php', 'POST'), 'profile', 'The app directory must not classify login as a quiz');
+  assert.equal(w.chalkLoading.context('/QuizWeb/dashboard.php'), 'page');
+  assert.equal(w.chalkLoading.context('/QuizWeb/gradebook.php'), 'grades');
   const files = new w.FormData(); files.append('file', new w.Blob(['picture']));
   assert.equal(w.chalkLoading.context('classroom.php', 'POST', files), 'upload');
   for (const scene of ['grades','quiz','classroom','upload','message','profile','save','page']) {

@@ -29,7 +29,9 @@
         if (['action', 'view'].includes(key)) action += ' ' + value;
       }
     }
-    const target = String(url) + ' ' + action;
+    let route;
+    try { route = new URL(String(url), location.href).pathname.split('/').pop(); } catch (_) { route = String(url); }
+    const target = route + ' ' + action;
     if (upload || /upload|attachment/i.test(target)) return 'upload';
     if (/chat|message|reminder/i.test(target)) return 'message';
     if (/grades|gradebook|grading|academic_settings/i.test(target)) return 'grades';
@@ -40,11 +42,15 @@
   }
   function describe(label, scene) {
     const [image, subject, description] = scenes[scene] || scenes.page;
-    const verb = /^Loading/.test(label) ? 'Loading' : scene === 'upload' ? 'Uploading' : scene === 'message' ? 'Sending' : 'Saving';
+    const verb = /^Loading/.test(label) ? 'Loading' : /^Submitting/.test(label) ? 'Submitting' : scene === 'upload' ? 'Uploading' : scene === 'message' ? 'Sending' : 'Saving';
     notice.dataset.scene = scene;
     notice.querySelector('.chalk-loading-art').src = '/QuizWeb/assets/images/' + image;
     notice.querySelector('[data-loading-label]').textContent = `${verb} ${subject}...`;
-    notice.querySelector('[data-loading-description]').textContent = `Please wait while we ${verb === 'Loading' ? 'fetch' : verb === 'Sending' ? 'send' : 'save'} ${description}.`;
+    notice.querySelector('[data-loading-description]').textContent = `Please wait while we ${verb === 'Loading' ? 'fetch' : verb === 'Sending' ? 'send' : verb === 'Submitting' ? 'submit' : 'save'} ${description}.`;
+    if (scene === 'profile' && document.body.classList.contains('login-page') && verb !== 'Loading') {
+      notice.querySelector('[data-loading-label]').textContent = 'Signing you in...';
+      notice.querySelector('[data-loading-description]').textContent = 'Please wait while we verify your account.';
+    }
     position();
   }
   window.addEventListener('resize', position);

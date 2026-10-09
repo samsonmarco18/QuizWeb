@@ -452,6 +452,7 @@ function render_footer(array $scripts = []): void
         </main>
         <?php render_messenger_dock(); ?>
         <script src="/QuizWeb/assets/js/app-motion.js"></script>
+        <script src="/QuizWeb/assets/js/submission-confirm.js"></script>
         <script src="/QuizWeb/assets/js/site.js"></script>
         <?php foreach ($scripts as $script): ?>
             <script src="<?php echo esc($script); ?>"></script>

@@ -146,7 +146,7 @@
         controls.replaceChildren(); update();
     }
     let readyToSubmit = false;
-    function finish() {
+    async function finish() {
         if (finished) return;
         if (!preview && !readyToSubmit) {
             if (guard?.enabled && !guard.canInteract) return;
@@ -169,6 +169,7 @@
             controls.replaceChildren(button('Replay Preview', () => location.reload()), button('Back to Classroom', () => { location.href = root.dataset.returnUrl; }, true));
             return;
         }
+        if (window.chalkConfirm && !await window.chalkConfirm('Submit quiz?', 'Submit your answers and save this attempt? You cannot edit this submitted attempt afterward.', 'Submit Quiz')) return;
         controls.querySelectorAll('button').forEach(element => { element.disabled = true; });
         note.textContent = 'Submitting your answers…';
         if (matching) answers._moves = moves;
@@ -178,6 +179,6 @@
         const form = node('form'); form.method = 'post'; form.action = root.dataset.submitUrl;
         const fields = {classroom_id: root.dataset.classroomId, quiz_id: quiz.id, elapsed_seconds: elapsed(), answers: JSON.stringify(submittedAnswers), csrf: root.dataset.csrf, run_token: root.dataset.runToken, ...extra};
         Object.entries(fields).forEach(([name, value]) => { const input = node('input'); input.type = 'hidden'; input.name = name; input.value = value; form.append(input); });
-        document.body.append(form); form.submit();
+        document.body.append(form); window.chalkLoading?.begin('Submitting...', 0, 'quiz'); form.submit();
     }
 })();

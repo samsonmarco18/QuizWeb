@@ -237,6 +237,8 @@
         if (configurationProblems(questions).length) {
             showStep(5); status.textContent = configurationProblems(questions).join(' '); return;
         }
+        if (window.chalkConfirm && !await window.chalkConfirm('Save quiz?', 'Save this quiz and its questions to the classroom?', 'Save Quiz')) return;
+        if (submitting) return;
         submitting = true;
         const buttons = [...form.querySelectorAll('[type="submit"]')]; buttons.forEach(button => { button.disabled = true; });
         status.textContent = 'Checking activity…';
@@ -257,7 +259,7 @@
                 if (match) { showStep(2); selectQuestion(Number(match[1]) - 1); }
                 submitting = false; buttons.forEach(button => { button.disabled = false; }); return;
             }
-            status.textContent = 'Saving activity…'; clearTimeout(draftTimer); saveLocalDraft(); leaving = true; HTMLFormElement.prototype.submit.call(form);
+            status.textContent = 'Saving activity…'; clearTimeout(draftTimer); saveLocalDraft(); leaving = true; window.chalkLoading?.begin('Saving...', 0, 'quiz'); HTMLFormElement.prototype.submit.call(form);
         } catch (error) {
             status.textContent = error.name === 'TimeoutError' ? 'Validation timed out. Your draft is still here. Try again.' : error.message;
             submitting = false; leaving = false; buttons.forEach(button => { button.disabled = false; });

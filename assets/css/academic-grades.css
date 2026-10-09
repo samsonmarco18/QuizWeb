@@ -52,7 +52,7 @@ body.ui-refined.academic-page .academic-filter-bar :is(input, select) { min-heig
 .academic-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; height: 100dvh; max-height: 100dvh; width: min(510px, 100vw); max-width: 100vw; border: 1px solid var(--border); border-radius: 14px 0 0 14px; padding: 0; background: var(--surface); color: var(--text-primary); box-shadow: -16px 0 50px rgba(0,0,0,.25); }
 .academic-drawer::backdrop { background: transparent; }
 .academic-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0fr); gap: 0; align-items: start; transition: grid-template-columns 260ms var(--motion-ease), gap 260ms; }
-.academic-detail-layout.has-detail { grid-template-columns: minmax(0, 1fr) minmax(0, .65fr); gap: 16px; }
+.academic-detail-layout.has-detail { grid-template-columns: minmax(0, 1fr) minmax(280px, .42fr); gap: 16px; }
 .academic-detail-layout > .academic-gradebook { min-width: 0; }
 .academic-detail-slot { min-width: 0; overflow: hidden; }
 .academic-detail-slot .academic-drawer { position: relative; inset: auto; width: 100%; max-width: 100%; height: auto; max-height: none; margin: 0; border-radius: 14px; box-shadow: none; box-sizing: border-box; }
@@ -114,9 +114,9 @@ body.ui-refined.academic-page .academic-filter-bar :is(input, select) { min-heig
 .academic-average-row small { display: block; font-size: 10px; color: var(--text-secondary); font-weight: 400; margin-top: 4px; }
 .academic-average-icon { float: left; margin-right: 10px; font-size: 25px; color: var(--accent); }
 .academic-average-note { margin: 10px 0 0; font-size: 11px; color: var(--text-secondary); }
-.grades-page .academic-drawer > header { padding: 14px; }
-.grades-page .academic-drawer h2 { font-size: 14px; }
-.grades-page .academic-drawer-body { padding: 14px; }
+.academic-page .academic-drawer > header { padding: 14px; }
+.academic-page .academic-drawer h2 { font-size: 14px; }
+.academic-page .academic-drawer-body { padding: 14px; }
 .academic-subject-meta { font-size: 11px; line-height: 1.8; color: var(--text-secondary); margin: 0 0 14px; }
 .academic-subject-final { padding: 16px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 12px; margin-bottom: 14px; background: var(--surface-soft); }
 .academic-subject-final > strong { display: block; font-size: 36px; line-height: 1.3; color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -129,6 +129,32 @@ body.ui-refined.academic-page .academic-filter-bar :is(input, select) { min-heig
 .academic-calculation, .academic-assessment-details { border: 1px solid var(--border); border-radius: 9px; padding: 12px; margin-top: 14px; font-size: 11px; }
 .academic-calculation summary, .academic-assessment-details summary { cursor: pointer; font-weight: 600; }
 .academic-calculation p { color: var(--text-secondary); line-height: 1.8; margin-bottom: 0; }
+.academic-page .page-shell { container-type: inline-size; container-name: grade-workspace; }
+.academic-page:not(.grades-page) .academic-gradebook > .academic-table-scroll > .academic-table { min-width: 590px; font-size: 11px; }
+.academic-page:not(.grades-page) .academic-gradebook .academic-table th,
+.academic-page:not(.grades-page) .academic-gradebook .academic-table td { padding: 10px 7px; }
+.academic-page:not(.grades-page) .academic-gradebook .academic-table tbody th { min-width: 120px; max-width: 180px; overflow-wrap: anywhere; }
+.academic-page:not(.grades-page) .academic-gradebook .academic-table .button { min-height: 28px; padding: 6px 9px; font-size: 11px; }
+.academic-page:not(.grades-page) .academic-gradebook .academic-grade-value { min-width: 48px; padding: 5px 6px; }
+.academic-page:not(.grades-page) .academic-gradebook .academic-status { padding: 4px 7px; font-size: 10px; }
+.academic-page:not(.grades-page) .academic-filter-bar { display: grid; grid-template-columns: minmax(130px, 1.5fr) repeat(4, minmax(85px, 1fr)); gap: 10px; }
+.academic-page:not(.grades-page) .academic-filter-bar label { min-width: 0; }
+.academic-page .academic-filter-bar :is(input, select) { width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
+.academic-page:not(.grades-page) .academic-filter-bar > .button { justify-self: start; min-height: 32px; font-size: 11px; }
+.academic-page .academic-drawer { overflow-wrap: anywhere; }
+.academic-page .academic-close { flex: 0 0 30px; width: 30px; height: 30px; font-size: 20px; }
+.academic-page .academic-drawer-body > .button { display: flex; justify-content: center; margin-top: 14px; padding: 10px; font-size: 11px; white-space: normal; text-align: center; }
+.academic-detail-slot .academic-drawer { border-radius: 12px; overflow: hidden; }
+.academic-table-scroll { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+@container grade-workspace (max-width: 940px) {
+  .academic-detail-layout.has-detail, .grades-page .academic-detail-layout.has-detail { grid-template-columns: minmax(0, 1fr); }
+  .academic-detail-layout.has-detail .academic-detail-slot { max-width: none; }
+}
+@container grade-workspace (max-width: 620px) {
+  .academic-page:not(.grades-page) .academic-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .academic-page:not(.grades-page) .academic-filter-bar label:first-of-type { grid-column: 1 / -1; }
+  .academic-top-grid { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 800px) {
   .grades-page .academic-detail-layout.has-detail { grid-template-columns: minmax(0, 1fr); }
   .grades-page .academic-filter-bar { grid-template-columns: 1fr 1fr; }

@@ -58,3 +58,8 @@ function render_grading_category_options(array $book, string $selected = ''): vo
         ?><option value="<?php echo esc($category['id']); ?>" <?php echo $selected === $category['id'] ? 'selected' : ''; ?>><?php echo esc($category['name']); ?></option><?php
     }
 }
+
+function render_compact_grade_panel(?array $compactGrade, ?array $compactConfig): void
+{
+    require __DIR__ . '/academic_compact_breakdown.php';
+}

@@ -261,6 +261,7 @@
 
         document.body.appendChild(form);
 
+        window.chalkLoading?.begin('Submitting...', 0, 'quiz');
         form.submit();
     }
 
@@ -1010,7 +1011,9 @@
         }
         setNote("Activity complete. Continue to save your answers and view results.");
         let submittingResults = false;
-        setControls([button('View Results', 'button button-primary', () => {
+        setControls([button('View Results', 'button button-primary', async () => {
+            if (submittingResults) return;
+            if (window.chalkConfirm && !await window.chalkConfirm('Submit quiz?', 'Submit your answers and save this attempt? You cannot edit this submitted attempt afterward.', 'Submit Quiz')) return;
             if (submittingResults) return;
             submittingResults = true; controls.querySelectorAll('button').forEach(item => { item.disabled = true; });
             setNote('Submitting your answers…'); submitAttempt();
