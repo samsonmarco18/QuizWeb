@@ -1,0 +1,25 @@
+:root { --motion-time: 220ms; --motion-ease: cubic-bezier(.2,.7,.2,1); }
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: chalk-page-out 140ms ease both; }
+::view-transition-new(root) { animation: chalk-enter 220ms var(--motion-ease) both; }
+@keyframes chalk-page-out { to { opacity: 0; } }
+.page-shell { animation: chalk-enter 280ms var(--motion-ease) both; }
+@keyframes chalk-enter { from { opacity: 0; translate: 0 7px; } to { opacity: 1; translate: 0 0; } }
+@keyframes chalk-spin { to { rotate: 360deg; } }
+:where(button, a, input, select, textarea, .panel, .glass) {
+  transition: background-color var(--motion-time), color var(--motion-time), border-color var(--motion-time), box-shadow var(--motion-time);
+}
+:where(dialog[open], details[open] > :not(summary), .account-menu.is-open, .messenger-thread.is-active) { animation: chalk-enter var(--motion-time) var(--motion-ease); }
+:where(.toast, .flash, .inline-error, .chat-message, .messenger-panel.is-open, [data-chat-extra]:not([hidden])) { animation: chalk-enter var(--motion-time) var(--motion-ease); }
+dialog { transition: opacity var(--motion-time), translate var(--motion-time), display var(--motion-time) allow-discrete, overlay var(--motion-time) allow-discrete; }
+dialog:not([open]) { opacity: 0; translate: 0 8px; }
+@starting-style { dialog[open] { opacity: 0; translate: 0 8px; } }
+.chalk-loading { position: fixed; top: 76px; left: 50%; translate: -50% -6px; z-index: 99999; display: flex; align-items: center; gap: 12px; padding: 14px 22px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface, #142d36); color: var(--text-primary, #fff); box-shadow: 0 8px 26px #0003; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms, translate 180ms, visibility 180ms; }
+.chalk-loading.is-visible { opacity: 1; visibility: visible; translate: -50% 0; }
+.chalk-loading-spinner { width: 20px; height: 20px; border: 2px solid var(--border, #ffffff30); border-top-color: var(--accent, #65ddbe); border-radius: 50%; animation: chalk-spin 800ms linear infinite; }
+.chalk-loading-track { position: fixed; inset: 0 0 auto; height: 3px; background: var(--accent, #65ddbe); transform-origin: left; animation: chalk-progress 1.4s ease-in-out infinite; }
+@keyframes chalk-progress { from { transform: scaleX(.05); opacity: .6; } to { transform: scaleX(1); opacity: 1; } }
+html.is-navigating .page-shell { opacity: .65; transition: opacity 160ms; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

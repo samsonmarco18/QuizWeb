@@ -1,0 +1,26 @@
+const {JSDOM} = require('../data/qa/node_modules/jsdom');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+(async () => {
+  const dom = new JSDOM('<form method="post"><button>Save</button></form><form method="dialog"></form>', {runScripts:'outside-only', url:'http://localhost/QuizWeb/dashboard.php'});
+  const w = dom.window, d = w.document;
+  let resolve, reject;
+  w.fetch = () => new Promise((a,b) => { resolve=a; reject=b; });
+  w.eval(fs.readFileSync('assets/js/app-motion.js','utf8'));
+  const wait = ms => new Promise(r=>setTimeout(r,ms));
+  const loading = () => d.querySelector('.chalk-loading').classList.contains('is-visible');
+  await wait(20); // Allow the initial pageshow event to finish before starting a request.
+  const saving = w.fetch('/save.php',{method:'POST'});
+  await wait(200); assert(loading(), 'Pending save needs visible feedback');
+  resolve({ok:true}); await saving; await wait(150); assert(!loading(), 'Successful save must clear feedback');
+  const failed = w.fetch('/save.php',{method:'POST'}); const caught = failed.catch(()=>{});
+  await wait(200); reject(new Error('network')); await caught; await wait(150); assert(!loading(), 'Failed save must clear feedback');
+  const heartbeat = w.fetch('/quiz_progress.php',{method:'POST'});
+  await wait(200); assert(!loading(), 'Background tracking must not flash a loader'); resolve({ok:true}); await heartbeat;
+  const endFirst = w.chalkLoading.begin('First',0), endSecond=w.chalkLoading.begin('Second',0);
+  await wait(10); endFirst(); await wait(150); assert(loading(), 'Concurrent request must retain loader'); endSecond(); await wait(150); assert(!loading());
+  d.querySelector('form').addEventListener('submit',event=>event.preventDefault());
+  d.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await wait(20); assert(!loading(), 'Canceled submit must stay usable');
+  w.chalkLoading.begin('Navigation',0); await wait(10); w.dispatchEvent(new w.Event('pageshow')); assert(!loading(), 'Back navigation must reset loading');
+  dom.window.close(); console.log('Loading lifecycle, failures, concurrency, background requests, canceled forms, and back navigation passed.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

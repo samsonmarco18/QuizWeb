@@ -142,6 +142,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <link rel="stylesheet" href="/QuizWeb/assets/css/refinements.css">
         <link rel="stylesheet" href="/QuizWeb/assets/css/visual-polish.css">
         <link rel="stylesheet" href="/QuizWeb/assets/css/game-experience.css">
+        <link rel="stylesheet" href="/QuizWeb/assets/css/app-motion.css">
         <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc($style); ?>"><?php endforeach; ?>
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
@@ -450,6 +451,7 @@ function render_footer(array $scripts = []): void
     ?>
         </main>
         <?php render_messenger_dock(); ?>
+        <script src="/QuizWeb/assets/js/app-motion.js"></script>
         <script src="/QuizWeb/assets/js/site.js"></script>
         <?php foreach ($scripts as $script): ?>
             <script src="<?php echo esc($script); ?>"></script>
