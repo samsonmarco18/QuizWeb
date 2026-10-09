@@ -4,6 +4,7 @@ require_once __DIR__ . '/activity.php';
 require_once __DIR__ . '/admin.php';
 require_once __DIR__ . '/grading.php';
 require_once __DIR__ . '/uploads.php';
+require_once __DIR__ . '/academics.php';
 
 session_start();
 
@@ -153,7 +154,7 @@ function table_is_empty(PDO $pdo, string $table): bool
 
 function database_upsert_record(PDO $pdo, string $table, string $key, array $record): void
 {
-    $keys = ['users' => 'id', 'classrooms' => 'id', 'attempts' => 'id', 'gradebooks' => 'classroom_id'];
+    $keys = ['users' => 'id', 'classrooms' => 'id', 'attempts' => 'id', 'gradebooks' => 'classroom_id', 'classroom_academics' => 'classroom_id', 'academic_settings' => 'id'];
     if (($keys[$table] ?? null) !== $key || !array_key_exists($key, $record)) {
         throw new InvalidArgumentException('Unsupported record table or primary key.');
     }
@@ -787,7 +788,8 @@ function register_user(string $name, string $email, string $password, string $ro
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->exec('LOCK TABLE users IN EXCLUSIVE MODE');
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $pdo->query('SELECT id FROM users FOR UPDATE')->fetchAll();
+        else $pdo->exec('LOCK TABLE users IN EXCLUSIVE MODE');
         $user['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM users')->fetchColumn();
         insert_user_record($pdo, $user);
         $pdo->commit();
@@ -1547,7 +1549,10 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->exec('LOCK TABLE attempts IN EXCLUSIVE MODE');
+        $classLock = $pdo->prepare('SELECT id FROM classrooms WHERE id = ? FOR UPDATE'); $classLock->execute([$classroomId]);
+        if (!empty($quiz['grade_category_id']) && !empty(grading_load($pdo, $classroomId)['locked'])) throw new InvalidArgumentException('This subject’s grades are finalized. Graded attempts are locked.');
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $pdo->query('SELECT id FROM attempts FOR UPDATE')->fetchAll();
+        else $pdo->exec('LOCK TABLE attempts IN EXCLUSIVE MODE');
         $attempt['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM attempts')->fetchColumn();
         insert_attempt_record($pdo, $attempt);
         $pdo->commit();

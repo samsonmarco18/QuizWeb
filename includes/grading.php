@@ -7,7 +7,7 @@ function ensure_grading_schema(PDO $pdo): void
 
 function grading_empty_book(): array
 {
-    return ['config' => null, 'items' => [], 'scores' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null];
+    return ['config' => null, 'items' => [], 'scores' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null, 'reviewed' => null, 'locked' => false, 'academic_statuses' => []];
 }
 
 function grading_templates(): array
@@ -25,7 +25,7 @@ function grading_templates(): array
                 ['id' => 'exam', 'name' => 'Exams', 'weight' => $weights[2]],
             ],
             'scale' => [['min' => 0, 'label' => 'Below passing'], ['min' => 75, 'label' => 'Passed'], ['min' => 90, 'label' => 'Excellent']],
-            'passing' => 75, 'missing_policy' => 'exclude',
+            'passing' => 75, 'missing_policy' => 'exclude', 'periods' => academic_periods(),
         ]];
     }
     return $templates;
@@ -91,8 +91,10 @@ function grading_validate_config($input, array $book): array
     if ($bands[0]['min'] !== 0.0) throw new InvalidArgumentException('The first grade-scale band must start at 0.');
     $missing = $input['missing_policy'] ?? 'exclude';
     if (!in_array($missing, ['exclude', 'zero'], true)) throw new InvalidArgumentException('Choose a supported missing-score policy.');
-    return ['method' => 'weighted_categories', 'category_method' => 'points', 'categories' => array_values($normalized), 'scale' => $bands,
+    $result = ['method' => 'weighted_categories', 'category_method' => 'points', 'categories' => array_values($normalized), 'scale' => $bands,
         'passing' => grading_number($input['passing'] ?? null, 0, 100, 'Passing grade'), 'missing_policy' => $missing];
+    if (isset($input['periods'])) $result['periods'] = academic_validate_periods($input['periods']);
+    return $result;
 }
 
 function grading_category(array $book, string $id): ?array
@@ -170,6 +172,7 @@ function grading_calculate_weighted(array $book, int $studentId, array $attempts
 function grading_calculate(array $book, int $studentId, array $attempts): array
 {
     if (!$book['config']) throw new InvalidArgumentException('Set up the grading structure first.');
+    if (!empty($book['config']['periods'])) return academic_calculate($book, $studentId, $attempts);
     $methods = ['weighted_categories' => 'grading_calculate_weighted'];
     $method = $book['config']['method'];
     if (!isset($methods[$method])) throw new RuntimeException('Unsupported grading method.');
@@ -203,10 +206,22 @@ function grading_student_id(array $classroom, $value): int
 function grading_apply_action(array &$book, array $classroom, array $actor, string $action, array $input, array $attempts): array
 {
     grading_require_teacher($classroom, $actor);
+    if (!empty($book['locked']) && $action !== 'unlock') throw new InvalidArgumentException('Grades are locked. Unlock with a correction reason first.');
     $changes = [];
     if ($action === 'config') {
         $config = grading_validate_config($input['config'] ?? null, $book);
-        $changes[] = ['config', $book['config'], $config, null, null]; $book['config'] = $config;
+        if (!empty($book['config']['periods']) && empty($config['periods'])) throw new InvalidArgumentException('Keep Prelim, Midterm, and Finals once academic periods are configured.');
+        $configReason = (!empty($book['scores']) || $book['published'] || $attempts) ? grading_text($input['reason'] ?? null, 'Grading configuration change reason', 500) : '';
+        if (!empty($config['periods'])) {
+            foreach ($book['items'] as $id => &$item) {
+                if (!empty($item['archived'])) continue;
+                $oldItem = $item;
+                $item['period_id'] = academic_period_id($input['period_assignments'][$id] ?? $item['period_id'] ?? null);
+                if ($oldItem !== $item) $changes[] = ['period_assignment', $oldItem, ['item' => $item, 'reason' => $configReason], null, $id];
+            }
+            unset($item);
+        }
+        $changes[] = ['config', $book['config'], ['config' => $config, 'reason' => $configReason], null, null]; $book['config'] = $config;
     } elseif ($action === 'item') {
         $id = is_string($input['item_id'] ?? null) ? $input['item_id'] : '';
         $old = $id !== '' ? ($book['items'][$id] ?? null) : null;
@@ -222,6 +237,8 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
         foreach ($book['overrides'] as $overrides) if (($overrides[$id]['value'] ?? 0) > $max) throw new InvalidArgumentException('Maximum score cannot be lower than an adjusted score.');
         $item = ['id' => $id, 'source' => 'manual', 'name' => grading_text($input['name'] ?? null, 'Activity name'), 'category_id' => $category,
             'max_score' => $max, 'date' => $date, 'archived' => $old['archived'] ?? false];
+        if (!empty($book['config']['periods'])) $item['period_id'] = academic_period_id($input['period_id'] ?? null);
+        if ($old && $old !== $item && !empty($book['scores'][$id])) $item['correction_reason'] = grading_text($input['reason'] ?? null, 'Correction reason', 500);
         $book['items'][$id] = $item; $changes[] = ['item', $old, $item, null, $id];
     } elseif ($action === 'scores') {
         $id = is_string($input['item_id'] ?? null) ? $input['item_id'] : '';
@@ -235,10 +252,14 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
         }
         foreach ($validated as $student => $score) {
             $old = $book['scores'][$id][(string) $student] ?? null;
-            if ($old !== $score) { $book['scores'][$id][(string) $student] = $score; $changes[] = ['score', $old, $score, $student, $id]; }
+            if ($old !== $score) {
+                $reason = $old !== null ? grading_text($input['reason'] ?? null, 'Correction reason', 500) : '';
+                $book['scores'][$id][(string) $student] = $score; $changes[] = ['score', $old, ['value' => $score, 'reason' => $reason], $student, $id];
+            }
         }
     } elseif ($action === 'archive') {
         $id = is_string($input['item_id'] ?? null) ? $input['item_id'] : '';
+        if ($id === 'overall') throw new InvalidArgumentException('Final grades are calculated from assessments. Correct an assessment instead.');
         if (!isset($book['items'][$id])) throw new InvalidArgumentException('Activity not found.');
         if (($input['confirm'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm archiving this activity.');
         $old = $book['items'][$id]; $book['items'][$id]['archived'] = true;
@@ -246,31 +267,57 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
     } elseif (in_array($action, ['override', 'restore'], true)) {
         $student = grading_student_id($classroom, $input['student_id'] ?? '');
         $id = is_string($input['item_id'] ?? null) ? $input['item_id'] : '';
+        if ($id === 'overall' && $action === 'override') throw new InvalidArgumentException('Final grades are calculated from assessments. Correct an assessment instead.');
         $item = $book['items'][$id] ?? null;
         if ($id !== 'overall' && (!$item || !empty($item['archived']))) throw new InvalidArgumentException('Grade item not found.');
         $old = $book['overrides'][(string) $student][$id] ?? null;
         $next = null;
         if ($action === 'override') {
             $grade = grading_calculate($book, $student, $attempts);
-            $reason = is_string($input['reason'] ?? null) ? trim($input['reason']) : '';
+            $reason = grading_text($input['reason'] ?? null, 'Correction reason', 500);
             if (mb_strlen($reason) > 500) throw new InvalidArgumentException('Keep adjustment notes under 500 characters.');
             $next = ['value' => grading_number($input['value'] ?? null, 0, $id === 'overall' ? 100 : $item['max_score'], 'Adjusted grade'),
                 'calculated_at_change' => $id === 'overall' ? $grade['calculated'] : ($grade['items'][$id]['calculated'] ?? null),
                 'actor_id' => (int) $actor['id'], 'changed_at' => now_iso(), 'reason' => $reason];
             $book['overrides'][(string) $student][$id] = $next;
-        } else unset($book['overrides'][(string) $student][$id]);
+        } else { $reason = grading_text($input['reason'] ?? null, 'Correction reason', 500); unset($book['overrides'][(string) $student][$id]); $next = ['value' => null, 'reason' => $reason]; }
         $changes[] = [$action, $old, $next, $student, $id];
+    } elseif ($action === 'review') {
+        if (!$book['config']) throw new InvalidArgumentException('Set up grading first.');
+        $book['reviewed'] = ['hash' => academic_review_hash($book, $classroom, $attempts), 'at' => now_iso(), 'actor_id' => (int) $actor['id']];
+        $changes[] = ['review', null, $book['reviewed'], null, null];
+    } elseif ($action === 'lock') {
+        if (!$book['published'] || ($input['confirm'] ?? '') !== 'yes') throw new InvalidArgumentException('Publish grades and confirm finalizing first.');
+        if (($book['published']['hash'] ?? '') !== academic_review_hash($book, $classroom, $attempts)) throw new InvalidArgumentException('Draft grades changed. Review and publish them again before finalizing.');
+        foreach ($book['published']['students'] as $row) if (($row['special_status'] ?? 'enrolled') === 'enrolled' && empty($row['complete'])) throw new InvalidArgumentException('All grading periods and weighted categories must be complete before finalizing.');
+        $book['locked'] = true; $book['published']['finalized'] = true;
+        $changes[] = ['lock', false, true, null, null];
+    } elseif ($action === 'unlock') {
+        $reason = grading_text($input['reason'] ?? null, 'Correction reason', 500);
+        $book['locked'] = false; if ($book['published']) $book['published']['finalized'] = false;
+        $changes[] = ['unlock', true, ['locked' => false, 'reason' => $reason], null, null];
+    } elseif ($action === 'academic_status') {
+        $student = grading_student_id($classroom, $input['student_id'] ?? '');
+        $status = $input['academic_status'] ?? '';
+        if (!in_array($status, ['enrolled', 'incomplete', 'withdrawn'], true)) throw new InvalidArgumentException('Choose a supported academic status.');
+        $reason = grading_text($input['reason'] ?? null, 'Status reason', 500);
+        $old = $book['academic_statuses'][(string) $student] ?? null;
+        $book['academic_statuses'][(string) $student] = ['status' => $status, 'reason' => $reason];
+        $changes[] = ['academic_status', $old, $book['academic_statuses'][(string) $student], $student, null];
     } elseif ($action === 'publish') {
         if (!$book['config'] || ($input['confirm'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm publishing this grade release.');
+        $hash = academic_review_hash($book, $classroom, $attempts);
+        if (!empty($book['config']['periods']) && ($book['reviewed']['hash'] ?? '') !== $hash) throw new InvalidArgumentException('Review the current calculated grades before publishing.');
         $rows = [];
         foreach ($classroom['student_ids'] as $student) $rows[(string) $student] = grading_calculate($book, (int) $student, $attempts);
         $old = $book['published'];
-        $book['published'] = ['at' => now_iso(), 'actor_id' => (int) $actor['id'], 'config' => $book['config'], 'students' => $rows];
+        $book['published'] = ['at' => now_iso(), 'actor_id' => (int) $actor['id'], 'config' => $book['config'], 'students' => $rows, 'hash' => $hash, 'finalized' => false];
         $changes[] = ['publish', $old, $book['published'], null, null];
     } elseif ($action === 'unpublish') {
         if (($input['confirm'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm hiding the published grades.');
         $changes[] = ['unpublish', $book['published'], null, null, null]; $book['published'] = null;
     } else throw new InvalidArgumentException('Unknown gradebook action.');
+    if (!in_array($action, ['review', 'publish', 'lock'], true)) $book['reviewed'] = null;
     $book['revision']++;
     return $changes;
 }
@@ -297,7 +344,14 @@ function grading_sync_quiz(PDO $pdo, int $classroomId, int $actorId, array $quiz
 {
     // Caller holds the classroom lock, and this runs inside the quiz transaction.
     $book = grading_load($pdo, $classroomId); $category = $quiz['grade_category_id'] ?? '';
+    if (!empty($book['locked']) && ($category !== '' || isset($book['items']['quiz-' . (int) $quiz['id']]))) throw new InvalidArgumentException('Unlock the gradebook with a correction reason before changing graded activities.');
     $id = 'quiz-' . (int) $quiz['id']; $old = $book['items'][$id] ?? null;
+    $correctionReason = '';
+    if ($old && (($old['category_id'] ?? '') !== $category || ($old['max_score'] ?? null) != ($quiz['grade_max_score'] ?? null)
+        || ($old['attempt_policy'] ?? '') !== ($quiz['grade_attempt_policy'] ?? '') || ($old['period_id'] ?? '') !== ($quiz['grade_period_id'] ?? ''))) {
+        $recorded = $pdo->prepare('SELECT COUNT(*) FROM attempts WHERE classroom_id = ? AND quiz_id = ?'); $recorded->execute([$classroomId, (int) $quiz['id']]);
+        if ($recorded->fetchColumn()) $correctionReason = grading_text($quiz['grade_correction_reason'] ?? null, 'Quiz grading correction reason', 500);
+    }
     if ($category === '') {
         if (!$old) return;
         $book['items'][$id]['archived'] = true;
@@ -309,9 +363,10 @@ function grading_sync_quiz(PDO $pdo, int $classroomId, int $actorId, array $quiz
         if (!in_array($policy, ['highest', 'latest', 'first', 'average'], true)) throw new InvalidArgumentException('Invalid attempt grading policy.');
         $book['items'][$id] = ['id' => $id, 'source' => 'quiz', 'quiz_id' => (int) $quiz['id'], 'name' => $quiz['title'], 'category_id' => $category,
             'max_score' => $max, 'date' => substr($quiz['created_at'], 0, 10), 'attempt_policy' => $policy, 'archived' => false];
+        if (!empty($book['config']['periods'])) $book['items'][$id]['period_id'] = academic_period_id($quiz['grade_period_id'] ?? null);
     }
-    $book['revision']++; grading_write($pdo, $classroomId, $book);
-    grading_audit($pdo, $classroomId, $actorId, 'quiz_grading', $old, $book['items'][$id], null, $id);
+    $book['reviewed'] = null; $book['revision']++; grading_write($pdo, $classroomId, $book);
+    grading_audit($pdo, $classroomId, $actorId, 'quiz_grading', $old, ['item' => $book['items'][$id], 'reason' => $correctionReason], null, $id);
 }
 
 function grading_published_student(array $book, array $classroom, array $user): ?array

@@ -96,6 +96,22 @@ CREATE TABLE IF NOT EXISTS uploaded_files (
     PRIMARY KEY (scope, stored_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+CREATE TABLE IF NOT EXISTS classroom_academics (classroom_id BIGINT PRIMARY KEY, data LONGTEXT NOT NULL) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS academic_settings (id VARCHAR(40) PRIMARY KEY, data LONGTEXT NOT NULL) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS quiz_runs (
+    run_token VARCHAR(48) PRIMARY KEY, classroom_id BIGINT NOT NULL, quiz_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL, started_at VARCHAR(40) NOT NULL, last_seen VARCHAR(40) NOT NULL,
+    completed_at VARCHAR(40), attempt_id BIGINT,
+    INDEX idx_quiz_runs_classroom (classroom_id, quiz_id, student_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS academic_reminders (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, classroom_id BIGINT NOT NULL,
+    quiz_id BIGINT NOT NULL, student_id BIGINT NOT NULL, teacher_id BIGINT NOT NULL,
+    body TEXT NOT NULL, created_at VARCHAR(40) NOT NULL,
+    INDEX idx_academic_reminders_student (classroom_id, student_id)
+) ENGINE=InnoDB;
+
 -- DEMO ADMIN: explicit import only
 -- Same sample administrator as PostgreSQL: admin@chalk.local / ChalkAdmin!2026
 -- Existing emails, passwords, roles, and status are preserved.
@@ -139,7 +155,15 @@ COMMIT;
 
 -- Give the test classroom an editable Balanced grading structure.
 INSERT INTO gradebooks (classroom_id, data, updated_at)
-SELECT classroom.id, '{"config":{"method":"weighted_categories","category_method":"points","categories":[{"id":"quiz","name":"Quizzes","weight":30},{"id":"work","name":"Assignments / Projects","weight":30},{"id":"exam","name":"Exams","weight":40}],"scale":[{"min":0,"label":"Below passing"},{"min":75,"label":"Passed"},{"min":90,"label":"Excellent"}],"passing":75,"missing_policy":"exclude"},"items":{},"scores":{},"overrides":{},"revision":0,"next_item_id":1,"published":null}', CURRENT_TIMESTAMP
+SELECT classroom.id, '{"config":{"method":"weighted_categories","category_method":"points","categories":[{"id":"quiz","name":"Quizzes","weight":30},{"id":"work","name":"Assignments / Projects","weight":30},{"id":"exam","name":"Exams","weight":40}],"scale":[{"min":0,"label":"Below passing"},{"min":75,"label":"Passed"},{"min":90,"label":"Excellent"}],"passing":75,"missing_policy":"exclude","periods":[{"id":"prelim","name":"Prelim","weight":30},{"id":"midterm","name":"Midterm","weight":30},{"id":"finals","name":"Finals","weight":40}]},"items":{},"scores":{},"overrides":{},"revision":0,"next_item_id":1,"published":null}', CURRENT_TIMESTAMP
 FROM classrooms classroom JOIN users teacher ON teacher.id = classroom.teacher_id
 WHERE classroom.code = 'TESTCLASS' AND teacher.email = 'teacher@chalk.test' AND teacher.role = 'teacher'
   AND NOT EXISTS (SELECT 1 FROM gradebooks WHERE classroom_id = classroom.id);
+
+INSERT INTO classroom_academics (classroom_id, data)
+SELECT classroom.id, JSON_OBJECT('subject_code', 'GEN101', 'section', 'Test Section',
+    'academic_year', CONCAT(YEAR(CURRENT_DATE), '–', YEAR(CURRENT_DATE) + 1),
+    'semester', 'First Semester', 'credit_units', 3, 'required', JSON_EXTRACT('true', '$'))
+FROM classrooms classroom JOIN users teacher ON teacher.id = classroom.teacher_id
+WHERE classroom.code = 'TESTCLASS' AND teacher.email = 'teacher@chalk.test'
+  AND NOT EXISTS (SELECT 1 FROM classroom_academics WHERE classroom_id = classroom.id);

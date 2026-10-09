@@ -224,3 +224,7 @@ body.ui-refined.classroom-page.classroom-redesign .classroom-aside-heading h2 { 
     .quiz-card-topline { padding-left: 102px; }
     body.ui-refined.classroom-page.classroom-redesign .classroom-tabs a { padding: 9px 11px; font-size: 12px; gap: 7px; }
 }
+.classroom-private-reminders { grid-column: 1 / -1; display: grid; gap: 12px; }
+.classroom-private-reminders:empty { display: none; }
+.classroom-private-reminders .panel { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.classroom-private-reminders p { flex: 1 1 240px; margin: 0; }

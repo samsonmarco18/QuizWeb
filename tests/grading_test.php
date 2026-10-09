@@ -11,7 +11,7 @@ foreach (grading_templates() as $template) {
     $templateBook['config'] = grading_validate_config($template['config'], $templateBook);
     foreach ($templateBook['config']['categories'] as $category) {
         $id = 'test-' . $category['id'];
-        $templateBook['items'][$id] = ['id' => $id, 'name' => $category['name'], 'category_id' => $category['id'], 'source' => 'manual', 'max_score' => 100];
+        $templateBook['items'][$id] = ['id' => $id, 'name' => $category['name'], 'category_id' => $category['id'], 'source' => 'manual', 'max_score' => 100, 'period_id' => 'prelim'];
         $templateBook['scores'][$id]['1'] = ['quiz' => 80, 'work' => 90, 'exam' => 70][$category['id']];
     }
     $expected = array_sum(array_map(fn($c) => $c['weight'] * ['quiz' => 80, 'work' => 90, 'exam' => 70][$c['id']] / 100, $templateBook['config']['categories']));
@@ -26,7 +26,7 @@ $grade = grading_calculate($book, 1, []); grade_near($grade['overall'], 88, 'Wei
 grade_assert(grading_calculate($book, 2, [])['overall'] === null, 'Blank scores are not zero');
 grading_apply_action($book, $class, $teacher, 'scores', ['item_id' => 'manual-1', 'scores' => [2 => '0']], []);
 grade_near(grading_calculate($book, 2, [])['overall'], 0, 'Explicit zero counts');
-grading_apply_action($book, $class, $teacher, 'scores', ['item_id' => 'manual-1', 'scores' => [2 => '18']], []);
+grading_apply_action($book, $class, $teacher, 'scores', ['item_id' => 'manual-1', 'scores' => [2 => '18'], 'reason' => 'Correct entry'], []);
 grade_near(grading_calculate($book, 2, [])['overall'], 90, 'Exclude missing categories and normalize');
 $zero = $book; $zero['config']['missing_policy'] = 'zero'; grade_near(grading_calculate($zero, 2, [])['overall'], 27, 'Explicit missing-as-zero policy');
 $aggregate = $book; $aggregate['items']['manual-4'] = ['id' => 'manual-4', 'source' => 'manual', 'name' => 'Other quiz', 'category_id' => 'quiz', 'max_score' => 50, 'archived' => false]; $aggregate['scores']['manual-4'][1] = 42;
@@ -45,13 +45,13 @@ grade_assert(grading_calculate($quizBook, 2, $attempts)['items']['manual-1']['sc
 grading_apply_action($book, $class, $teacher, 'override', ['student_id' => 1, 'item_id' => 'manual-1', 'value' => '20', 'reason' => 'Correction'], []);
 grade_near(grading_calculate($book, 1, [])['overall'], 91, 'Item override recalculates overall');
 grade_assert($book['overrides'][1]['manual-1']['calculated_at_change'] === 18.0 && $book['overrides'][1]['manual-1']['actor_id'] === 5, 'Override keeps original and actor');
-grading_apply_action($book, $class, $teacher, 'override', ['student_id' => 1, 'item_id' => 'overall', 'value' => '95'], []);
-grade_near(grading_calculate($book, 1, [])['overall'], 95, 'Overall override');
+grade_reject(function () use (&$book, $class, $teacher) { grading_apply_action($book, $class, $teacher, 'override', ['student_id' => 1, 'item_id' => 'overall', 'value' => '95', 'reason' => 'Invalid direct final'], []); }, 'Direct final-grade entry accepted');
+grade_near(grading_calculate($book, 1, [])['overall'], 91, 'Final remains assessment-based');
 grading_apply_action($book, $class, $teacher, 'publish', ['confirm' => 'yes'], []);
-$student = ['id' => 1, 'role' => 'student']; $published = grading_published_student($book, $class, $student); grade_near($published['overall'], 95, 'Own published grade');
-grading_apply_action($book, $class, $teacher, 'restore', ['student_id' => 1, 'item_id' => 'overall'], []);
-grading_apply_action($book, $class, $teacher, 'restore', ['student_id' => 1, 'item_id' => 'manual-1'], []);
-grade_near(grading_calculate($book, 1, [])['overall'], 88, 'Restore automatic grade'); grade_near(grading_published_student($book, $class, $student)['overall'], 95, 'Release unchanged by draft edits');
+$student = ['id' => 1, 'role' => 'student']; $published = grading_published_student($book, $class, $student); grade_near($published['overall'], 91, 'Own published grade');
+grading_apply_action($book, $class, $teacher, 'restore', ['student_id' => 1, 'item_id' => 'overall', 'reason' => 'Remove historical adjustment'], []);
+grading_apply_action($book, $class, $teacher, 'restore', ['student_id' => 1, 'item_id' => 'manual-1', 'reason' => 'Restore original assessment'], []);
+grade_near(grading_calculate($book, 1, [])['overall'], 88, 'Restore automatic grade'); grade_near(grading_published_student($book, $class, $student)['overall'], 91, 'Release unchanged by draft edits');
 grade_assert(grading_published_student($book, $class, ['id' => 2, 'role' => 'student'])['student_id'] === 2, 'Student accessor returns only self');
 grade_reject(fn() => grading_published_student($book, $class, ['id' => 3, 'role' => 'student']), 'Nonmember grades exposed');
 foreach ([['id' => 1, 'role' => 'student'], ['id' => 6, 'role' => 'teacher'], ['id' => 5, 'role' => 'admin']] as $actor) grade_reject(function () use (&$book, $class, $actor) { grading_apply_action($book, $class, $actor, 'unpublish', ['confirm' => 'yes'], []); }, 'Unauthorized mutation accepted');
@@ -87,6 +87,7 @@ $pdo->exec("INSERT INTO attempts VALUES (1, 1, 1, 4, 'Original title', 'standard
 grading_mutate($pdo, 1, $teacher, 'publish', ['revision' => '2', 'confirm' => 'yes']);
 $persisted = grading_load($pdo, 1); grade_near($persisted['published']['students'][1]['items']['quiz-4']['score'], 45, 'Stored legitimate attempt in published grade');
 $quiz['title'] = 'Edited quiz'; $quiz['grade_max_score'] = 100;
+$quiz['grade_correction_reason'] = 'Update the assessment maximum';
 $pdo->beginTransaction(); grading_sync_quiz($pdo, 1, 5, $quiz); $pdo->commit();
 grade_near(grading_calculate(grading_load($pdo, 1), 1, array_map('hydrate_attempt', $pdo->query('SELECT * FROM attempts')->fetchAll()))['items']['quiz-4']['score'], 90, 'Edited max preserves percentage');
 grade_near(grading_load($pdo, 1)['published']['students'][1]['items']['quiz-4']['score'], 45, 'Published score survives quiz edits');

@@ -9,7 +9,7 @@
     const mode = () => form.elements.game_type.value;
     const cards = () => [...list.querySelectorAll('.question-card')];
     let step = 0, active = 0, submitting = false, leaving = false;
-    const snapshot = () => JSON.stringify([form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
+    const snapshot = () => JSON.stringify([form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_period_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
     const original = window.quizBuilderUnsaved ? null : snapshot();
     const stepNames = ['Game', 'Details', 'Questions', 'Settings', 'Grading', 'Review'];
     const draftKey = `chalk-builder:${location.pathname}${location.search}`;
@@ -18,7 +18,7 @@
     function saveLocalDraft() {
         if (leaving) return;
         const fields = {};
-        ['title', 'description', 'due_at', 'mastery_threshold', 'grade_category_id', 'grade_max_score', 'grade_attempt_policy', 'game_type'].forEach(name => { fields[name] = form.elements[name]?.value || ''; });
+        ['title', 'description', 'due_at', 'mastery_threshold', 'grade_category_id', 'grade_period_id', 'grade_max_score', 'grade_attempt_policy', 'game_type'].forEach(name => { fields[name] = form.elements[name]?.value || ''; });
         try { localStorage.setItem(draftKey, JSON.stringify({version: 1, fields, questions: api.collect(), step})); } catch (_) { /* Private mode or full storage must not prevent saving. */ }
     }
     const node = (tag, text, cls) => {

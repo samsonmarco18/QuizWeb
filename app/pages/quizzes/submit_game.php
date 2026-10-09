@@ -56,6 +56,8 @@ if ($disqualified) {
     $answers = ['_disqualified' => true] + quiz_integrity_metadata($run);
 }
 
+if (!empty($quiz['grade_category_id']) && !empty(grading_load(db(), (int) $classroom['id'])['locked'])) { http_response_code(409); exit('This subject’s grades are finalized. The teacher must reopen grades before accepting a graded attempt.'); }
 $attempt = create_attempt((int) $user['id'], (int) $classroom['id'], $quiz, $answers, $elapsedSeconds, $disqualified);
 $_SESSION['activity_runs'][$runToken]['attempt_id'] = (int) $attempt['id'];
+db()->prepare('UPDATE quiz_runs SET completed_at = ?, attempt_id = ? WHERE run_token = ? AND student_id = ?')->execute([now_iso(), (int) $attempt['id'], $runToken, (int) $user['id']]);
 redirect('/QuizWeb/results.php?id=' . $attempt['id']);

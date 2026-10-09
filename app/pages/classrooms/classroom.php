@@ -144,6 +144,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
                 <small data-copy-code-status role="status"></small>
             </div>
             <?php if ($user['role'] === 'teacher'): ?>
+                <a class="button button-secondary" href="/QuizWeb/classroom_settings.php?classroom_id=<?php echo (int) $classroom['id']; ?>">Class Settings</a>
                 <a class="button button-primary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>">Create Quiz Game</a>
             <?php endif; ?>
         </div>
@@ -151,6 +152,9 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
 </section>
 
 <div class="classroom-workspace">
+<?php if ($user['role'] === 'student'): $reminderQuery = db()->prepare('SELECT body, quiz_id, created_at FROM academic_reminders WHERE classroom_id = ? AND student_id = ? ORDER BY id DESC LIMIT 5'); $reminderQuery->execute([$classroomId, (int) $user['id']]); ?>
+<div class="classroom-private-reminders"><?php foreach ($reminderQuery->fetchAll() as $reminder): ?><article class="glass panel"><strong>Teacher reminder</strong><p><?php echo esc($reminder['body']); ?></p><small><?php echo esc(format_date($reminder['created_at'])); ?></small><a class="button button-secondary" href="/QuizWeb/play.php?classroom_id=<?php echo $classroomId; ?>&amp;quiz_id=<?php echo (int) $reminder['quiz_id']; ?>">Open Quiz</a></article><?php endforeach; ?></div>
+<?php endif; ?>
 <div class="classroom-main">
 <nav class="classroom-tabs" aria-label="Classroom sections">
     <?php foreach ($classroomViews as $view => $label): ?>
@@ -476,7 +480,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
                     <?php if ($card['due'] !== null): ?><div class="quiz-due-date<?php echo in_array($card['due_status'], ['soon', 'past'], true) ? ' is-due' : ''; ?>"><?php echo nav_icon('calendar'); ?><span>Due <?php echo esc(date('M j, Y', $card['due'])); ?></span><strong><?php echo $card['due_status'] === 'past' ? 'Submissions still open' : ($card['days_left'] === 0 ? 'Due today' : $card['days_left'] . ' day' . ($card['days_left'] === 1 ? '' : 's') . ' left'); ?></strong></div><?php endif; ?>
                     <div class="quiz-card-actions">
                         <a class="button button-primary" href="<?php echo esc($playUrl); ?>"><?php echo nav_icon('play'); ?><?php echo $user['role'] === 'teacher' ? 'Preview' : ($best ? 'Play Again' : 'Start Quiz'); ?></a>
-                        <?php if ($user['role'] === 'teacher'): ?><a class="button button-secondary" href="<?php echo esc($editUrl); ?>"><?php echo nav_icon('document'); ?>Edit Quiz</a><?php elseif ($best): ?><a class="button button-secondary" href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>"><?php echo nav_icon('chart'); ?>View Results</a><?php endif; ?>
+                        <?php if ($user['role'] === 'teacher'): ?><a class="button button-secondary" href="<?php echo esc($editUrl); ?>"><?php echo nav_icon('document'); ?>Edit Quiz</a><a class="button button-secondary" href="/QuizWeb/participants.php?classroom_id=<?php echo $classroomId; ?>&amp;quiz_id=<?php echo (int) $quiz['id']; ?>"><?php echo nav_icon('Join Class'); ?>View Participants</a><?php elseif ($best): ?><a class="button button-secondary" href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>"><?php echo nav_icon('chart'); ?>View Results</a><?php endif; ?>
                         <details class="quiz-card-menu"><summary class="classroom-icon-button" aria-label="More options for <?php echo esc($quiz['title']); ?>"><?php echo nav_icon('more'); ?></summary><nav aria-label="Quiz actions"><a href="<?php echo esc($playUrl); ?>">Open activity</a><?php if ($user['role'] === 'teacher'): ?><a href="<?php echo esc($editUrl); ?>">Edit activity</a><?php elseif ($best): ?><a href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>">Review best attempt</a><?php endif; ?><a href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=results">Class results</a></nav></details>
                     </div>
                 </div>

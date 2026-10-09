@@ -33,6 +33,7 @@ try {
         $attempt = create_attempt((int) $user['id'], (int) $run['classroom_id'], $run['quiz_snapshot'], $answers, $elapsed, true);
         $run['attempt_id'] = (int) $attempt['id'];
         $_SESSION['activity_runs'][$token] = $run;
+        db()->prepare('UPDATE quiz_runs SET completed_at = ?, attempt_id = ? WHERE run_token = ? AND student_id = ?')->execute([now_iso(), (int) $attempt['id'], $token, (int) $user['id']]);
     }
     echo json_encode([
         'warnings' => (int) ($run['integrity']['warnings'] ?? 0),

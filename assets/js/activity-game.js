@@ -52,6 +52,7 @@
         starting = true; const ready = guard ? await guard.start() : true; starting = false;
         if (!ready) return;
         started = Date.now();
+        window.chalkParticipation?.start(root);
         window.chalkGameUI?.start(root);
         timer = setInterval(() => { document.querySelector('[data-timer-value]').textContent = `${elapsed()}s`; }, 1000);
         if (matching) renderMatching(); else renderQuestion();

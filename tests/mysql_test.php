@@ -43,31 +43,31 @@ try {
         insert_user_record($pdo, array_replace($teacher, ['id' => 7]));
         throw new RuntimeException('Duplicate email silently changed another account.');
     } catch (PDOException $expected) {}
-    $class = ['id' => 1, 'teacher_id' => 5, 'student_ids' => [6], 'name' => 'Test class', 'subject' => 'Science', 'description' => '', 'code' => 'MYSQLTEST', 'quizzes' => [], 'announcements' => [], 'chat_messages' => [['body' => 'Hello 📚']], 'created_at' => now_iso(), 'updated_at' => now_iso()];
+    $class = ['id' => 100, 'teacher_id' => 5, 'student_ids' => [6], 'name' => 'Test class', 'subject' => 'Science', 'description' => '', 'code' => 'MYSQLTEST', 'quizzes' => [], 'announcements' => [], 'chat_messages' => [['body' => 'Hello 📚']], 'created_at' => now_iso(), 'updated_at' => now_iso()];
     insert_classroom_record($pdo, $class);
     insert_classroom_record($pdo, $class);
-    $stored = hydrate_classroom($pdo->query('SELECT * FROM classrooms WHERE id = 1')->fetch());
+    $stored = hydrate_classroom($pdo->query('SELECT * FROM classrooms WHERE id = 100')->fetch());
     mysql_check($stored['chat_messages'] === $class['chat_messages'], 'JSON/Unicode roundtrip failed.');
     $config = ['categories' => [['id' => 'quiz', 'name' => 'Quizzes', 'weight' => 100]], 'scale' => [['min' => 0, 'label' => 'Recorded']], 'passing' => 75, 'missing_policy' => 'exclude'];
-    grading_mutate($pdo, 1, $teacher, 'config', ['revision' => '0', 'config' => $config]);
+    grading_mutate($pdo, 100, $teacher, 'config', ['revision' => '0', 'config' => $config]);
     $quiz = ['id' => 1, 'title' => 'Original quiz', 'game_type' => 'standard', 'created_at' => now_iso(), 'questions' => [['id' => 1, 'prompt' => 'Question', 'answer' => 'Yes', 'points' => 10]], 'grade_category_id' => 'quiz', 'grade_max_score' => 100, 'grade_attempt_policy' => 'highest'];
-    persist_builder_quiz($pdo, 1, 5, $quiz, true);
-    $attempt = ['id' => 1, 'student_id' => 6, 'classroom_id' => 1, 'quiz_id' => 1, 'quiz_title' => $quiz['title'], 'game_type' => 'standard', 'answers' => [], 'score' => 8, 'max_score' => 10, 'elapsed_seconds' => 5, 'played_at' => now_iso()];
+    persist_builder_quiz($pdo, 100, 5, $quiz, true);
+    $attempt = ['id' => 1, 'student_id' => 6, 'classroom_id' => 100, 'quiz_id' => 1, 'quiz_title' => $quiz['title'], 'game_type' => 'standard', 'answers' => [], 'score' => 8, 'max_score' => 10, 'elapsed_seconds' => 5, 'played_at' => now_iso()];
     insert_attempt_record($pdo, $attempt);
     insert_attempt_record($pdo, $attempt);
     $quiz['title'] = 'Edited quiz';
-    persist_builder_quiz($pdo, 1, 5, $quiz, false);
+    persist_builder_quiz($pdo, 100, 5, $quiz, false);
     $storedAttempt = hydrate_attempt($pdo->query('SELECT * FROM attempts WHERE id = 1')->fetch());
     mysql_check($storedAttempt['answers']['_quiz_snapshot']['title'] === 'Original quiz', 'Historical quiz snapshot lost.');
-    $book = grading_load($pdo, 1);
-    grading_mutate($pdo, 1, $teacher, 'publish', ['revision' => (string) $book['revision'], 'confirm' => 'yes']);
-    mysql_check(grading_load($pdo, 1)['published']['students'][6]['overall'] == 80, 'Published score incorrect.');
+    $book = grading_load($pdo, 100);
+    grading_mutate($pdo, 100, $teacher, 'publish', ['revision' => (string) $book['revision'], 'confirm' => 'yes']);
+    mysql_check(grading_load($pdo, 100)['published']['students'][6]['overall'] == 80, 'Published score incorrect.');
     $pdo->beginTransaction();
     insert_classroom_record($pdo, array_replace($class, ['name' => 'Must roll back']));
     $pdo->rollBack();
-    mysql_check($pdo->query('SELECT name FROM classrooms WHERE id = 1')->fetchColumn() === 'Test class', 'Transaction rollback failed.');
+    mysql_check($pdo->query('SELECT name FROM classrooms WHERE id = 100')->fetchColumn() === 'Test class', 'Transaction rollback failed.');
     try {
-        $pdo->exec('DELETE FROM classrooms WHERE id = 1');
+        $pdo->exec('DELETE FROM classrooms WHERE id = 100');
         throw new RuntimeException('Gradebook foreign key did not restrict deletion.');
     } catch (PDOException $expected) {}
     echo "Live MySQL/MariaDB import/reimport, credential preservation, JSON, user/class/attempt saves, duplicate-email rejection, quiz snapshots, grade publication, rollback, and foreign keys passed.\n";

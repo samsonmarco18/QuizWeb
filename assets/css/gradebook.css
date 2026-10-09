@@ -1,0 +1,66 @@
+/* Scoped gradebook controls, loaded after the shared theme styles. */
+body.ui-refined.gradebook-page .page-shell { min-width: 0; padding-bottom: 80px; }
+body.ui-refined.gradebook-page .page-heading { align-items: center; margin-bottom: 24px; }
+body.ui-refined.gradebook-page .page-heading > div { min-width: 0; }
+body.ui-refined.gradebook-page .page-heading p { max-width: 65ch; line-height: 1.7; }
+body.ui-refined.gradebook-page .classroom-tabs { margin-bottom: 24px; }
+body.ui-refined.gradebook-page .panel { min-width: 0; }
+.gradebook-page .grade-filters { margin: 0 0 20px; }
+.gradebook-page .grade-filters > summary { padding: 8px 0; font-weight: 600; }
+.gradebook-page .grade-filters form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 14px; margin-top: 16px; }
+.gradebook-page .grade-filters label { min-width: 0; }
+.gradebook-page .grade-table { table-layout: fixed; }
+.gradebook-page .grade-table th, .gradebook-page .grade-table td { overflow-wrap: anywhere; padding: 14px 12px; vertical-align: middle; }
+.gradebook-page .grade-table th:first-child { width: 22%; }
+.gradebook-page .grade-table caption { padding-top: 0; padding-bottom: 14px; }
+.gradebook-page .grade-release-status { display: flex; align-items: center; gap: 12px; padding: 20px 0; }
+.gradebook-page .grade-release-status p { margin: 0; color: var(--text-secondary); line-height: 1.6; }
+.gradebook-page .grade-release-badge { flex: 0 0 auto; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.gradebook-page .grade-release-panel { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); }
+.gradebook-page .grade-release-panel > summary { padding: 16px 18px; cursor: pointer; font-weight: 600; }
+.gradebook-page .grade-release-panel > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 12px; }
+.gradebook-page .grade-release-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; padding: 4px 18px 20px; }
+body.ui-refined.gradebook-page .grade-release-form { gap: 18px; align-content: start; }
+.gradebook-page .grade-release-form h3 { margin: 0 0 8px; font-size: 15px; }
+.gradebook-page .grade-release-form p { margin: 0; max-width: 70ch; color: var(--text-secondary); line-height: 1.7; }
+body.ui-refined.gradebook-page label:has(> input[type="checkbox"]) { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.6; }
+body.ui-refined.gradebook-page input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 18px; margin: 2px 0 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
+.gradebook-page .grade-confirm span { color: var(--text-primary); font-weight: 500; }
+.gradebook-page .grade-release-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.gradebook-page .grade-release-actions > span { color: var(--text-secondary); font-size: 12px; }
+body.ui-refined.gradebook-page .stack-form > .button { justify-self: start; }
+.gradebook-page .grade-activities-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 24px 0 16px; }
+.gradebook-page .grade-activities-heading h2 { margin: 0; font-size: 16px; }
+.gradebook-page .grade-activities-heading > span { color: var(--text-secondary); font-size: 12px; }
+.gradebook-page .grade-activity-list { display: grid; gap: 14px; }
+body.ui-refined.gradebook-page .grade-activity-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; margin: 0; padding: 18px 20px; border-radius: 12px; }
+.gradebook-page .grade-activity-info { min-width: 0; }
+.gradebook-page .grade-activity-info h3 { margin: 0 0 10px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.gradebook-page .grade-activity-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--text-secondary); font-size: 12px; }
+.gradebook-page .grade-activity-kind { border-radius: 6px; padding: 3px 8px; background: var(--surface-hover); color: var(--accent); font-weight: 600; }
+.gradebook-page .grade-activity-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: 0; }
+.gradebook-page .grade-activity-archive { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 12px; }
+.gradebook-page .grade-activity-archive > summary { width: fit-content; cursor: pointer; color: var(--text-secondary); font-size: 12px; padding: 4px 0; }
+.gradebook-page .grade-activity-archive > summary:hover { color: var(--text-primary); }
+.gradebook-page .grade-activity-archive form { margin-top: 12px; max-width: 680px; }
+.gradebook-page .grade-activity-archive p { margin: 0; color: var(--text-secondary); line-height: 1.7; }
+.gradebook-page .panel > details:has(> form[data-grade-dirty]) > summary { padding: 10px 0; cursor: pointer; font-weight: 600; }
+.gradebook-page .panel > details:has(> form[data-grade-dirty])[open] { padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.gradebook-page .panel > details > form[data-grade-dirty] { margin-top: 16px; }
+@media (max-width: 1100px) {
+    .gradebook-page .grade-filters form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .gradebook-page .grade-filters form > .button { justify-self: start; }
+}
+@media (max-width: 680px) {
+    body.ui-refined.gradebook-page .grade-activity-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+    .gradebook-page .grade-activity-actions { justify-content: flex-start; }
+    .gradebook-page .grade-activity-archive { grid-column: 1; }
+    .gradebook-page .grade-activity-actions .button { flex: 1 1 auto; text-align: center; }
+    .gradebook-page .grade-filters form { grid-template-columns: minmax(0, 1fr); }
+    .gradebook-page .grade-table th:first-child { width: auto; }
+    .gradebook-page .grade-table th, .gradebook-page .grade-table td { padding: 6px 0; }
+    .gradebook-page .grade-release-status { align-items: flex-start; }
+    .gradebook-page .grade-release-forms { padding: 0 14px 18px; }
+    .gradebook-page .grade-release-panel > summary { padding: 14px; }
+    .gradebook-page .grade-release-actions { align-items: flex-start; flex-direction: column; }
+}

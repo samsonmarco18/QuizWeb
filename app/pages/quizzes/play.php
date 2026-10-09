@@ -21,6 +21,10 @@ if (!$quiz) {
 
 $modes = game_modes();
 $isPreview = $user['role'] === 'teacher';
+if (!$isPreview && !empty($quiz['grade_category_id']) && !empty(grading_load(db(), $classroomId)['locked'])) {
+    flash_set('danger', 'This subject’s grades are finalized. Graded quiz attempts are locked.');
+    redirect('/QuizWeb/classroom.php?id=' . $classroomId);
+}
 $isTextActivity = activity_uses_text_answers($quiz['game_type']);
 $_SESSION['activity_csrf'] ??= bin2hex(random_bytes(32));
 $runToken = '';
@@ -159,4 +163,4 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type'], $quiz['gam
     </div>
 </section>
 
-<?php render_footer(['/QuizWeb/assets/js/game-experience.js', '/QuizWeb/assets/js/quiz-integrity.js', $isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>
+<?php render_footer(['/QuizWeb/assets/js/game-experience.js', '/QuizWeb/assets/js/quiz-integrity.js', '/QuizWeb/assets/js/participation.js', $isTextActivity ? '/QuizWeb/assets/js/activity-game.js' : '/QuizWeb/assets/js/game.js']); ?>

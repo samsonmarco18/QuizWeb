@@ -40,6 +40,7 @@ function nav_links(?array $user): array
         ['/QuizWeb/admin.php', 'Administration'],
         ['/QuizWeb/admin.php?tab=users', 'Users'],
         ['/QuizWeb/admin.php?tab=security', 'Security'],
+        ['/QuizWeb/academic_settings.php', 'Academic Settings'],
     ];
 
     $links = [

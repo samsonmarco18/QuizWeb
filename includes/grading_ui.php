@@ -7,6 +7,18 @@ function grade_display($value): string
 
 function render_grade_breakdown(array $grade, array $config): void
 {
+    if (isset($grade['periods'])) {
+        ?><div class="academic-breakdown"><div class="academic-final"><span>Calculated subject grade</span><strong><?php echo esc(grade_display($grade['overall'])); ?></strong><span class="academic-status"><?php echo esc($grade['status']); ?></span></div>
+        <?php foreach ($grade['periods'] as $period): ?>
+            <details class="academic-period-breakdown" open><summary><span><?php echo esc($period['name']); ?> <small>(<?php echo esc(grade_display($period['weight'])); ?>%)</small></span><strong><?php echo esc(grade_display($period['overall'])); ?></strong></summary>
+            <?php foreach ($period['categories'] as $category): ?>
+                <div class="academic-category-heading"><strong><?php echo esc($category['name']); ?></strong><span><?php echo esc(grade_display($category['percentage'])); ?><?php echo $category['percentage'] === null ? '' : '%'; ?> · <?php echo esc(grade_display($category['weight'])); ?>% weight</span></div>
+                <div class="academic-table-scroll"><table class="academic-table"><thead><tr><th>Activity</th><th>Earned / Possible</th><th>Grade</th></tr></thead><tbody><?php foreach ($category['items'] as $item): ?><tr><th><?php echo esc($item['name']); ?><small><?php echo esc($item['status']); ?></small></th><td><?php echo esc(grade_display($item['score']) . ' / ' . grade_display($item['max_score'])); ?></td><td><?php echo esc(grade_display($item['percentage'])); ?><?php echo $item['percentage'] === null ? '' : '%'; ?></td></tr><?php endforeach; ?><?php if (!$category['items']): ?><tr><td colspan="3" class="muted">No assessments in this category.</td></tr><?php endif; ?></tbody></table></div>
+                <p class="academic-points-summary"><?php echo esc(grade_display($category['earned']) . ' / ' . grade_display($category['possible'])); ?> counted points · Current contribution <?php echo esc(grade_display($category['current_contribution'])); ?>%</p>
+            <?php endforeach; ?></details>
+        <?php endforeach; ?><p class="muted academic-formula">Categories use earned ÷ possible points. Period and final grades use the configured weights. <?php echo $config['missing_policy'] === 'zero' ? 'Assigned missing scores count as zero.' : 'Ungraded scores are excluded until recorded.'; ?> Partial results use available weights.</p></div><?php
+        return;
+    }
     ?>
     <section class="glass panel grade-summary">
         <div><span class="eyebrow">Current overall grade</span><h2><?php echo esc(grade_display($grade['overall'])); ?><?php if ($grade['override']): ?> <small>Manually adjusted</small><?php endif; ?></h2>

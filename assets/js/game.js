@@ -782,6 +782,7 @@
         startingGame = false;
         if (!ready) return;
         state.started = true;
+        window.chalkParticipation?.start(root);
         window.chalkGameUI?.start(root);
         clearControls(); startTimers();
         if (crosswordMode) renderCrossword(); else renderQuestion();

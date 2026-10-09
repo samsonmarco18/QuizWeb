@@ -1,0 +1,12 @@
+const {JSDOM} = require('../data/qa/node_modules/jsdom');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const dom = new JSDOM('<button data-open-grade="subject-1">View Breakdown</button><dialog class="academic-drawer" id="subject-1"><button data-close-grade>Close</button></dialog><form data-auto-filter><select><option>First</option><option>Second</option></select></form>', {runScripts:'outside-only'});
+const w=dom.window,d=w.document,dialog=d.querySelector('dialog');
+dialog.showModal=()=>{dialog.open=true;}; dialog.close=()=>{dialog.open=false;};
+let filters=0; d.querySelector('form').requestSubmit=()=>{filters++;};
+w.eval(fs.readFileSync('assets/js/academic-grades.js','utf8'));
+d.querySelector('[data-open-grade]').click(); assert(dialog.open,'Subject drawer did not open');
+d.querySelector('[data-close-grade]').click(); assert(!dialog.open,'Subject drawer did not close');
+d.querySelector('select').dispatchEvent(new w.Event('change')); assert.equal(filters,1,'Term filter did not submit');
+dom.window.close(); console.log('Academic breakdown drawers and term filters passed.');

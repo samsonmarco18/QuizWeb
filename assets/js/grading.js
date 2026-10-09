@@ -8,6 +8,9 @@
   let setupDirty = false;
   if (setup) {
     const state = structuredClone(window.gradingConfigSeed);
+    const periodToggle = document.getElementById('enable-academic-periods');
+    const defaultPeriods = () => [{id: 'prelim', name: 'Prelim', weight: 30}, {id: 'midterm', name: 'Midterm', weight: 30}, {id: 'finals', name: 'Finals', weight: 40}];
+    if (periodToggle?.checked && !state.periods) state.periods = defaultPeriods();
     state.passing = String(state.passing);
     const initial = JSON.stringify(state);
     let step = 0;
@@ -26,11 +29,16 @@
     const button = (label, action) => { const element = node('button', label); element.type = 'button'; element.className = 'button button-secondary'; element.addEventListener('click', action); return element; };
     function update() {
       state.passing = passing.value; state.missing_policy = missing.value;
+      if (state.periods && byId('grading-period-total')) {
+        const periodTotal = state.periods.reduce((sum, period) => sum + Math.round(Number(period.weight || 0) * 100), 0) / 100;
+        byId('grading-period-total').textContent = `Period total: ${periodTotal.toFixed(2)}% · ${periodTotal === 100 ? 'Ready' : 'Must total 100%'}`;
+      } else if (byId('grading-period-total')) byId('grading-period-total').textContent = 'Existing category-only grades remain intact until you enable periods.';
       const total = state.categories.reduce((sum, category) => sum + Math.round(Number(category.weight || 0) * 100), 0) / 100;
       byId('grading-weight-total').textContent = `Total: ${total.toFixed(2)}% · ${total === 100 ? 'Ready' : total < 100 ? `${(100 - total).toFixed(2)}% remaining` : `${(total - 100).toFixed(2)}% over`}`;
       byId('grading-weight-progress').value = Math.min(100, total);
       const review = byId('grading-setup-review'); review.replaceChildren();
       state.categories.forEach(category => review.append(node('p', `${category.name || 'Unnamed category'}: ${category.weight || 0}%`)));
+      if (state.periods) state.periods.forEach(period => review.append(node('p', `${period.name}: ${period.weight}% of final grade`)));
       review.append(node('p', 'Category grade = earned points ÷ possible points × 100. Overall = sum of category grade × category weight, normalized over categories with available points.'));
       review.append(node('p', `Passing: ${state.passing}% · Missing scores: ${state.missing_policy === 'zero' ? 'count as zero' : 'excluded until graded'}`));
       [...state.scale].sort((a, b) => Number(a.min) - Number(b.min)).forEach(band => review.append(node('p', `${band.min}% and above: ${band.label}`)));
@@ -39,6 +47,11 @@
     function render() {
       const categories = byId('grading-categories'), weights = byId('grading-weights'), bands = byId('grading-scale');
       categories.replaceChildren(); weights.replaceChildren(); bands.replaceChildren();
+      const periodWeights = byId('grading-period-weights');
+      if (periodWeights) {
+        periodWeights.replaceChildren();
+        (state.periods || []).forEach(period => periodWeights.append(field(`${period.name} weight (%)`, period.weight, value => { period.weight = value; }, true)));
+      }
       state.categories.forEach((category, index) => {
         const row = node('div'); row.className = 'grade-editor-row';
         row.append(field('Category name', category.name, value => { category.name = value; weights.children[index].querySelector('span').textContent = `${value} weight (%)`; }));
@@ -66,6 +79,10 @@
     setup.querySelectorAll('[data-grading-step]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.gradingStep))));
     byId('grading-previous').addEventListener('click', () => show(step - 1)); byId('grading-next').addEventListener('click', () => show(step + 1));
     passing.addEventListener('input', update); missing.addEventListener('change', update);
+    periodToggle?.addEventListener('change', () => {
+      if (periodToggle.checked) state.periods = defaultPeriods(); else delete state.periods;
+      render();
+    });
     const templateSelect = byId('grading-template');
     if (templateSelect) {
       const templates = window.gradingTemplates || {};
@@ -85,13 +102,15 @@
       apply.addEventListener('click', () => {
         const template = templates[templateSelect.value];
         if (!template && templateSelect.value !== 'custom') return;
-        const next = template ? structuredClone(template.config) : {categories: [], scale: [{min: 0, label: 'Below passing'}, {min: 75, label: 'Passed'}], passing: 75, missing_policy: 'exclude'};
+        const next = template ? structuredClone(template.config) : {categories: [], scale: [{min: 0, label: 'Below passing'}, {min: 75, label: 'Passed'}], passing: 75, missing_policy: 'exclude', periods: defaultPeriods()};
         const used = window.gradingUsedCategories || [];
         if (used.some(id => !next.categories.some(category => category.id === id))) {
           status.textContent = 'This choice would remove categories used by active activities. Edit the current structure manually, or reassign/archive those activities first.';
           return;
         }
         Object.assign(state, next);
+        if (!next.periods) delete state.periods;
+        if (periodToggle) periodToggle.checked = Boolean(next.periods);
         passing.value = String(next.passing); missing.value = next.missing_policy;
         render(); show(0);
         status.textContent = template ? `${template.name} loaded. Customize it, then review and save.` : 'Custom grading started. Add your categories and set weights totaling 100%.';
@@ -102,6 +121,9 @@
       update();
       const names = state.categories.map(category => category.name.trim().toLowerCase());
       let issue = '', target = 0;
+      if (state.periods && (state.periods.some(period => !Number.isFinite(Number(period.weight)) || Number(period.weight) < 0 || Number(period.weight) > 100) || state.periods.reduce((sum, period) => sum + Math.round(Number(period.weight) * 100), 0) !== 10000)) {
+        event.preventDefault(); status.textContent = 'Grading-period weights must total exactly 100%.'; show(0); return;
+      }
       if (!names.length || names.some(name => !name) || new Set(names).size !== names.length) issue = 'Use unique, nonempty category names.';
       else if (state.categories.some(category => !Number.isFinite(Number(category.weight)) || Number(category.weight) < 0 || Number(category.weight) > 100) || state.categories.reduce((sum, category) => sum + Math.round(Number(category.weight) * 100), 0) !== 10000) { issue = 'Category weights must total exactly 100%.'; target = 1; }
       else if (!state.scale.length || state.scale.some(band => band.min === '' || !band.label.trim() || Number(band.min) < 0 || Number(band.min) > 100) || !state.scale.some(band => Number(band.min) === 0) || new Set(state.scale.map(band => Number(band.min))).size !== state.scale.length || new Set(state.scale.map(band => band.label.trim().toLowerCase())).size !== state.scale.length || passing.value === '' || Number(passing.value) < 0 || Number(passing.value) > 100) { issue = 'Set valid scale bands with unique labels and minimums starting at 0, and a passing grade from 0 to 100.'; target = 2; }

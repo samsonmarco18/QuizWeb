@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
+require_once dirname(__DIR__, 3) . '/includes/academic_ui.php';
 
 $user = require_role('teacher');
 $classroomId = (int) ($_GET['classroom_id'] ?? 0);
@@ -21,6 +22,7 @@ $errors = [];
 $defaultMasteryThreshold = mastery_threshold_for_quiz($editingQuiz ?? []);
 $gradebook = grading_load(db(), $classroomId);
 $gradeCategory = is_string($_POST['grade_category_id'] ?? null) ? $_POST['grade_category_id'] : ($editingQuiz['grade_category_id'] ?? '');
+$gradePeriod = is_string($_POST['grade_period_id'] ?? null) ? $_POST['grade_period_id'] : ($editingQuiz['grade_period_id'] ?? $gradebook['items']['quiz-' . $quizId]['period_id'] ?? '');
 $gradePolicy = is_string($_POST['grade_attempt_policy'] ?? null) ? $_POST['grade_attempt_policy'] : ($editingQuiz['grade_attempt_policy'] ?? 'highest');
 $gradeMaxInput = is_string($_POST['grade_max_score'] ?? null) ? $_POST['grade_max_score'] : (isset($editingQuiz['grade_max_score']) ? (string) $editingQuiz['grade_max_score'] : '');
 $GLOBALS['quizweb_current_classroom_id'] = $classroomId;
@@ -73,6 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = array_merge($errors, $prepared['errors']);
     $gradeMax = null;
     if ($gradeCategory !== '') {
+        if (!empty($gradebook['config']['periods'])) {
+            try { academic_period_id($gradePeriod); } catch (InvalidArgumentException $ex) { $errors[] = $ex->getMessage(); }
+        }
         if (!grading_category($gradebook, $gradeCategory)) $errors[] = 'Choose a configured classroom grading category.';
         if (!in_array($gradePolicy, ['highest', 'latest', 'first', 'average'], true)) $errors[] = 'Choose a valid attempt grading policy.';
         try {
@@ -96,6 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'game_type' => $gameType,
             'mastery_threshold' => $masteryThreshold,
             'grade_category_id' => $gradeCategory,
+            'grade_period_id' => $gradePeriod,
+            'grade_correction_reason' => is_string($_POST['grade_correction_reason'] ?? null) ? trim($_POST['grade_correction_reason']) : '',
             'grade_attempt_policy' => $gradePolicy,
             'grade_max_score' => $gradeMax,
             'questions' => $questions,
@@ -108,6 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             persist_builder_quiz(db(), $classroomId, (int) $user['id'], $quiz, !$editingQuiz);
             flash_set('success', $editingQuiz ? 'Quiz updated successfully.' : 'Quiz created successfully.');
             redirect('/QuizWeb/classroom.php?id=' . $classroom['id'] . '&tab=quizzes');
+        } catch (InvalidArgumentException $exception) {
+            $errors[] = $exception->getMessage();
         } catch (Throwable $exception) {
             error_log('Quiz save failed: ' . $exception->getMessage());
             $errors[] = 'Could not save this quiz. Your draft is still here. Please try again.';
@@ -265,6 +274,8 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <fieldset class="grading-quiz-settings"><legend>Grading</legend>
                 <label><span>Grade category</span><select name="grade_category_id"><option value="">Not graded / Practice activity</option><?php foreach ($gradebook['config']['categories'] ?? [] as $category): ?><option value="<?php echo esc($category['id']); ?>" <?php echo $gradeCategory === $category['id'] ? 'selected' : ''; ?>><?php echo esc($category['name']); ?></option><?php endforeach; ?></select></label>
                 <?php if (!$gradebook['config']): ?><p>Set up classroom grading to assign categories. <a href="/QuizWeb/gradebook.php?classroom_id=<?php echo $classroomId; ?>&amp;view=setup">Open grading setup</a></p><?php endif; ?>
+                <?php if (!empty($gradebook['config']['periods'])): ?><label><span>Grading period (required for graded quizzes)</span><select name="grade_period_id"><?php render_period_options($gradePeriod); ?></select></label><?php endif; ?>
+                <?php if ($editingQuiz): ?><label><span>Reason for changing grading settings after submissions</span><input name="grade_correction_reason" maxlength="500" value="<?php echo esc(is_string($_POST['grade_correction_reason'] ?? null) ? $_POST['grade_correction_reason'] : ''); ?>"></label><?php endif; ?>
                 <div data-quiz-graded hidden><label><span>Gradebook maximum score (optional)</span><input name="grade_max_score" type="number" min="0.01" max="100000" step="0.01" value="<?php echo esc($gradeMaxInput); ?>" placeholder="Use total question points"><small>Results are scaled from the saved quiz percentage; game scoring stays unchanged.</small></label>
                 <label><span>Attempt grade</span><select name="grade_attempt_policy"><?php foreach (['highest' => 'Highest attempt', 'latest' => 'Latest attempt', 'first' => 'First attempt', 'average' => 'Average of attempt percentages'] as $policy => $label): ?><option value="<?php echo esc($policy); ?>" <?php echo $gradePolicy === $policy ? 'selected' : ''; ?>><?php echo esc($label); ?></option><?php endforeach; ?></select></label></div>
             </fieldset>
