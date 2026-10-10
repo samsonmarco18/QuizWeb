@@ -91,12 +91,12 @@ body.ui-refined.academic-page .academic-filter-bar :is(input, select) { min-heig
 .academic-analysis-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; border-bottom: 1px solid var(--border); padding: 12px 0; }
 .academic-analysis-row progress { grid-column: 1 / -1; }
 .academic-student-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
-.academic-student-summary .panel { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.academic-student-summary .panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; min-width: 0; }
 .academic-student-summary h2 { margin: 0 0 8px; }
 .academic-student-summary strong { font-size: 32px; color: var(--accent); }
-.academic-semester-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); }
+.academic-semester-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); }
 .academic-semester-footer p { margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; }
-.academic-semester-footer > strong { font-size: 22px; color: var(--accent); white-space: nowrap; }
+.academic-semester-footer > strong { font-size: 22px; color: var(--accent); white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
 .grades-page .academic-detail-layout.has-detail { grid-template-columns: minmax(0, 1fr) minmax(270px, .45fr); gap: 18px; }
 .academic-student-main { min-width: 0; }
 .grades-page .page-heading { margin-bottom: 16px; }

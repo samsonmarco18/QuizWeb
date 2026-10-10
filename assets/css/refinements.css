@@ -79,6 +79,90 @@ body.ui-refined .chat-image-preview-stage [role="status"]:empty { display: none;
   .grade-score-list small { grid-column: 1 / -1; }
 }
 [hidden] { display: none !important; }
+/* Use theme colors for feedback instead of the older dark-only palette. */
+body.ui-refined:not(.theme-dark) :is(.inline-error, .flash-danger, .flash-error, .button-danger) {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+    border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+body.ui-refined:not(.theme-dark) .flash-success {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 9%, var(--surface));
+    border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+body.ui-refined:not(.theme-dark) .flash-warning {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 9%, var(--surface));
+    border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+}
+body.ui-refined :is(.flash, .inline-error) :is(p, strong, small) { color: inherit; }
+body.ui-refined:not(.theme-dark) :is(.answer-index, .skill-pill) {
+    color: var(--accent);
+    background: var(--surface-hover);
+    border-color: var(--border);
+}
+body.ui-refined:not(.theme-dark) :is(.insight-meter, .game-progress) { background: var(--border); }
+body.ui-refined:not(.theme-dark) :is(.learning-item, .leaderboard-row, .finish-metric, .metric-pill) {
+    background: var(--surface-soft);
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+body.ui-refined:not(.theme-dark) :is(.mode-chip, .result-learning-panel) { border-color: var(--border); }
+/* Shared numeric cards must be able to shrink and wrap inside grid columns. */
+body.ui-refined :is(.stat-card, .metric-pill, .finish-metric, .rank-summary, .hud-pill, .academic-stat-grid article) {
+    min-width: 0;
+    max-width: 100%;
+}
+body.ui-refined :is(.stat-card, .finish-metric, .academic-stat-grid article) { container-type: inline-size; }
+body.ui-refined :is(.stat-card, .metric-pill, .finish-metric, .rank-summary, .hud-pill, .academic-stat-grid article) strong {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+body.ui-refined :is(.stat-card, .metric-pill, .finish-metric, .rank-summary) strong {
+    font-size: clamp(18px, 12cqi, 22px);
+}
+body.ui-refined .stat-card-date strong { font-size: clamp(14px, 8cqi, 16px); }
+body.ui-refined :is(.stat-grid, .learning-summary-grid) {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+body.ui-refined .result-score-ring {
+    width: min(220px, 100%);
+    height: auto;
+    aspect-ratio: 1;
+    container-type: inline-size;
+    border: 0;
+    background: conic-gradient(var(--accent) 0 var(--score-progress, 0%), var(--surface-hover) var(--score-progress, 0%) 100%);
+}
+body.ui-refined .result-score-ring > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 78%;
+    aspect-ratio: 1;
+    padding: 12px;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text-primary);
+    min-width: 0;
+}
+body.ui-refined .result-score-ring strong {
+    font-size: clamp(24px, 17cqi, 38px);
+    line-height: 1.1;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+}
+body.ui-refined .result-score-ring span {
+    max-width: 100%;
+    font-size: clamp(11px, 6cqi, 13px);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    color: var(--text-secondary);
+}
 body.ui-refined {
     --bg-primary: #f0f5f2;
     --bg-secondary: #f8fbf9;

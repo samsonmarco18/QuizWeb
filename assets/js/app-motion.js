@@ -64,10 +64,21 @@
     const id = ++sequence;
     const entry = {label, scene, visible: false, timer: null}; pending.set(id, entry);
     entry.timer = setTimeout(() => { if (!pending.has(id)) return; entry.visible = true; visibleUntil = Math.max(visibleUntil, Date.now() + minimum); clearTimeout(hideTimer); describe(label, scene); notice.classList.add('is-visible'); }, delay);
-    return () => { clearTimeout(entry.timer); pending.delete(id); const remaining = [...pending.values()].filter(item => item.visible); if (remaining.length) { const current = remaining[remaining.length - 1]; describe(current.label, current.scene); } else hideTimer = setTimeout(() => notice.classList.remove('is-visible'), Math.max(120, visibleUntil - Date.now())); };
+    return () => {
+      if (!pending.has(id)) return;
+      clearTimeout(entry.timer); pending.delete(id);
+      clearTimeout(hideTimer);
+      const remaining = [...pending.values()].filter(item => item.visible);
+      if (remaining.length) {
+        const current = remaining[remaining.length - 1]; describe(current.label, current.scene);
+      } else {
+        hideTimer = setTimeout(() => notice.classList.remove('is-visible'), Math.max(120, visibleUntil - Date.now()));
+      }
+    };
   }
   function reset() { pending.forEach(entry => clearTimeout(entry.timer)); pending.clear(); visibleUntil = 0; clearTimeout(hideTimer); notice.classList.remove('is-visible'); document.documentElement.classList.remove('is-navigating'); }
-  function carry() { try { sessionStorage.setItem('chalk-loading-until', String(Date.now() + 1400)); } catch (_) {} }
+  // Keep the submission API compatible, without restarting the loader on arrival.
+  function carry() { try { sessionStorage.removeItem('chalk-loading-until'); } catch (_) {} }
   window.chalkLoading = {begin, reset, context, carry};
   const background = (url, method) => method === 'GET' && /chat_api\.php/.test(url) || /quiz_progress\.php|quiz_integrity\.php/.test(url);
   if (window.fetch) {
@@ -100,10 +111,9 @@
     if (url.origin !== location.origin || !/^https?:$/.test(url.protocol) || url.hash && url.pathname === location.pathname && url.search === location.search || /upload\.php|export=|download=/.test(url.href)) return;
     queueMicrotask(() => { if (!event.defaultPrevented) { document.documentElement.classList.add('is-navigating'); carry(); const end = begin('Loading page...', 0, context(url.href)); setTimeout(() => { end(); document.documentElement.classList.remove('is-navigating'); }, 20000); } });
   });
-  window.addEventListener('pageshow', event => {
+  window.addEventListener('pageshow', () => {
     reset();
-    let until = 0; try { until = Number(sessionStorage.getItem('chalk-loading-until')); sessionStorage.removeItem('chalk-loading-until'); } catch (_) {}
-    if (!event.persisted && until > Date.now()) { const end = begin('Loading...', 0, context(), Math.min(1400, until - Date.now())); setTimeout(end, 20); }
+    carry();
   });
   window.addEventListener('pagehide', reset);
 })();

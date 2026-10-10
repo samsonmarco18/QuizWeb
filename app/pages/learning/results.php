@@ -66,9 +66,7 @@ render_header('Results', 'results-page');
         <span><?php echo $isDisqualified ? 'Marked 0' : 'Performance recap'; ?></span>
     </div>
 
-    <div class="result-score-ring" style="background:
-        radial-gradient(circle at center, rgba(7, 25, 47, 0.92) 0 42%, transparent 42%),
-        conic-gradient(var(--accent) 0 <?php echo esc((string) $scorePercent); ?>%, rgba(255, 255, 255, 0.08) <?php echo esc((string) $scorePercent); ?>% 100%);">
+    <div class="result-score-ring" style="--score-progress: <?php echo esc((string) $scorePercent); ?>%;">
         <div>
             <strong><?php echo esc((string) $scorePercent); ?>%</strong>
             <span><?php echo esc($attempt['score'] . ' / ' . $attempt['max_score'] . ' points'); ?></span>
@@ -84,7 +82,7 @@ render_header('Results', 'results-page');
             <strong><?php echo esc((string) max(1, (int) $attempt['elapsed_seconds'])); ?>s</strong>
             <span>Time Used</span>
         </article>
-        <article class="stat-card">
+        <article class="stat-card stat-card-date">
             <strong><?php echo esc(format_date($attempt['played_at'])); ?></strong>
             <span>Played At</span>
         </article>
