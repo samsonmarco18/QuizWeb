@@ -238,3 +238,50 @@ body.ui-refined.gradebook-page .academic-release-grid > form { position: relativ
 .gradebook-page .academic-edit-assessment h3 { margin: 0; font-size: 14px; }
 .gradebook-page .academic-edit-assessment p { font-size: 12px; line-height: 1.7; }
 .gradebook-page .academic-edit-assessment .academic-inline-form { margin-top: 10px; }
+/* Compact component views: consistent small type in the page and detail panel. */
+body.ui-refined.gradebook-page .page-heading { margin-bottom: 16px; gap: 12px; }
+body.ui-refined.gradebook-page .page-heading h1 { font-size: 21px; line-height: 1.3; }
+body.ui-refined.gradebook-page .page-heading h2 { font-size: 14px; }
+body.ui-refined.gradebook-page .page-heading p { font-size: 12px; line-height: 1.5; margin-top: 6px; }
+body.ui-refined.gradebook-page .classroom-tabs { padding: 5px; margin-bottom: 18px; gap: 4px; }
+body.ui-refined.gradebook-page .classroom-tabs a { font-size: 12px; padding: 9px 13px; }
+body.ui-refined.gradebook-page .panel { padding: 16px; }
+body.ui-refined.gradebook-page :is(.academic-gradebook, .academic-release) { padding: 16px; }
+body.ui-refined.gradebook-page .grade-section-title h2 { font-size: 15px; }
+body.ui-refined.gradebook-page .academic-gradebook .academic-panel-heading { margin-bottom: 16px; }
+body.ui-refined.gradebook-page .academic-gradebook .academic-table :is(th, td) { padding: 10px 9px; font-size: 11px; }
+body.ui-refined.gradebook-page .button { min-height: 32px; padding: 7px 11px; font-size: 11px; }
+body.ui-refined.gradebook-page .stack-form { gap: 12px; }
+body.ui-refined.gradebook-page :is(input, select, textarea) { font-size: 12px; }
+body.ui-refined.gradebook-page :is(input, select) { min-height: 34px; padding: 7px 10px; }
+body.ui-refined.gradebook-page label > span { font-size: 11px; }
+.academic-student-detail .academic-student-actions { margin-bottom: 14px; gap: 8px; }
+.academic-page .academic-result-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 0 12px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.academic-page .academic-result-line h2 { margin: 0 auto 0 0; font-size: 14px; }
+.academic-page .academic-result-line > strong { margin-left: auto; font-size: 20px; color: var(--accent); }
+.academic-page .academic-result-line span strong { font-size: 16px; margin-left: 6px; color: var(--accent); }
+.academic-page .academic-result-status { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin: 8px 0 14px; }
+.academic-page .academic-compact-components > h3 { font-size: 12px; margin: 0 0 10px; }
+.academic-page .academic-component-list { display: grid; gap: 10px; }
+.academic-student-components .academic-component-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr)); margin-top: 14px; align-items: start; }
+.academic-page .academic-component-card { min-width: 0; border: 1px solid var(--border); border-radius: 9px; padding: 12px; background: var(--surface-soft); }
+.academic-page .academic-component-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.academic-page .academic-component-card h3 { font-size: 12px; line-height: 1.5; margin: 0; }
+.academic-page .academic-component-card h3 small { display: block; font-size: 10px; color: var(--text-secondary); font-weight: 400; }
+.academic-page .academic-component-card .academic-status { font-size: 10px; padding: 4px 7px; }
+.academic-page .academic-component-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 11px; }
+.academic-page .academic-component-metric small { grid-column: 1 / -1; color: var(--text-secondary); font-size: 10px; }
+.academic-page .academic-component-assessments { margin-top: 6px; font-size: 11px; }
+.academic-page .academic-component-assessments > summary { cursor: pointer; color: var(--accent); padding: 4px 0; }
+.academic-page .academic-component-assessments .academic-table-scroll { margin-top: 8px; }
+.academic-page .academic-component-assessments .academic-table { min-width: 310px; font-size: 11px; }
+.academic-page .academic-component-assessments .academic-table :is(th, td) { padding: 8px; }
+body.ui-refined.academic-student-detail .panel { margin-bottom: 14px; }
+body.ui-refined.academic-student-detail .panel > h2 { font-size: 14px; margin-top: 0; }
+body.ui-refined.academic-student-detail .panel p { font-size: 12px; line-height: 1.5; }
+body.ui-refined.academic-student-detail .academic-edit-assessment { padding: 12px 0; }
+body.ui-refined.academic-student-detail .academic-inline-form { gap: 10px; margin-top: 10px; }
+@media (max-width: 680px) {
+    .academic-page .academic-component-card > header { flex-wrap: wrap; }
+    body.ui-refined.gradebook-page .classroom-tabs a { padding: 8px 10px; }
+}
