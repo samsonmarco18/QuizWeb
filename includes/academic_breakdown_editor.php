@@ -1,0 +1,12 @@
+<section class="glass panel academic-score-editor"><h2>Edit assessment scores</h2><p class="muted">Save each activity separately. Blank means ungraded; zero is a recorded score. Totals recalculate after saving. Changes to existing scores require a correction reason.</p>
+<?php if (!empty($book['locked'])): ?><p class="academic-notice">This release is locked. Reopen it from Grade release with a correction reason before editing.</p>
+<?php else: ?>
+<?php if (!$grade['items']): ?><p>No activities yet. <a href="<?php echo esc($url . '&view=monitor'); ?>">Check missing components</a>.</p><?php endif; ?>
+<?php foreach ($grade['items'] as $id => $assessment): ?>
+<article class="academic-edit-assessment"><div><h3><?php echo esc($assessment['name']); ?></h3><p class="muted"><?php echo esc(ucfirst($assessment['period_id'] ?? '') . ' · ' . (grading_category($book, $assessment['category_id'])['name'] ?? '') . ' · ' . $assessment['status']); ?></p></div>
+<?php if ($assessment['source'] === 'manual'): ?>
+<form method="post" class="academic-inline-form" data-grade-dirty><?php render_grade_form_fields($book); ?><input type="hidden" name="action" value="scores"><input type="hidden" name="item_id" value="<?php echo esc($id); ?>"><label><span>Score / <?php echo esc(grade_display($assessment['max_score'])); ?></span><input type="number" name="scores[<?php echo $studentId; ?>]" min="0" max="<?php echo esc((string) $assessment['max_score']); ?>" step="0.01" placeholder="Ungraded" value="<?php echo esc($error && ($_POST['item_id'] ?? '') === $id && is_string($_POST['scores'][$studentId] ?? null) ? $_POST['scores'][$studentId] : (isset($book['scores'][$id][(string) $studentId]) ? (string) $book['scores'][$id][(string) $studentId] : '')); ?>"></label><label><span>Correction reason</span><input name="reason" maxlength="500" value="<?php echo esc($error && ($_POST['item_id'] ?? '') === $id && is_string($_POST['reason'] ?? null) ? $_POST['reason'] : ''); ?>"></label><button class="button button-primary">Save score</button></form>
+<?php if ($assessment['override']): ?><p class="academic-notice">An adjustment overrides this saved score. Use Adjust / Restore below to change or restore the adjustment.</p><?php endif; ?>
+<?php else: ?><p>Quiz score: <strong><?php echo esc(grade_display($assessment['score'])); ?></strong> / <?php echo esc(grade_display($assessment['max_score'])); ?>. Use Adjust / Restore below for a correction.</p><?php endif; ?>
+</article><?php endforeach; ?>
+<?php endif; ?></section>

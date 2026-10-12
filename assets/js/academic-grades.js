@@ -1,5 +1,28 @@
 (() => {
   'use strict';
+  const monitor = document.querySelector('[data-grade-monitor]');
+  const monitorStatus = document.querySelector('[data-monitor-status]');
+  let refreshing = false;
+  async function refreshMonitor() {
+    if (!monitor || refreshing || document.hidden) return;
+    refreshing = true;
+    try {
+      const url = new URL(window.location.href); url.searchParams.set('refresh', '1');
+      const response = await fetch(url, {cache: 'no-store', credentials: 'same-origin'});
+      if (!response.ok || response.redirected) throw new Error('Refresh failed');
+      const html = await response.text();
+      if (!html.includes('academic-monitor-term')) throw new Error('Monitoring unavailable');
+      // Preserve keyboard focus while a teacher is using activity links.
+      if (!monitor.contains(document.activeElement)) monitor.innerHTML = html;
+      monitorStatus.textContent = `Live · updated ${new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}`;
+    } catch {
+      monitorStatus.textContent = 'Refresh unavailable · retrying in 15 seconds';
+    } finally { refreshing = false; }
+  }
+  if (monitor) {
+    setInterval(refreshMonitor, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshMonitor(); });
+  }
   const table = document.querySelector('.academic-gradebook');
   const panels = [...document.querySelectorAll('.academic-drawer')];
   let active = null, trigger = null, closeTimer;
