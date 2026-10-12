@@ -121,6 +121,14 @@ CREATE TABLE IF NOT EXISTS activity_submissions (
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS ai_quiz_usage (
+    teacher_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    usage_day VARCHAR(10) NOT NULL,
+    request_count INTEGER NOT NULL,
+    last_requested_at BIGINT NOT NULL,
+    PRIMARY KEY (teacher_id, usage_day)
+);
+
 -- DEMO ADMIN: explicit import only
 -- Sample administrator: admin@chalk.local / ChalkAdmin!2026
 -- PHP password_verify-compatible bcrypt hash; existing emails are never reset.

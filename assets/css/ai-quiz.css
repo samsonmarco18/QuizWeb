@@ -1,0 +1,24 @@
+.builder-page .ai-quiz-panel { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); margin: 0 0 14px; font-size: 12px; }
+.builder-page .ai-quiz-panel > summary { padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); }
+.builder-page .ai-quiz-tag { margin-left: 8px; border: 1px solid var(--border); border-radius: 12px; padding: 2px 7px; color: var(--text-secondary); font-size: 10px; font-weight: 400; }
+.builder-page .ai-quiz-content { padding: 0 14px 14px; display: grid; gap: 12px; }
+.builder-page .ai-quiz-content p { margin: 0; line-height: 1.6; font-size: 12px; }
+.builder-page .ai-quiz-content label { gap: 5px; min-width: 0; }
+.builder-page .ai-quiz-content label > span, .builder-page .ai-quiz-content small { font-size: 11px; }
+.builder-page .ai-quiz-content input, .builder-page .ai-quiz-content select, .builder-page .ai-quiz-content textarea { font-size: 12px; padding: 9px 10px; width: 100%; box-sizing: border-box; }
+.builder-page .ai-quiz-content textarea { resize: vertical; min-height: 100px; }
+.builder-page .ai-quiz-content input[type=file] { white-space: normal; }
+.builder-page .ai-quiz-fields { display: grid; grid-template-columns: 80px 1.3fr 1fr 1.3fr; gap: 10px; }
+.builder-page .ai-quiz-privacy, .builder-page .ai-quiz-content small { color: var(--text-secondary); }
+.builder-page .ai-quiz-setup { padding: 9px 10px; border-left: 2px solid var(--accent); }
+.builder-page #ai-quiz-draft { display: grid; gap: 10px; }
+.builder-page #ai-quiz-draft[hidden], .builder-page .ai-quiz-panel [hidden] { display: none; }
+.builder-page #ai-quiz-preview { display: grid; gap: 7px; max-height: 360px; overflow: auto; }
+.builder-page #ai-quiz-preview details { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+.builder-page #ai-quiz-preview summary { font-size: 12px; cursor: pointer; }
+.builder-page #ai-quiz-preview ol { padding-left: 22px; margin: 8px 0; }
+.builder-page #ai-quiz-preview li { padding: 3px 0; }
+.builder-page #ai-quiz-preview .ai-correct { color: var(--accent); font-weight: 600; }
+.builder-page .ai-quiz-content .button { font-size: 11px; padding: 9px 12px; }
+@media (max-width: 760px) { .builder-page .ai-quiz-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 400px) { .builder-page .ai-quiz-fields { grid-template-columns: minmax(0, 1fr); } }

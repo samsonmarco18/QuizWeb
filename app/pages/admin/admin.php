@@ -1,11 +1,39 @@
 <?php
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
+require_once dirname(__DIR__, 3) . '/includes/ai_quiz.php';
 $user = require_role('admin');
-$views = ['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit'];
+$views = ['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'ai' => 'AI settings', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit'];
 $view = is_string($_GET['tab'] ?? null) && isset($views[$_GET['tab']]) ? $_GET['tab'] : 'overview';
 $_SESSION['admin_csrf'] ??= bin2hex(random_bytes(32));
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $adminAction = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
+    if (str_starts_with($adminAction, 'ai_')) {
+        $view = 'ai';
+        try {
+            ai_settings_csrf($_POST['csrf'] ?? null, $_SESSION['admin_csrf']);
+            if ($adminAction === 'ai_test_connection') {
+                $lastTest = (int) ($_SESSION['ai_admin_last_test'] ?? 0);
+                if (time() - $lastTest < 30) throw new InvalidArgumentException('Wait 30 seconds between connection tests.');
+                $_SESSION['ai_admin_last_test'] = time();
+                set_time_limit(30);
+                ai_settings_test(db(), (int) $user['id']);
+                flash_set('success', 'Connected to Gemini. The saved key can access the configured model. Quiz generation has not been tested.');
+            } elseif (in_array($adminAction, ['ai_save_settings', 'ai_remove_key'], true)) {
+                ai_settings_save(db(), (int) $user['id'], $_POST, $adminAction === 'ai_remove_key' ? 'remove' : 'save');
+                flash_set('success', $adminAction === 'ai_remove_key' ? 'API key removed and AI generation disabled.' : 'AI settings saved.');
+            } else {
+                throw new InvalidArgumentException('Choose a valid AI settings action.');
+            }
+            redirect('/QuizWeb/admin.php?tab=ai');
+        } catch (InvalidArgumentException | RuntimeException $exception) {
+            $error = $exception instanceof PDOException ? 'Could not save AI settings. Please retry.' : $exception->getMessage();
+        } catch (Throwable $exception) {
+            $error = 'Could not update AI settings. Please retry.';
+        }
+        // Never echo an entered key back into a failed form or flash message.
+        unset($_POST['api_key']);
+    } else {
     $view = 'users';
     if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['admin_csrf'], $_POST['csrf'])) {
         $error = 'Your form expired. Reload and try again.';
@@ -22,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log('Admin account action failed: ' . $exception->getMessage());
             $error = 'Could not update this account. Please retry.';
         }
+    }
     }
 }
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -44,7 +73,8 @@ if ($view === 'users') {
     $fields = $view === 'classes' ? 'id, name, subject, teacher_id, created_at' : ($view === 'grade_logs' ? '*' : 'id, actor_id, target_id, action, occurred_at');
     $records = db()->query('SELECT ' . $fields . ' FROM ' . $table . $where . ' ORDER BY id DESC LIMIT 15 OFFSET ' . (($page - 1) * $limit))->fetchAll();
 }
-render_header('Administration', 'admin-page');
+header('Cache-Control: no-store');
+render_header('Administration', 'admin-page', ['/QuizWeb/assets/css/admin-ai.css']);
 ?>
 <header class="page-heading"><div><span class="eyebrow">System administration</span><h1><?php echo esc($views[$view]); ?></h1><p>Manage accounts and review system activity.</p></div><a class="button button-secondary" href="/QuizWeb/admin.php">Back to Overview</a></header>
 <nav class="classroom-tabs" aria-label="Administration"><?php foreach ($views as $key => $label): ?><a href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>" <?php echo $view === $key ? 'class="is-active" aria-current="page"' : ''; ?>><?php echo esc($label); ?></a><?php endforeach; ?></nav>
@@ -52,7 +82,9 @@ render_header('Administration', 'admin-page');
 <section class="glass panel">
 <?php if ($view === 'overview'): ?>
     <div class="learning-summary-grid"><?php foreach (['users' => 'Accounts', 'classrooms' => 'Classes', 'attempts' => 'Student attempts'] as $table => $label): ?><article class="stat-card"><strong><?php echo (int) db()->query('SELECT COUNT(*) FROM ' . $table)->fetchColumn(); ?></strong><span><?php echo esc($label); ?></span></article><?php endforeach; ?></div>
-    <div class="action-row"><a class="button button-primary" href="/QuizWeb/admin.php?tab=users">Manage users</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=security">Review failed sign-ins</a></div>
+    <div class="action-row"><a class="button button-primary" href="/QuizWeb/admin.php?tab=users">Manage users</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=ai">Configure AI quizzes</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=security">Review failed sign-ins</a></div>
+<?php elseif ($view === 'ai'): ?>
+    <?php require dirname(__DIR__, 3) . '/includes/admin_ai_view.php'; ?>
 <?php else: ?>
     <?php if ($view === 'users'): ?>
     <form method="get" class="action-row"><input type="hidden" name="tab" value="users"><label><span>Search name or email</span><input type="search" name="q" value="<?php echo esc($query); ?>"></label><label><span>Role</span><select name="role"><option value="">All roles</option><?php foreach (['student', 'teacher', 'admin'] as $filter): ?><option value="<?php echo esc($filter); ?>" <?php echo $role === $filter ? 'selected' : ''; ?>><?php echo esc(ucfirst($filter)); ?></option><?php endforeach; ?></select></label><button class="button button-primary">Search</button></form>
@@ -85,4 +117,4 @@ render_header('Administration', 'admin-page');
     <nav class="action-row" aria-label="Pagination"><span>Page <?php echo $page; ?> of <?php echo max(1, (int) ceil($total / $limit)); ?> · <?php echo $total; ?> records</span><?php foreach ([-1 => 'Previous', 1 => 'Next'] as $delta => $label): $targetPage = $page + $delta; if ($targetPage < 1 || $targetPage > ceil($total / $limit)) continue; ?><a class="button button-secondary" href="/QuizWeb/admin.php?<?php echo esc(http_build_query(['tab' => $view, 'page' => $targetPage, 'q' => $query, 'role' => $role])); ?>"><?php echo esc($label); ?></a><?php endforeach; ?></nav>
 <?php endif; ?>
 </section>
-<?php render_footer(); ?>
+<?php render_footer(['/QuizWeb/assets/js/admin-ai.js']); ?>

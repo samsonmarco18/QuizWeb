@@ -2,6 +2,7 @@
 
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/academic_ui.php';
+require_once dirname(__DIR__, 3) . '/includes/ai_quiz.php';
 
 $user = require_role('teacher');
 $classroomId = (int) ($_GET['classroom_id'] ?? 0);
@@ -125,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
+render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/QuizWeb/assets/css/ai-quiz.css']);
 ?>
 
 <?php if ($isChoosingGameType): ?>
@@ -254,6 +255,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <div class="action-row"><button class="button button-primary" type="button" id="add-question-button"><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Add Word' : 'Add Question'); ?></button></div>
         </div>
 
+        <?php require dirname(__DIR__, 3) . '/includes/ai_quiz_panel.php'; ?>
         <div class="builder-question-layout">
             <nav id="question-navigator" aria-label="Question navigator"></nav>
             <div><div class="action-row">
@@ -402,4 +404,4 @@ window.quizBuilderUnsaved = <?php echo $_SERVER['REQUEST_METHOD'] === 'POST' ? '
     <p id="preview-status" role="status"></p>
     <div id="preview-content"></div>
 </dialog>
-<?php render_footer(['/QuizWeb/assets/js/game-experience.js', '/QuizWeb/assets/js/builder-workflow.js', '/QuizWeb/assets/js/builder-preview.js']); ?>
+<?php render_footer(['/QuizWeb/assets/js/game-experience.js', '/QuizWeb/assets/js/builder-workflow.js', '/QuizWeb/assets/js/builder-preview.js', '/QuizWeb/assets/js/ai-quiz.js']); ?>

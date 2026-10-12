@@ -2,3 +2,5 @@
 .env.*
 !.env.example
 includes/database.local.php
+includes/gemini.local.php
+data/ai_master.local.php

@@ -10,3 +10,5 @@ tests
 .env
 .env.*
 !.env.example
+includes/gemini.local.php
+data/ai_master.local.php

@@ -123,6 +123,15 @@ CREATE TABLE IF NOT EXISTS activity_submissions (
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS ai_quiz_usage (
+    teacher_id BIGINT NOT NULL,
+    usage_day VARCHAR(10) NOT NULL,
+    request_count INTEGER NOT NULL,
+    last_requested_at BIGINT NOT NULL,
+    PRIMARY KEY (teacher_id, usage_day),
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- DEMO ADMIN: explicit import only
 -- Same sample administrator as PostgreSQL: admin@chalk.local / ChalkAdmin!2026
 -- Existing emails, passwords, roles, and status are preserved.

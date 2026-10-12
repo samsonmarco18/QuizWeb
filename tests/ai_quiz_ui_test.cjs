@@ -1,0 +1,68 @@
+const {JSDOM} = require('../data/qa/node_modules/jsdom');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const {TextEncoder} = require('node:util');
+const page = fs.readFileSync('app/pages/quizzes/quiz_builder.php', 'utf8');
+const panel = fs.readFileSync('includes/ai_quiz_panel.php', 'utf8');
+const html = page.slice(page.indexOf('<section class="glass panel builder-panel">'), page.search(/<script>\s*window.quizBuilderSeed/))
+    .replace(/<\?php require dirname\(__DIR__, 3\) \. '\/includes\/ai_quiz_panel.php'; \?>/, panel)
+    .replace(/<\?php[\s\S]*?\?>/g, '');
+const questions = ['easy', 'medium', 'hard'].map((level, index) => ({prompt: index === 0 ? '<img src=x onerror=alert(1)>' : `Generated ${index}`, topic: 'Plants', options: ['A', 'B', 'C', 'D'], correct_index: index, points: 10, explanation: 'Lesson explanation', level}));
+function setup(seed = []) {
+    const dom = new JSDOM(`<!doctype html><body>${html}</body>`, {url: 'http://localhost/QuizWeb/quiz_builder.php?classroom_id=1', runScripts: 'outside-only'});
+    const w = dom.window, doc = w.document;
+    w.TextEncoder = TextEncoder; w.AbortController = AbortController;
+    w.matchMedia = () => ({matches: true}); w.confirm = () => true;
+    w.quizBuilderSeed = seed; w.quizBuilderMode = 'standard'; w.quizBuilderThreshold = 75;
+    w.quizBuilderModes = Object.fromEntries(['standard', 'crossword', 'master_ladder'].map(key => [key, {label: key, description: 'Rules'}]));
+    doc.querySelector('[name="game_type"]').innerHTML = Object.keys(w.quizBuilderModes).map(key => `<option>${key}</option>`).join('');
+    doc.querySelector('[name="mastery_threshold"]').value = 75;
+    doc.querySelector('[name="grade_category_id"]').innerHTML = '<option value="">Practice</option>';
+    doc.getElementById('question-template').content.querySelector('[data-field="level"]').innerHTML = ['easy', 'medium', 'hard', 'master'].map(key => `<option>${key}</option>`).join('');
+    doc.getElementById('ai-quiz-panel').dataset.ready = 'true';
+    doc.getElementById('ai-quiz-panel').dataset.classroomId = '1';
+    let sent;
+    w.fetch = async (url, init) => { sent = {url, body: init.body}; return {ok: true, headers: {get: () => 'application/json'}, json: async () => ({questions, remaining: 9, warning: ''})}; };
+    w.eval(fs.readFileSync('assets/js/site.js', 'utf8'));
+    w.eval(fs.readFileSync('assets/js/builder-workflow.js', 'utf8'));
+    w.eval(fs.readFileSync('assets/js/ai-quiz.js', 'utf8'));
+    doc.getElementById('ai-quiz-source').value = 'Lesson content. '.repeat(15);
+    doc.getElementById('ai-quiz-count').value = 3;
+    return {w, doc, get: name => doc.getElementById('ai-quiz-' + name), sent: () => sent, close: () => dom.window.close()};
+}
+const tick = () => new Promise(resolve => setImmediate(resolve));
+(async () => {
+    const a = setup();
+    a.get('generate').click(); await tick();
+    assert.equal(a.w.quizBuilder.collect().length, 1, 'Generation must not alter the question editor');
+    assert.equal(a.get('preview').querySelectorAll('details').length, 3);
+    assert.equal(a.get('preview').querySelector('img'), null, 'Generated HTML is displayed as text');
+    assert.equal(a.sent().url, '/QuizWeb/ai_quiz_generate.php');
+    assert.equal(a.sent().body.get('classroom_id'), '1');
+    assert(a.sent().body.has('csrf'));
+    a.get('add').click();
+    assert.equal(a.w.quizBuilder.collect().length, 3, 'Empty starter replaced only on explicit import');
+    assert.equal(a.w.quizBuilder.collect()[2].level, 'hard');
+    assert(a.get('draft').hidden);
+    const b = setup([{prompt: 'Original', options: ['A', 'B', 'C', 'D'], correct_index: 0, points: 20, level: 'easy'}]);
+    b.get('generate').click(); await tick(); b.get('add').click();
+    assert.equal(b.w.quizBuilder.collect()[0].prompt, 'Original');
+    assert.equal(b.w.quizBuilder.collect().length, 4);
+    b.get('generate').click(); await tick(); b.get('discard').click();
+    assert.equal(b.w.quizBuilder.collect().length, 4, 'Discard must preserve quiz');
+    b.doc.querySelector('[name="game_type"]').value = 'crossword';
+    b.doc.querySelector('[name="game_type"]').dispatchEvent(new b.w.Event('change'));
+    assert(b.get('generate').disabled, 'Text game generation disabled');
+    b.doc.querySelector('[name="game_type"]').value = 'standard';
+    b.doc.querySelector('[name="game_type"]').dispatchEvent(new b.w.Event('change'));
+    b.w.fetch = async () => ({ok: false, headers: {get: () => 'application/json'}, json: async () => ({error: 'Generation limit reached'})});
+    b.get('generate').click(); await tick();
+    assert.match(b.get('status').textContent, /Generation limit reached/);
+    assert.equal(b.w.quizBuilder.collect().length, 4, 'Provider failure preserves quiz');
+    const c = setup(Array.from({length: 39}, (_, i) => ({...questions[1], prompt: `Saved ${i}`})));
+    c.get('generate').click(); await tick(); c.get('add').click();
+    assert.equal(c.w.quizBuilder.collect().length, 39);
+    assert.match(c.get('status').textContent, /up to 40/);
+    a.close(); b.close(); c.close();
+    console.log('AI builder UI checks passed: review before import, XSS-safe preview, preserve existing questions, discard, quota failure and capacity.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

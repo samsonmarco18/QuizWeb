@@ -1,0 +1,16 @@
+.admin-ai-settings { display: grid; gap: 16px; max-width: 960px; font-size: 12px; }
+.admin-ai-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.admin-page .admin-ai-heading h2 { font-size: 16px; margin: 0 0 6px; }
+.admin-ai-heading p, .admin-ai-note { margin: 0; color: var(--text-secondary); line-height: 1.6; font-size: 12px; }
+.admin-ai-status { font-size: 11px; white-space: nowrap; padding: 6px 9px; border: 1px solid var(--border); border-radius: 20px; color: var(--accent); }
+.admin-ai-summary { display: flex; flex-wrap: wrap; gap: 10px 24px; padding: 12px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; font-size: 11px; }
+.admin-ai-fields { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; }
+.admin-ai-settings label > span { font-size: 12px; }
+.admin-ai-settings input:not([type=checkbox]) { width: 100%; min-width: 0; font-size: 12px; padding: 10px 12px; box-sizing: border-box; }
+.admin-ai-fields small { font-size: 11px; color: var(--text-secondary); }
+.admin-ai-settings .admin-ai-toggle { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.admin-ai-toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+.admin-ai-actions { display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px; }
+.admin-ai-settings .button { font-size: 12px; padding: 9px 13px; }
+.admin-ai-settings [data-ai-form-status]:empty { display: none; }
+@media (max-width: 600px) { .admin-ai-fields { grid-template-columns: minmax(0, 1fr); } .admin-ai-heading { flex-direction: column; } }

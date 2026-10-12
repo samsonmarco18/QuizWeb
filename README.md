@@ -1,5 +1,7 @@
 # QuizWeb / CHALK
 
+Optional Gemini quiz drafts: see [AI quiz setup](AI_QUIZ_SETUP.md) for the free-tier key setup and teacher workflow.
+
 All PostgreSQL table definitions, indexes, constraints, and compatible upgrades
 are in **[database/schema.sql](database/schema.sql)**. Open or import this one
 file in pgAdmin. Application startup, Docker, and Render use the same file.
