@@ -110,6 +110,17 @@ CREATE TABLE IF NOT EXISTS academic_reminders (
 );
 CREATE INDEX IF NOT EXISTS idx_academic_reminders_student ON academic_reminders (classroom_id, student_id);
 
+CREATE TABLE IF NOT EXISTS activity_submissions (
+    classroom_id BIGINT NOT NULL,
+    item_id VARCHAR(100) NOT NULL,
+    student_id BIGINT NOT NULL,
+    response TEXT NOT NULL,
+    submitted_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (classroom_id, item_id, student_id),
+    FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- DEMO ADMIN: explicit import only
 -- Sample administrator: admin@chalk.local / ChalkAdmin!2026
 -- PHP password_verify-compatible bcrypt hash; existing emails are never reset.

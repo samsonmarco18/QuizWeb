@@ -1,5 +1,25 @@
 (() => {
   'use strict';
+  const assignment = document.querySelector('[data-term-assignment]');
+  if (assignment) {
+    const rows = [...assignment.querySelectorAll('[data-assign-row]')];
+    const component = assignment.querySelector('[data-assign-component]');
+    const period = assignment.querySelector('[data-assign-period]');
+    const all = assignment.querySelector('[data-assign-all]');
+    const update = () => {
+      rows.forEach(row => { row.hidden = Boolean((component.value && row.dataset.component !== component.value) || (period.value && (row.dataset.period || 'unassigned') !== period.value)); });
+      const selected = rows.filter(row => row.querySelector('input').checked);
+      const target = assignment.elements.period_id;
+      const names = selected.map(row => row.querySelector('th').textContent).join(', ');
+      assignment.querySelector('[data-assignment-preview]').textContent = selected.length && target.value ? `${selected.length} activities → ${target.selectedOptions[0].textContent}: ${names}` : 'Select activities and a destination term.';
+      assignment.querySelector('[data-assign-save]').disabled = !selected.length || !target.value;
+      const visible = rows.filter(row => !row.hidden);
+      all.checked = visible.length > 0 && visible.every(row => row.querySelector('input').checked);
+      all.indeterminate = !all.checked && visible.some(row => row.querySelector('input').checked);
+    };
+    all.addEventListener('change', () => { rows.filter(row => !row.hidden).forEach(row => { row.querySelector('input').checked = all.checked; }); update(); });
+    assignment.addEventListener('change', update); update();
+  }
   const monitor = document.querySelector('[data-grade-monitor]');
   const monitorStatus = document.querySelector('[data-monitor-status]');
   let refreshing = false;

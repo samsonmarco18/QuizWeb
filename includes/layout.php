@@ -49,10 +49,11 @@ function nav_links(?array $user): array
     ];
 
     if ($user['role'] === 'student') {
-        $links[] = ['/QuizWeb/join.php', 'Join Class'];
-        $links[] = ['/QuizWeb/student_results.php', 'Track Scores'];
-        $links[] = ['/QuizWeb/grades.php', 'My Grades'];
-        $links[] = ['/QuizWeb/game_modes.php', 'Play Game Modes'];
+        $links[0] = ['/QuizWeb/student_portal.php', 'Home'];
+        $links[] = ['/QuizWeb/student_portal.php?view=activities', 'Activities'];
+        $links[] = ['/QuizWeb/grades.php', 'Academic Records'];
+        $links[] = ['/QuizWeb/student_portal.php?view=progress', 'Practice & Progress'];
+        $links[] = ['/QuizWeb/student_portal.php?view=achievements', 'Achievements'];
     }
 
     return $links;
@@ -60,6 +61,7 @@ function nav_links(?array $user): array
 
 function nav_icon(string $name): string
 {
+    $name = ['Home'=>'Dashboard','Activities'=>'document','Academic Records'=>'chart','Practice & Progress'=>'Focus Practice','Achievements'=>'trophy'][$name] ?? $name;
     if ($name === 'My Grades') $name = 'chart';
     if ($name === 'My Classes') $name = 'Focus Practice';
     $paths = [
@@ -115,6 +117,7 @@ function nav_link_class(string $href): string
     $targetPath = parse_url($href, PHP_URL_PATH) ?: $href;
 
     $matchesView = $targetPath !== '/QuizWeb/admin.php' || (parse_url($href, PHP_URL_QUERY) ?: 'tab=overview') === ('tab=' . ($_GET['tab'] ?? 'overview'));
+    if ($targetPath === '/QuizWeb/student_portal.php') $matchesView = (parse_url($href, PHP_URL_QUERY) ?: 'view=home') === ('view=' . ($_GET['view'] ?? 'home'));
     if ($currentPath === $targetPath && $matchesView) {
         $classes[] = 'is-active';
     }

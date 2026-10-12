@@ -100,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'due_at' => $dueAt,
             'game_type' => $gameType,
             'mastery_threshold' => $masteryThreshold,
+            'adaptive_practice_enabled' => ($_POST['adaptive_practice_enabled'] ?? '') === 'yes',
             'grade_category_id' => $gradeCategory,
             'grade_period_id' => $gradePeriod,
             'grade_correction_reason' => is_string($_POST['grade_correction_reason'] ?? null) ? trim($_POST['grade_correction_reason']) : '',
@@ -266,6 +267,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <h2>Activity settings</h2>
             <p>Points and difficulty are set per question. The selected game mode controls timing and gameplay rules.</p>
             <div id="builder-settings"></div>
+            <label class="grade-confirm"><input type="checkbox" name="adaptive_practice_enabled" value="yes" <?php echo (($_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['adaptive_practice_enabled'] ?? '') === 'yes' : !empty($editingQuiz['adaptive_practice_enabled']))) ? 'checked' : ''; ?>><span>Allow these multiple-choice questions in adaptive practice. Students receive answer explanations; practice scores stay separate from grades.</span></label>
             <label id="mastery-target-setting" hidden><span>Mastery target (%)</span><input type="number" name="mastery_threshold" min="50" max="100" value="<?php echo (int) ($_POST['mastery_threshold'] ?? $defaultMasteryThreshold); ?>"><small>Accuracy needed to unlock the next difficulty level.</small></label>
             <p>Deadlines are reminders; they do not close submissions. Students may retry. Configure the deadline in Details.</p>
         </section>
@@ -328,7 +330,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
             <label><span>Alternative answers (one per line)</span><textarea data-field="accepted_answers" rows="2"></textarea></label>
             <label><span><input type="checkbox" data-field="case_sensitive"> Match capitalization exactly</span></label>
             <label><span>Hint (optional)</span><input type="text" data-field="hint" maxlength="500"></label>
-            <label><span>Explanation after submission (optional)</span><textarea data-field="explanation" rows="2" maxlength="2000"></textarea></label>
+
         </div>
         <label data-crossword-only>
             <span>Direction</span>
@@ -356,6 +358,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page');
                 <input type="text" data-field="option-3" placeholder="Option D">
             </label>
         </div>
+        <label><span>Topic (optional)</span><input type="text" data-field="topic" maxlength="100" placeholder="e.g. Fractions"></label><label><span>Answer explanation (optional)</span><textarea data-field="explanation" rows="2" maxlength="2000"></textarea></label>
         <div class="question-meta-grid">
             <label data-choice-only>
                 <span>Correct Answer</span>

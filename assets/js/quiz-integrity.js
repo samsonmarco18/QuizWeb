@@ -6,8 +6,11 @@
         let started = false, starting = false, active = false, paused = false, done = false, warnings = 0;
         let queue = Promise.resolve(), pending = 0, leaveSent = false, warningEvent = null;
         const fullscreen = () => document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        const fullscreenSupported = Boolean(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || document.documentElement.msRequestFullscreen)
+            && document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false;
         const id = () => [...crypto.getRandomValues(new Uint8Array(16))].map(v => v.toString(16).padStart(2, '0')).join('');
         const notice = document.createElement('p'); notice.className = 'quiz-security-notice'; notice.textContent = rule;
+        if (!fullscreenSupported) notice.textContent = 'Fullscreen is unavailable in this browser. Keep this quiz tab visible and focused. Focus changes still receive warnings; leaving an active quiz still saves zero.';
         const counter = document.createElement('p'); counter.className = 'quiz-warning-count'; counter.setAttribute('role', 'status');
         if (enabled) { root.prepend(notice, counter); counter.textContent = 'Security active after Start · Warnings 0 / 3'; }
         const dialog = document.createElement('div'); dialog.className = 'quiz-integrity-dialog'; dialog.hidden = true;
@@ -34,6 +37,7 @@
             return status;
         }
         async function requestFullscreen() {
+            if (!fullscreenSupported) return;
             if (fullscreen()) return;
             const target = document.documentElement;
             const request = target.requestFullscreen || target.webkitRequestFullscreen || target.msRequestFullscreen;
@@ -69,7 +73,7 @@
                 await requestFullscreen();
                 if (warningEvent) { await send(warningEvent); warningEvent = null; }
                 if (done) return;
-                if (document.hidden || !fullscreen()) throw new Error('Keep the quiz visible in fullscreen to continue.');
+                if (document.hidden || (fullscreenSupported && !fullscreen())) throw new Error('Keep the quiz visible in fullscreen to continue.');
                 dialog.hidden = true; root.inert = false; paused = false; active = true;
                 callbacks.onResume?.();
             } catch (error) { sync.textContent = error.message; }
@@ -78,7 +82,7 @@
         if (enabled) {
             document.addEventListener('visibilitychange', () => { if (document.hidden) violation('tab_hidden'); });
             window.addEventListener('blur', () => violation('focus_loss'));
-            ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'].forEach(name => document.addEventListener(name, () => { if (!fullscreen()) violation('fullscreen_exit'); }));
+            ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'].forEach(name => document.addEventListener(name, () => { if (fullscreenSupported && !fullscreen()) violation('fullscreen_exit'); }));
             function screenshot(event) {
                 const key = String(event.key).toLowerCase();
                 const mac = /Mac|iPhone|iPad/i.test(navigator.userAgentData?.platform || navigator.platform || '');
@@ -114,8 +118,8 @@
                     await requestFullscreen();
                     const status = await send({action: 'start', event_id: id()});
                     if (status.disqualified || status.results_url) { if (!done) disqualify(status.results_url); return false; }
-                    if (document.hidden || !fullscreen()) throw new Error('Fullscreen was interrupted. Press Start to try again.');
-                    started = true; active = true; counter.textContent = `Warnings ${warnings} / 3 · Fullscreen required`;
+                    if (document.hidden || (fullscreenSupported && !fullscreen())) throw new Error('Fullscreen was interrupted. Press Start to try again.');
+                    started = true; active = true; counter.textContent = `Warnings ${warnings} / 3 · ${fullscreenSupported ? 'Fullscreen required' : 'Focus monitoring active'}`;
                     return true;
                 } catch (error) {
                     root.querySelector('[data-game-note]').textContent = error.message || 'Fullscreen could not start. Allow fullscreen and try again.';

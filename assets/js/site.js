@@ -226,6 +226,7 @@
         card.querySelector('[data-field="case_sensitive"]').checked = Boolean(seed.case_sensitive);
         card.querySelector('[data-field="hint"]').value = seed.hint || '';
         card.querySelector('[data-field="explanation"]').value = seed.explanation || '';
+        card.querySelector('[data-field="topic"]').value = seed.topic || '';
         bindMatchImages(card, seed);
 
         card.querySelector(".remove-question").addEventListener("click", () => {
@@ -325,7 +326,7 @@
             const answer = card.querySelector('[data-field="answer"]').value.trim();
 
             if (['fill_blank', 'emoji_quiz', 'flip_match'].includes(currentBuilderMode())) {
-                return { prompt, answer, options: [], correct_index: 0,
+                return { prompt, answer, topic: card.querySelector('[data-field="topic"]').value.trim(), options: [], correct_index: 0,
                     ...(currentBuilderMode() === 'flip_match' ? {prompt_image: card.dataset.promptImage || '', answer_image: card.dataset.answerImage || ''} : {}),
                     accepted_answers: card.querySelector('[data-field="accepted_answers"]').value.split('\n').map(value => value.trim()).filter(Boolean),
                     case_sensitive: card.querySelector('[data-field="case_sensitive"]').checked,
@@ -339,6 +340,8 @@
                 return {
                     prompt,
                     answer,
+                    topic: card.querySelector('[data-field="topic"]').value.trim(),
+                    explanation: card.querySelector('[data-field="explanation"]').value.trim(),
                     preferred_direction: card.querySelector('[data-field="preferred_direction"]').value || "auto",
                     options: [answer],
                     correct_index: 0,
@@ -349,6 +352,8 @@
 
             return {
                 prompt,
+                topic: card.querySelector('[data-field="topic"]').value.trim(),
+                explanation: card.querySelector('[data-field="explanation"]').value.trim(),
                 options: [
                     card.querySelector('[data-field="option-0"]').value.trim(),
                     card.querySelector('[data-field="option-1"]').value.trim(),

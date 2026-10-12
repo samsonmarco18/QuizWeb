@@ -112,6 +112,17 @@ CREATE TABLE IF NOT EXISTS academic_reminders (
     INDEX idx_academic_reminders_student (classroom_id, student_id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS activity_submissions (
+    classroom_id BIGINT NOT NULL,
+    item_id VARCHAR(100) NOT NULL,
+    student_id BIGINT NOT NULL,
+    response TEXT NOT NULL,
+    submitted_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (classroom_id, item_id, student_id),
+    FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- DEMO ADMIN: explicit import only
 -- Same sample administrator as PostgreSQL: admin@chalk.local / ChalkAdmin!2026
 -- Existing emails, passwords, roles, and status are preserved.

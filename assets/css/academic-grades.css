@@ -285,3 +285,8 @@ body.ui-refined.academic-student-detail .academic-inline-form { gap: 10px; margi
     .academic-page .academic-component-card > header { flex-wrap: wrap; }
     body.ui-refined.gradebook-page .classroom-tabs a { padding: 8px 10px; }
 }
+.gradebook-page .academic-submission { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+.gradebook-page .academic-submission summary { cursor: pointer; color: var(--accent); }
+.gradebook-page .academic-submission p { overflow-wrap: anywhere; white-space: normal; }
+.gradebook-page .academic-submission label { margin-top: 10px; }
+.gradebook-page .academic-inline-form .academic-submission { flex: 1 0 100%; }

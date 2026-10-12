@@ -7,7 +7,7 @@ function ensure_grading_schema(PDO $pdo): void
 
 function grading_empty_book(): array
 {
-    return ['config' => null, 'items' => [], 'scores' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null, 'reviewed' => null, 'locked' => false, 'academic_statuses' => []];
+    return ['config' => null, 'items' => [], 'scores' => [], 'feedback' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null, 'reviewed' => null, 'locked' => false, 'academic_statuses' => []];
 }
 
 function grading_templates(): array
@@ -141,7 +141,7 @@ function grading_calculate_weighted(array $book, int $studentId, array $attempts
         $state = $score === null ? ($item['source'] === 'manual' ? 'Not Yet Graded' : 'Missing') : 'Graded';
         if ($score === null) { $pending++; $categories[$item['category_id']]['missing']++; } else $graded++;
         $row = $item + ['calculated' => $calculated, 'score' => $score, 'percentage' => $score === null ? null : $score / $item['max_score'] * 100,
-            'status' => $state, 'override' => $override, 'attempt_count' => $raw['count'] ?? 0,
+            'status' => $state, 'feedback' => $book['feedback'][$id][(string)$studentId] ?? '', 'override' => $override, 'attempt_count' => $raw['count'] ?? 0,
             'raw_score' => $raw['attempt']['score'] ?? null, 'raw_max' => $raw['attempt']['max_score'] ?? null];
         $items[$id] = $row; $categories[$item['category_id']]['items'][] = $row;
         if ($score !== null || $config['missing_policy'] === 'zero') {
@@ -238,8 +238,40 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
         $item = ['id' => $id, 'source' => 'manual', 'name' => grading_text($input['name'] ?? null, 'Activity name'), 'category_id' => $category,
             'max_score' => $max, 'date' => $date, 'archived' => $old['archived'] ?? false];
         if (!empty($book['config']['periods'])) $item['period_id'] = academic_period_id($input['period_id'] ?? null);
+        $instructions = $input['instructions'] ?? $old['instructions'] ?? '';
+        if (!is_string($instructions) || mb_strlen($instructions)>10000) throw new InvalidArgumentException('Keep activity instructions under 10,000 characters.');
+        $dueInput = $input['due_at'] ?? $old['due_at'] ?? '';
+        if (!is_string($dueInput)) throw new InvalidArgumentException('Enter a valid deadline.');
+        $due = $dueInput === '' ? null : DateTimeImmutable::createFromFormat('!Y-m-d\TH:i',$dueInput);
+        if ($dueInput !== '' && (!$due || $due->format('Y-m-d\TH:i') !== $dueInput)) throw new InvalidArgumentException('Enter a valid deadline.');
+        $item['instructions']=trim($instructions); $item['due_at']=$due ? $due->format('Y-m-d\TH:i') : null;
+        $item['accept_responses']=($input['accept_responses'] ?? '')==='yes';
         if ($old && $old !== $item && !empty($book['scores'][$id])) $item['correction_reason'] = grading_text($input['reason'] ?? null, 'Correction reason', 500);
         $book['items'][$id] = $item; $changes[] = ['item', $old, $item, null, $id];
+    } elseif ($action === 'assign_terms') {
+        if (empty($book['config']['periods'])) throw new InvalidArgumentException('Configure grading periods first.');
+        $period = academic_period_id($input['period_id'] ?? '');
+        $ids = $input['item_ids'] ?? null;
+        if (!is_array($ids) || !$ids || count($ids) > 500) throw new InvalidArgumentException('Select between 1 and 500 activities.');
+        if (count(array_filter($ids, 'is_string')) !== count($ids)) throw new InvalidArgumentException('Choose valid activity identifiers.');
+        $ids = array_values(array_unique(array_filter($ids, 'is_string')));
+        foreach ($ids as $id) {
+            if (!isset($book['items'][$id]) || !empty($book['items'][$id]['archived'])) throw new InvalidArgumentException('Select active activities from this classroom.');
+        }
+        $reason = '';
+        foreach ($ids as $id) {
+            if (($book['items'][$id]['period_id'] ?? '') === $period) continue;
+            $hasScores = (bool) array_filter($book['scores'][$id] ?? [], fn($score) => $score !== null);
+            foreach ($book['overrides'] as $overrides) if (isset($overrides[$id])) $hasScores = true;
+            if ($book['items'][$id]['source'] === 'quiz') foreach ($attempts as $attempt) if ((int) $attempt['quiz_id'] === (int) $book['items'][$id]['quiz_id']) $hasScores = true;
+            if ($hasScores || $book['published']) $reason = grading_text($input['reason'] ?? null, 'Term reassignment reason', 500);
+        }
+        foreach ($ids as $id) {
+            $old = $book['items'][$id]['period_id'] ?? '';
+            if ($old === $period) continue;
+            $book['items'][$id]['period_id'] = $period;
+            $changes[] = ['assign_term', $old, ['period_id' => $period, 'reason' => $reason], null, $id];
+        }
     } elseif ($action === 'scores') {
         $id = is_string($input['item_id'] ?? null) ? $input['item_id'] : '';
         $item = $book['items'][$id] ?? null;
@@ -255,6 +287,15 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
             if ($old !== $score) {
                 $reason = $old !== null ? grading_text($input['reason'] ?? null, 'Correction reason', 500) : '';
                 $book['scores'][$id][(string) $student] = $score; $changes[] = ['score', $old, ['value' => $score, 'reason' => $reason], $student, $id];
+            }
+            if (isset($input['feedback'][$student])) {
+                $text = $input['feedback'][$student];
+                if (!is_string($text) || mb_strlen($text) > 2000) throw new InvalidArgumentException('Feedback must be under 2000 characters.');
+                $previousFeedback = $book['feedback'][$id][(string)$student] ?? '';
+                if (trim($text) !== $previousFeedback) {
+                    $book['feedback'][$id][(string)$student] = trim($text);
+                    $changes[] = ['feedback', $previousFeedback, trim($text), $student, $id];
+                }
             }
         }
     } elseif ($action === 'archive') {
@@ -334,6 +375,14 @@ function grading_mutate(PDO $pdo, int $classroomId, array $actor, string $action
         $query = $pdo->prepare('SELECT * FROM attempts WHERE classroom_id = ? ORDER BY id'); $query->execute([$classroomId]);
         $attempts = array_map('hydrate_attempt', $query->fetchAll());
         $changes = grading_apply_action($book, $classroom, $actor, $action, $input, $attempts);
+        if ($action === 'assign_terms') {
+            foreach ($classroom['quizzes'] as &$quiz) {
+                $entry = $book['items']['quiz-' . (int) $quiz['id']] ?? null;
+                if ($entry && empty($entry['archived'])) $quiz['grade_period_id'] = $entry['period_id'] ?? '';
+            }
+            unset($quiz);
+            insert_classroom_record($pdo, $classroom);
+        }
         grading_write($pdo, $classroomId, $book);
         foreach ($changes as [$type, $old, $next, $student, $item]) grading_audit($pdo, $classroomId, (int) $actor['id'], $type, $old, $next, $student, $item);
         $pdo->commit();

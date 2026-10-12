@@ -41,7 +41,7 @@ $studentPracticeQuestions = $user['role'] === 'student'
     ? learning_practice_questions(student_learning_profile((int) $user['id']))
     : [];
 
-render_header('Results', 'results-page');
+render_header('Results', 'results-page' . ($user['role']==='student' ? ' student-portal-page' : ''), $user['role']==='student' ? ['/QuizWeb/assets/css/student-portal.css'] : []);
 ?>
 
 <section class="results-shell glass">

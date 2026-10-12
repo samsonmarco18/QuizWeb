@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 3) . '/scripts/seed_sample_data.php';
 
 $user = require_login();
 if ($user['role'] === 'admin') redirect('/QuizWeb/admin.php');
+if ($user['role'] === 'student') redirect('/QuizWeb/student_portal.php' . (($_GET['view'] ?? '') === 'progress' ? '?view=progress' : ''));
 $showProgress = $user['role'] === 'student' && ($_GET['view'] ?? '') === 'progress';
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') require_form_csrf();

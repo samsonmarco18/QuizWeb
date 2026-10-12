@@ -170,6 +170,9 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
                 continue;
             }
             $prompt = trim($question['prompt'] ?? '');
+            $topic = is_string($question['topic'] ?? null) ? trim($question['topic']) : '';
+            $explanation = is_string($question['explanation'] ?? null) ? trim($question['explanation']) : '';
+            if (mb_strlen($topic) > 100 || mb_strlen($explanation) > 2000) { $errors[] = 'Keep topics under 100 characters and explanations under 2000 characters.'; continue; }
             $options = array_map('trim', $question['options'] ?? []);
             $correctIndex = (int) ($question['correct_index'] ?? 0);
             $points = max(5, min(1000, is_numeric($question['points'] ?? null) ? (int) $question['points'] : 10));
@@ -200,7 +203,7 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
                         continue;
                     }
                 }
-                $questions[] = $images + ['id' => $index + 1, 'prompt' => $prompt, 'answer' => $answer,
+                $questions[] = $images + ['id' => $index + 1, 'prompt' => $prompt, 'topic' => $topic, 'explanation' => $explanation, 'answer' => $answer,
                     'accepted_answers' => array_values(array_filter(array_map('trim', $alternatives))),
                     'case_sensitive' => !empty($question['case_sensitive']),
                     'hint' => is_string($question['hint'] ?? null) ? trim($question['hint']) : '',
@@ -232,7 +235,7 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
                 $levelsUsed[$level] = true;
                 $questions[] = [
                     'id' => $index + 1,
-                    'prompt' => $prompt,
+                    'prompt' => $prompt, 'topic' => $topic, 'explanation' => $explanation,
                     'answer' => $answer,
                     'preferred_direction' => in_array(($question['preferred_direction'] ?? ''), ['auto', 'across', 'down'], true)
                         ? $question['preferred_direction']
@@ -257,7 +260,7 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
 
             $questions[] = [
                 'id' => $index + 1,
-                'prompt' => $prompt,
+                'prompt' => $prompt, 'topic' => $topic, 'explanation' => $explanation,
                 'options' => array_values(array_slice($options, 0, 4)),
                 'correct_index' => $correctIndex,
                 'points' => $points,
