@@ -16,7 +16,7 @@ ai_reject(fn() => ai_quiz_authorize($teacher, $classroom, 'wrong', 'token'), 'CS
 ai_reject(fn() => ai_quiz_authorize($teacher, $classroom, '', ''), 'Empty CSRF rejected', 403);
 $input = ['count' => '3', 'game_type' => 'standard', 'difficulty' => 'mixed', 'language' => 'English'];
 $options = ai_quiz_options($input);
-foreach ([['count' => 21], ['count' => []], ['game_type' => 'crossword'], ['game_type' => []], ['difficulty' => 'master'], ['language' => []], ['topic' => []], ['game_type' => 'master_ladder']] as $change) ai_reject(fn() => ai_quiz_options(array_replace($input, $change)), 'Invalid generation settings rejected');
+foreach ([['count' => 21], ['count' => []], ['game_type' => 'unknown'], ['game_type' => []], ['difficulty' => 'master'], ['language' => []], ['topic' => []], ['game_type' => 'master_ladder']] as $change) ai_reject(fn() => ai_quiz_options(array_replace($input, $change)), 'Invalid generation settings rejected');
 ai_reject(fn() => ai_quiz_source('short', null), 'Short source rejected');
 ai_reject(fn() => ai_quiz_source(str_repeat('x', 60001), null), 'Oversized source rejected');
 ai_reject(fn() => ai_quiz_source([], null), 'Malformed source rejected');

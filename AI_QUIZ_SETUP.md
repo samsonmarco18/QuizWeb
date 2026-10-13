@@ -1,21 +1,27 @@
 # Gemini quiz drafts
 
-Use **Quiz Builder → Questions → Generate with AI** to generate multiple-choice drafts from lesson text, PDF, or UTF-8 TXT files. Review the preview, click **Add questions to quiz**, edit questions, then preview and save normally. Generation never saves or distributes a quiz.
+Use **Quiz Builder → Questions → Generate with AI** to generate drafts for any of the 11 activity types from lesson text, PDF, or UTF-8 TXT files. Review the preview, click **Add questions to quiz**, edit questions, then preview and save normally. Generation never saves or distributes a quiz.
 
 ## Your setup steps
 
 1. Open [Google AI Studio API keys](https://aistudio.google.com/api-keys), sign in, and create a key in a project on the **Free tier**. Check the project's billing/tier before use; use a project without paid billing for a no-charge setup. QuizWeb cannot override Google's billing settings.
 2. Sign in as an **administrator**, open **Administration → AI settings**, paste the Gemini key, leave the default model, enable generation, and click **Save AI settings**. The key field stays blank afterward; leaving it blank on later saves preserves the saved key. Use **Test saved connection** to check API-key/model access without generating questions. This does not verify generation quality, remaining quota, or free-tier status.
 3. Configuration takes effect on the next request, without an Apache restart. The primary model defaults to `gemini-3.8-flash`, with `gemini-3.5-flash-lite` as a backup for unavailability/timeouts. Both have a documented free tier; actual project access and quotas still apply. Leave the backup field blank to disable failover. Existing settings gain the default backup when this update is deployed. **Test quiz generation** generates and validates 3 sample questions with the saved settings; it uses Google's quota, including a backup call if needed, but does not save a quiz or consume a teacher allowance. For automatic deployments, retain your database and the server encryption secret described below.
-4. Sign in as a teacher, open your classroom's Quiz Builder, select **Standard Quiz** or another multiple-choice mode, then open Questions. Generate 6 mixed questions and verify their answers/explanations against the lesson before saving.
+4. Sign in as a teacher, open your classroom's Quiz Builder, select your activity type, then open Questions. Generate a draft and verify its clues, answers, and explanations against the lesson before saving. The preview and imported fields follow the selected activity format.
 
 Official references: [API key setup](https://ai.google.dev/gemini-api/docs/api-key), [pricing/free tier](https://ai.google.dev/gemini-api/docs/pricing), [document input](https://ai.google.dev/gemini-api/docs/document-processing), [structured output](https://ai.google.dev/gemini-api/docs/structured-output).
 
 ## Supported inputs and output
 
-- 3–20 questions, English/Filipino, easy/medium/hard/mixed, optional topic focus.
+During generation, a compact animated progress indicator shows elapsed time and the request/response/review stages. It stays active while waiting, explains longer waits after 30 seconds, and stops on success or error. The quiz editor remains usable. Waiting uses indeterminate progress because Google does not provide a completion percentage for this request.
+
+- All 11 activity types, English/Filipino, easy/medium/hard/mixed, optional topic focus. Most types allow 3–20 generated items.
 - Mastery Ladder requires at least 4 mixed questions including Master. Standard mixed drafts include Easy, Medium and Hard, suitable for the teacher-enabled adaptive practice bank.
-- Four distinct options, one correct answer, topic, explanation, and 10 editable points.
+- Multiple-choice modes: Standard, Time Attack, Rocket Rush, Memory Flip, Treasure Dive, Boss Battle, and Mastery Ladder. Each question has four distinct options and one correct answer.
+- Fill in the Blank: a sentence with one blank, expected answer, optional alternatives, hint, topic, and explanation. Emoji Quiz: emoji clues with expected answers and optional alternatives/hints.
+- Crossword: unique 3–15-letter answers with clues and automatic directions. The generated set must form a connected grid through the normal crossword validator. If lesson terms cannot form a grid, generation returns an actionable error; try fewer words or a different focus topic. Preview the complete puzzle after combining with existing words.
+- Flip Match: 2–12 distinct text pairs (mixed difficulty needs at least 3). Teachers can add images in the editor after importing. Imports respect the complete activity's 12-pair maximum and reject overlap with existing terms/answers.
+- Every generated item includes a topic, explanation, difficulty, and 10 editable points. Typed answers and alternatives must fit the existing 250-byte answer limit.
 - Text/TXT: 60 KB UTF-8, at least 100 characters. PDF: 5 MB. Convert Word/PowerPoint to PDF first. XAMPP's `upload_max_filesize` and `post_max_size` must permit the upload (at least 5 MB and 8 MB respectively).
 - Existing questions are preserved when importing drafts, except a completely empty initial placeholder. The quiz limit remains 40 questions. Teachers verify factual accuracy; schema validation does not guarantee it.
 
@@ -51,6 +57,7 @@ A successful **Test saved connection** checks model metadata access, not a gener
 
 ```powershell
 & C:/xampppp/php/php.exe tests/ai_quiz_test.php
+& C:/xampppp/php/php.exe tests/ai_quiz_modes_test.php
 & C:/xampppp/php/php.exe tests/ai_quiz_retry_test.php
 & C:/xampppp/php/php.exe tests/ai_quiz_failover_test.php
 & C:/xampppp/php/php.exe tests/admin_ai_configuration_test.php

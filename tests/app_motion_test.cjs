@@ -50,6 +50,8 @@ const assert = require('node:assert/strict');
   await wait(200); reject(new Error('network')); await caught; await wait(1000); assert(!loading(), 'Failed save must clear feedback');
   const heartbeat = w.fetch('/quiz_progress.php',{method:'POST'});
   await wait(200); assert(!loading(), 'Background tracking must not flash a loader'); resolve({ok:true}); await heartbeat;
+  const generation = w.fetch('/QuizWeb/ai_quiz_generate.php',{method:'POST'});
+  await wait(200); assert(!loading(), 'AI inline progress must remain visible without a blocking overlay'); resolve({ok:true}); await generation;
   const endFirst = w.chalkLoading.begin('First',0), endSecond=w.chalkLoading.begin('Second',0);
   await wait(10); endFirst(); await wait(150); assert(loading(), 'Concurrent request must retain loader'); endSecond(); await wait(1000); assert(!loading());
   d.querySelector('form').addEventListener('submit',event=>event.preventDefault());
