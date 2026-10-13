@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/ai_quiz.php';
 function retry_check(bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
 }
-function retry_run(array $responses, float $elapsedPerCall = 0): array {
+function retry_run(array $responses, float $elapsedPerCall = 0, bool $useBackup = false): array {
     $now = 0.0;
     $calls = []; $delays = []; $error = null; $result = null;
     $send = static function (int $timeout) use (&$calls, &$now, $responses, $elapsedPerCall): array {
@@ -18,7 +18,7 @@ function retry_run(array $responses, float $elapsedPerCall = 0): array {
     };
     $pause = static function (int $ms) use (&$now, &$delays): void { $delays[] = $ms; $now += $ms / 1000; };
     $clock = static function () use (&$now): float { return $now; };
-    try { $result = ai_quiz_generate_with_transport($send, $pause, $clock); }
+    try { $result = ai_quiz_generate_with_transport($send, $pause, $clock, $useBackup); }
     catch (RuntimeException $caught) { $error = $caught; }
     return compact('result', 'error', 'calls', 'delays', 'now');
 }
@@ -52,4 +52,18 @@ retry_check(count($run['calls']) === 1 && !$run['delays'] && $run['error']->http
 $run = retry_run([$unavailable, $unavailable], 60);
 retry_check(count($run['calls']) === 2 && $run['calls'][0] === 60000 && $run['calls'][1] < 5000 && $run['now'] <= 65, 'All attempts share the deadline');
 retry_check($run['error'] instanceof AiQuizProviderException && $run['error']->httpStatus === 503, 'Deadline after confirmed rejection remains refundable');
-echo "AI retry checks passed: recovery, backoff/jitter, bounded attempts/deadline, Retry-After, sanitization, and no retry for ambiguous failures or configuration/quota errors.\n";
+$run = retry_run([new AiQuizTransportException(28, true), $success], 30, true);
+retry_check($run['result'] === 'draft fixture' && $run['calls'] === [30000, 25000] && !$run['delays'], 'Timeout fails over immediately within separate primary/backup budgets');
+$run = retry_run([new AiQuizTransportException(28, true), $unavailable, $unavailable], 0, true);
+retry_check($run['error'] instanceof AiQuizProviderException && !$run['error']->allowanceRefundable, 'A sent timeout prevents refund even when backup returns HTTP 503');
+$run = retry_run([new AiQuizTransportException(28, false), $unavailable, $unavailable], 0, true);
+retry_check($run['error'] instanceof AiQuizProviderException && $run['error']->allowanceRefundable, 'Unsent timeout followed by confirmed rejections is refundable');
+$run = retry_run([new AiQuizTransportException(28, true), new AiQuizTransportException(28, true)], 30, true);
+retry_check(count($run['calls']) === 2 && $run['now'] === 55.0, 'Do not repeat an ambiguous backup timeout');
+$run = retry_run([new AiQuizTransportException(28, true), new AiQuizTransportException(6, false)], 0, true);
+retry_check($run['error'] instanceof AiQuizTransportException && $run['error']->requestSent, 'An unsent backup failure cannot erase the primary timeout uncertainty');
+foreach ([6, 7, 60, 77] as $code) {
+    $run = retry_run([new AiQuizTransportException($code, false)], 0, true);
+    retry_check(count($run['calls']) === 1 && $run['error']->curlCode === $code && !$run['error']->requestSent, 'Do not fail over on infrastructure errors');
+}
+echo "AI retry checks passed: recovery, backoff/jitter, bounded attempts/deadline, Retry-After, timeout failover, refund uncertainty and no retry for configuration/quota/infrastructure errors.\n";

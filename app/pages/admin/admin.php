@@ -12,13 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $view = 'ai';
         try {
             ai_settings_csrf($_POST['csrf'] ?? null, $_SESSION['admin_csrf']);
-            if ($adminAction === 'ai_test_connection') {
+            if (in_array($adminAction, ['ai_test_connection', 'ai_test_generation'], true)) {
                 $lastTest = (int) ($_SESSION['ai_admin_last_test'] ?? 0);
-                if (time() - $lastTest < 30) throw new InvalidArgumentException('Wait 30 seconds between connection tests.');
+                if (time() - $lastTest < 30) throw new InvalidArgumentException('Wait 30 seconds between AI tests.');
                 $_SESSION['ai_admin_last_test'] = time();
-                set_time_limit(30);
-                ai_settings_test(db(), (int) $user['id']);
-                flash_set('success', 'Connected to Gemini. The saved key can access the configured model. Quiz generation has not been tested.');
+                set_time_limit($adminAction === 'ai_test_generation' ? 75 : 30);
+                if ($adminAction === 'ai_test_generation') {
+                    $testedModel = ai_settings_test_generation(db(), (int) $user['id']);
+                    flash_set('success', 'Quiz generation succeeded: 3 sample questions passed validation using ' . $testedModel . '. No quiz was saved.');
+                } else {
+                    ai_settings_test(db(), (int) $user['id']);
+                    flash_set('success', 'Connected to Gemini. The saved key can access the configured model. Quiz generation has not been tested.');
+                }
             } elseif (in_array($adminAction, ['ai_save_settings', 'ai_remove_key'], true)) {
                 ai_settings_save(db(), (int) $user['id'], $_POST, $adminAction === 'ai_remove_key' ? 'remove' : 'save');
                 flash_set('success', $adminAction === 'ai_remove_key' ? 'API key removed and AI generation disabled.' : 'AI settings saved.');

@@ -4,6 +4,7 @@ $serverAI = $savedAI === null ? ai_quiz_server_config() : null;
 $hasAIKey = $savedAI === null ? $serverAI['key'] !== '' : !empty($savedAI['encrypted_key']);
 $aiEnabled = $savedAI === null ? $hasAIKey : !empty($savedAI['enabled']);
 $aiModel = $savedAI['model'] ?? $serverAI['model'] ?? 'gemini-3.8-flash';
+$aiBackupModel = $savedAI['backup_model'] ?? $serverAI['backup_model'] ?? 'gemini-3.5-flash-lite';
 unset($serverAI);
 $aiHealthError = '';
 if ($hasAIKey) {
@@ -21,6 +22,7 @@ if ($hasAIKey) {
         <div class="admin-ai-fields">
             <label for="admin-gemini-key"><span><?php echo $hasAIKey ? 'Replace API key (optional)' : 'Gemini API key'; ?></span><input id="admin-gemini-key" type="password" name="api_key" value="" maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="<?php echo $hasAIKey ? 'Leave blank to keep the current key' : 'Paste your Google AI Studio API key'; ?>"><small>Accepts standard and authorization keys. The saved key is encrypted and never displayed again.</small></label>
             <label for="admin-gemini-model"><span>Gemini model</span><input id="admin-gemini-model" name="model" maxlength="87" value="<?php echo esc($aiModel); ?>" required pattern="gemini-[a-zA-Z0-9.\-]+"><small>Default: gemini-3.8-flash. Check free-tier availability before changing models.</small></label>
+            <label for="admin-gemini-backup"><span>Backup model (optional)</span><input id="admin-gemini-backup" name="backup_model" maxlength="87" value="<?php echo esc($aiBackupModel); ?>" pattern="gemini-[a-zA-Z0-9.\-]+"><small>Default: gemini-3.5-flash-lite. Used when the primary model is busy or times out. Leave blank to disable.</small></label>
         </div>
         <label class="admin-ai-toggle"><input type="checkbox" name="enabled" value="yes" <?php echo $aiEnabled ? 'checked' : ''; ?>><span>Enable AI quiz generation for teachers</span></label>
         <p class="admin-ai-note">Use a Google project on the Free tier without paid billing to avoid charges. QuizWeb does not control Google's billing. Teachers receive 10 generation requests per day, with provider quotas also applying.</p>
@@ -29,7 +31,8 @@ if ($hasAIKey) {
     </form>
     <div class="admin-ai-actions">
         <form method="post" data-ai-settings-form><input type="hidden" name="csrf" value="<?php echo esc($_SESSION['admin_csrf']); ?>"><input type="hidden" name="action" value="ai_test_connection"><button type="submit" class="button button-secondary" <?php echo !$hasAIKey || $aiHealthError ? 'disabled' : ''; ?>>Test saved connection</button><p role="status" data-ai-form-status></p></form>
+        <form method="post" data-ai-settings-form><input type="hidden" name="csrf" value="<?php echo esc($_SESSION['admin_csrf']); ?>"><input type="hidden" name="action" value="ai_test_generation"><button type="submit" class="button button-secondary" <?php echo !$hasAIKey || $aiHealthError ? 'disabled' : ''; ?>>Test quiz generation</button><p role="status" data-ai-form-status></p></form>
         <form method="post" data-ai-settings-form data-ai-remove><input type="hidden" name="csrf" value="<?php echo esc($_SESSION['admin_csrf']); ?>"><input type="hidden" name="action" value="ai_remove_key"><button type="submit" class="button button-ghost" <?php echo !$hasAIKey ? 'disabled' : ''; ?>>Remove key &amp; disable AI</button><p role="status" data-ai-form-status></p></form>
     </div>
-    <p class="admin-ai-note">Save changes before testing. The test checks access to the saved model without generating questions. It does not verify generation quality, free-tier status, or remaining quota.</p>
+    <p class="admin-ai-note">Save changes before testing. Connection checks model access only. Test quiz generation creates and validates 3 sample questions without saving a quiz. It uses Google's project quota, including a backup call if needed, and does not use a teacher's daily allowance. Neither test verifies free-tier status.</p>
 </div>

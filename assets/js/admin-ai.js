@@ -19,7 +19,7 @@
             pending = true;
             form.querySelectorAll('[type=submit]').forEach(button => { button.disabled = true; });
             const action = form.querySelector('[name=action]').value;
-            form.querySelector('[data-ai-form-status]').textContent = action === 'ai_test_connection' ? 'Checking the saved connection…' : 'Saving settings…';
+            form.querySelector('[data-ai-form-status]').textContent = action === 'ai_test_connection' ? 'Checking the saved connection…' : action === 'ai_test_generation' ? 'Generating and validating 3 sample questions…' : 'Saving settings…';
         });
     });
 })();

@@ -101,11 +101,13 @@ function ai_settings_save(PDO $pdo, int $actorId, #[SensitiveParameter] array $i
         ai_settings_require_admin($pdo, $actorId);
         $saved = ai_settings_read($pdo);
         if ($action === 'remove') {
-            $settings = ['enabled' => false, 'model' => $saved['model'] ?? 'gemini-3.8-flash', 'encrypted_key' => null];
+            $settings = ['enabled' => false, 'model' => $saved['model'] ?? 'gemini-3.8-flash', 'backup_model' => $saved['backup_model'] ?? 'gemini-3.5-flash-lite', 'encrypted_key' => null];
         } else {
             $model = $input['model'] ?? '';
             $secret = ai_settings_normalize_key($input['api_key'] ?? '');
             if (!is_string($model) || !preg_match('/\Agemini-[a-zA-Z0-9.-]{1,80}\z/', $model)) throw new InvalidArgumentException('Enter a valid Gemini model name.');
+            $backupModel = $input['backup_model'] ?? ($saved['backup_model'] ?? 'gemini-3.5-flash-lite');
+            if (!is_string($backupModel) || ($backupModel !== '' && !preg_match('/\Agemini-[a-zA-Z0-9.-]{1,80}\z/', $backupModel))) throw new InvalidArgumentException('Enter a valid backup model name or leave it blank to disable failover.');
             $enabled = ($input['enabled'] ?? '') === 'yes';
             $encrypted = $saved['encrypted_key'] ?? null;
             if ($secret !== '') $encrypted = ai_settings_encrypt($secret);
@@ -116,7 +118,7 @@ function ai_settings_save(PDO $pdo, int $actorId, #[SensitiveParameter] array $i
             if ($enabled && !$encrypted) throw new InvalidArgumentException('Add an API key before enabling AI generation.');
             // Allow replacing an unreadable key; only preservation needs decryption.
             if ($enabled && $encrypted && $secret === '') ai_settings_decrypt($encrypted);
-            $settings = ['enabled' => $enabled, 'model' => $model, 'encrypted_key' => $encrypted];
+            $settings = ['enabled' => $enabled, 'model' => $model, 'backup_model' => $backupModel, 'encrypted_key' => $encrypted];
         }
         $settings['updated_at'] = now_iso(); $settings['updated_by'] = $actorId;
         database_upsert_record($pdo, 'academic_settings', 'id', ['id' => 'ai_quiz_settings', 'data' => json_encode($settings, JSON_THROW_ON_ERROR)]);
@@ -145,4 +147,23 @@ function ai_settings_test(PDO $pdo, int $actorId): void
     ai_settings_probe_result($response['status'], $response['body']);
     $audit = $pdo->prepare('INSERT INTO audit_logs (actor_id, target_id, action, occurred_at) VALUES (?, ?, ?, ?)');
     $audit->execute([$actorId, null, 'ai_connection_tested', now_iso()]);
+}
+
+function ai_settings_generation_probe(#[SensitiveParameter] array $config, ?callable $transport = null): string
+{
+    if ($config['key'] === '') throw new InvalidArgumentException('Save an API key before testing generation.');
+    $options = ai_quiz_options(['count' => 3, 'game_type' => 'standard', 'difficulty' => 'mixed', 'language' => 'English']);
+    $source = ai_quiz_source('Plants use sunlight, water, and carbon dioxide during photosynthesis to produce sugars and oxygen. Roots absorb water from soil. Leaves capture sunlight using chlorophyll. Sugars provide energy for plant growth.', null);
+    $result = ai_quiz_generate_result(ai_quiz_request($options, $source, $config['model']), $config['key'], $config['backup_model'] ?? '', $transport);
+    ai_quiz_validate($result['text'], $options);
+    return $result['model'];
+}
+
+function ai_settings_test_generation(PDO $pdo, int $actorId): string
+{
+    ai_settings_require_admin($pdo, $actorId);
+    $model = ai_settings_generation_probe(ai_quiz_config($pdo, true));
+    $audit = $pdo->prepare('INSERT INTO audit_logs (actor_id, target_id, action, occurred_at) VALUES (?, ?, ?, ?)');
+    $audit->execute([$actorId, null, 'ai_generation_tested', now_iso()]);
+    return $model;
 }

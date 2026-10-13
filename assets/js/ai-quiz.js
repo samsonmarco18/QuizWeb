@@ -75,7 +75,7 @@
             draft = result.questions;
             draftMode = requestedMode;
             preview(draft);
-            get('status').textContent = `${draft.length} questions ready for review. ${result.remaining} requests left today.` + (result.warning ? ` ${result.warning}` : '') + (mode() !== draftMode ? ' Return to the original game mode to add these questions.' : '');
+            get('status').textContent = `${draft.length} questions ready for review. ${result.remaining} requests left today.` + (result.used_backup && result.model ? ` Generated with backup model ${result.model}.` : '') + (result.warning ? ` ${result.warning}` : '') + (mode() !== draftMode ? ' Return to the original game mode to add these questions.' : '');
         } catch (error) {
             get('status').textContent = error.name === 'AbortError' ? 'Generation timed out. Your quiz is unchanged. Try fewer questions; this request may have used quota.' : error.message;
         } finally {

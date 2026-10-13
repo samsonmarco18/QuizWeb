@@ -25,20 +25,20 @@ try {
     $remaining = ai_quiz_reserve($quotaDb, (int) $user['id'], $reservedAt);
     session_write_close();
     set_time_limit(75);
-    $generated = ai_quiz_generate($request, $config['key']);
-    echo json_encode(ai_quiz_validate($generated, $options) + ['remaining' => $remaining], JSON_THROW_ON_ERROR);
+    $generated = ai_quiz_generate_result($request, $config['key'], $config['backup_model']);
+    echo json_encode(ai_quiz_validate($generated['text'], $options) + ['remaining' => $remaining, 'model' => $generated['model'], 'used_backup' => $generated['used_backup']], JSON_THROW_ON_ERROR);
 } catch (InvalidArgumentException $error) {
     http_response_code(422);
     echo json_encode(['error' => $error->getMessage(), 'remaining' => $remaining]);
 } catch (Throwable $error) {
     $refunded = false;
-    if ($error instanceof AiQuizProviderException && $error->httpStatus === 503 && $remaining !== null) {
+    if ($remaining !== null && (($error instanceof AiQuizProviderException && $error->allowanceRefundable) || ($error instanceof AiQuizTransportException && !$error->requestSent))) {
         try {
             $remaining = ai_quiz_refund_unavailable($quotaDb, (int) $user['id'], $reservedAt);
             $refunded = true;
         } catch (Throwable $refundError) {
             // Retain the original provider error without logging private details.
-            error_log('QuizWeb: unable to restore an AI generation allowance after HTTP 503.');
+            error_log('QuizWeb: unable to restore an AI generation allowance after a confirmed failure.');
         }
     }
     $status = in_array($error->getCode(), [403, 405, 429, 502, 503], true) ? $error->getCode() : 500;

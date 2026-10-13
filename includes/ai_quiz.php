@@ -13,6 +13,7 @@ function ai_quiz_server_config(): array
     return [
         'key' => trim((string) (getenv('GEMINI_API_KEY') ?: ($local['api_key'] ?? ''))),
         'model' => (string) (getenv('QUIZWEB_GEMINI_MODEL') ?: ($local['model'] ?? 'gemini-3.8-flash')),
+        'backup_model' => (string) (getenv('QUIZWEB_GEMINI_BACKUP_MODEL') !== false ? getenv('QUIZWEB_GEMINI_BACKUP_MODEL') : ($local['backup_model'] ?? 'gemini-3.5-flash-lite')),
         'enabled' => true, 'source' => getenv('GEMINI_API_KEY') ? 'Server environment' : 'Local server file',
     ];
 }
@@ -25,6 +26,7 @@ function ai_quiz_config(?PDO $pdo = null, bool $includeDisabledKey = false): arr
     return [
         'key' => ($enabled || $includeDisabledKey) && is_array($saved['encrypted_key'] ?? null) ? ai_settings_decrypt($saved['encrypted_key']) : '',
         'model' => $saved['model'] ?? 'gemini-3.8-flash', 'enabled' => $enabled, 'source' => 'Administration',
+        'backup_model' => $saved['backup_model'] ?? 'gemini-3.5-flash-lite',
     ];
 }
 
@@ -100,7 +102,7 @@ function ai_quiz_request(array $options, array $source, string $model): array
     $source[] = ['type' => 'text', 'text' => 'Teacher settings: ' . json_encode($options, JSON_UNESCAPED_UNICODE)];
     return [
         'model' => $model, 'system_instruction' => $instructions, 'input' => $source,
-        'store' => false, 'generation_config' => ['max_output_tokens' => 12000],
+        'store' => false, 'generation_config' => ['max_output_tokens' => min(12000, 1500 + $options['count'] * 450)] + ai_quiz_thinking_config($model),
         'response_format' => ['type' => 'text', 'mime_type' => 'application/json', 'schema' => [
             'type' => 'object', 'properties' => [
                 'questions' => ['type' => 'array', 'maxItems' => $options['count'], 'items' => ['type' => 'object', 'properties' => $properties, 'required' => array_keys($properties)]],
@@ -110,11 +112,35 @@ function ai_quiz_request(array $options, array $source, string $model): array
     ];
 }
 
+function ai_quiz_thinking_config(string $model): array
+{
+    // Only apply documented levels for known models. Leave custom/older model
+    // configurations alone rather than sending an unsupported generation option.
+    if (in_array($model, ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3-flash-preview'], true)) return ['thinking_level' => 'minimal'];
+    if (in_array($model, ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'], true)) return ['thinking_level' => 'low'];
+    return [];
+}
+
 class AiQuizProviderException extends RuntimeException
 {
-    public function __construct(string $message, int $code, public readonly int $httpStatus)
+    public function __construct(string $message, int $code, public readonly int $httpStatus, public readonly bool $allowanceRefundable = false)
     {
         parent::__construct($message, $code);
+    }
+}
+
+class AiQuizTransportException extends RuntimeException
+{
+    public function __construct(public readonly int $curlCode, public readonly bool $requestSent)
+    {
+        $message = match ($curlCode) {
+            28 => 'Gemini generation timed out before a response arrived. Try again later; your quiz is unchanged.',
+            6 => 'The server could not resolve Google\'s API address. Ask the administrator to check server DNS.',
+            7 => 'The server could not open a connection to Google. Ask the administrator to check outbound HTTPS access.',
+            60, 77 => 'The server could not verify Google\'s HTTPS certificate. Ask the administrator to check the server CA certificates.',
+            default => 'The connection to Gemini failed. Try again later; your quiz is unchanged.',
+        };
+        parent::__construct($message . ' (Connection code ' . $curlCode . '.)', 502);
     }
 }
 
@@ -140,7 +166,7 @@ function ai_quiz_provider_error(int $status, string $body): AiQuizProviderExcept
     // These provider statuses further distinguish malformed requests from account
     // restrictions, even when both arrive as HTTP 400.
     if ($providerStatus === 'FAILED_PRECONDITION') $message = 'The Google project does not meet a requirement for generation. Check model availability, region eligibility, and project setup in Google AI Studio. No paid upgrade was made.';
-    return new AiQuizProviderException($label . $message, $status === 429 ? 429 : (in_array($status, [401, 402, 403, 404], true) ? 503 : 502), $status);
+    return new AiQuizProviderException($label . $message, $status === 429 ? 429 : (in_array($status, [401, 402, 403, 404], true) ? 503 : 502), $status, $status === 503);
 }
 
 function ai_quiz_provider_text(int $status, string $body): string
@@ -214,7 +240,7 @@ function ai_quiz_reserve(PDO $pdo, int $teacherId, int $now): int
     }
 }
 
-// Called once by the endpoint only after a confirmed HTTP 503 rejection. Keep
+// Called once after confirmed HTTP 503 rejections or an unsent network failure. Keep
 // the cooldown and use the reservation date even if generation crosses midnight.
 function ai_quiz_refund_unavailable(PDO $pdo, int $teacherId, int $reservedAt): int
 {
@@ -272,30 +298,62 @@ function ai_quiz_http(string $path, #[SensitiveParameter] string $key, ?array $r
     }
     $ok = curl_exec($curl);
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $curlCode = curl_errno($curl);
+    $requestSent = curl_getinfo($curl, CURLINFO_REQUEST_SIZE) > 0;
     curl_close($curl);
-    if ($ok === false) throw new RuntimeException('Could not connect to Gemini. Check server internet access and HTTPS certificates, then try again.', 502);
+    if ($ok === false) throw new AiQuizTransportException($curlCode, $requestSent);
     return ['status' => $status, 'body' => $body, 'retry_after_ms' => $retryAfterMs];
 }
 
-function ai_quiz_generate(array $request, #[SensitiveParameter] string $key): string
+function ai_quiz_generate(array $request, #[SensitiveParameter] string $key, string $backupModel = ''): string
 {
-    return ai_quiz_generate_with_transport(static fn(int $timeoutMs) => ai_quiz_http('interactions', $key, $request, $timeoutMs));
+    return ai_quiz_generate_result($request, $key, $backupModel)['text'];
 }
 
-// Retry only definite unavailability, never an ambiguous network timeout or a
-// rejected configuration/quota request. All attempts share a 65-second budget.
-function ai_quiz_generate_with_transport(callable $send, ?callable $pause = null, ?callable $clock = null): string
+function ai_quiz_generate_result(array $request, #[SensitiveParameter] string $key, string $backupModel = '', ?callable $transport = null): array
+{
+    $primaryModel = $request['model'];
+    $useBackup = $backupModel !== '' && $backupModel !== $primaryModel;
+    $usedModel = $primaryModel;
+    $transport ??= static fn(array $body, int $timeoutMs) => ai_quiz_http('interactions', $key, $body, $timeoutMs);
+    $send = static function (int $timeoutMs, int $attempt) use ($request, $primaryModel, $backupModel, $useBackup, $transport, &$usedModel): array {
+        $usedModel = $useBackup && $attempt > 0 ? $backupModel : $primaryModel;
+        $request['model'] = $usedModel;
+        unset($request['generation_config']['thinking_level']);
+        $request['generation_config'] += ai_quiz_thinking_config($usedModel);
+        return $transport($request, $timeoutMs);
+    };
+    $text = ai_quiz_generate_with_transport($send, null, null, $useBackup);
+    return ['text' => $text, 'model' => $usedModel, 'used_backup' => $usedModel !== $primaryModel];
+}
+
+// A configured backup allows failover after HTTP 503 or a generation timeout.
+// Timeouts may have reached Google, so they cannot be refunded as a rejection.
+// Authorization, quota, DNS and TLS errors do not trigger failover.
+function ai_quiz_generate_with_transport(callable $send, ?callable $pause = null, ?callable $clock = null, bool $useBackup = false): string
 {
     $pause ??= static fn(int $ms) => usleep($ms * 1000);
     $clock ??= static fn(): float => hrtime(true) / 1e9;
     $deadline = $clock() + 65;
     $lastError = null;
+    $ambiguous = false;
     for ($attempt = 0; $attempt < 3; $attempt++) {
         $budgetMs = (int) floor(($deadline - $clock()) * 1000);
         if ($budgetMs <= 0) throw $lastError ?? new RuntimeException('Generation timed out. Please try again later.', 502);
-        $response = $send(min(60000, $budgetMs));
+        try {
+            $response = $send(min($useBackup ? ($attempt === 0 ? 30000 : 25000) : 60000, $budgetMs), $attempt);
+        } catch (AiQuizTransportException $error) {
+            if ($ambiguous && !$error->requestSent) $error = new AiQuizTransportException($error->curlCode, true);
+            // Only one failover for a timeout. Do not repeat an ambiguous backup
+            // request or diagnose it as a certificate problem.
+            if (!$useBackup || $attempt !== 0 || $error->curlCode !== 28) throw $error;
+            $ambiguous = $error->requestSent;
+            $lastError = $error;
+            continue;
+        }
         if ($response['status'] !== 503) return ai_quiz_provider_text($response['status'], $response['body']);
         $lastError = ai_quiz_provider_error(503, $response['body']);
+        if ($ambiguous) $lastError = new AiQuizProviderException($lastError->getMessage(), $lastError->getCode(), 503, false);
         if ($attempt === 2) throw $lastError;
         $delayMs = max(1000 * (2 ** $attempt) + random_int(0, 250), (int) ($response['retry_after_ms'] ?? 0));
         // Respect Retry-After without extending the request or starting an
