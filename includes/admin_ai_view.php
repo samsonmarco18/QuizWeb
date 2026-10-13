@@ -19,7 +19,7 @@ if ($hasAIKey) {
         <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['admin_csrf']); ?>">
         <input type="hidden" name="action" value="ai_save_settings">
         <div class="admin-ai-fields">
-            <label for="admin-gemini-key"><span><?php echo $hasAIKey ? 'Replace API key (optional)' : 'Gemini API key'; ?></span><input id="admin-gemini-key" type="password" name="api_key" value="" minlength="20" maxlength="250" autocomplete="new-password" spellcheck="false" placeholder="<?php echo $hasAIKey ? 'Leave blank to keep the current key' : 'Paste your Google AI Studio API key'; ?>"><small>The saved key is encrypted and never displayed again.</small></label>
+            <label for="admin-gemini-key"><span><?php echo $hasAIKey ? 'Replace API key (optional)' : 'Gemini API key'; ?></span><input id="admin-gemini-key" type="password" name="api_key" value="" maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="<?php echo $hasAIKey ? 'Leave blank to keep the current key' : 'Paste your Google AI Studio API key'; ?>"><small>Accepts standard and authorization keys. The saved key is encrypted and never displayed again.</small></label>
             <label for="admin-gemini-model"><span>Gemini model</span><input id="admin-gemini-model" name="model" maxlength="87" value="<?php echo esc($aiModel); ?>" required pattern="gemini-[a-zA-Z0-9.\-]+"><small>Default: gemini-3.8-flash. Check free-tier availability before changing models.</small></label>
         </div>
         <label class="admin-ai-toggle"><input type="checkbox" name="enabled" value="yes" <?php echo $aiEnabled ? 'checked' : ''; ?>><span>Enable AI quiz generation for teachers</span></label>

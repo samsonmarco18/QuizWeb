@@ -79,6 +79,18 @@ function ai_settings_csrf($token, string $expected): void
     if ($expected === '' || !is_string($token) || !hash_equals($expected, $token)) throw new InvalidArgumentException('Your form expired. Reload and try again.');
 }
 
+function ai_settings_normalize_key(#[SensitiveParameter] $input): string
+{
+    if (!is_string($input)) throw new InvalidArgumentException('Paste the complete API key from Google AI Studio.');
+    $key = trim($input);
+    // API keys are opaque: Google validates their prefix and format. Reject only
+    // oversized values and characters unsafe in the x-goog-api-key HTTP header.
+    if (strlen($key) > 4096 || preg_match('/[\x00-\x20\x7f-\xff]/', $key)) {
+        throw new InvalidArgumentException('Paste the complete API key without internal spaces or line breaks (maximum 4096 characters).');
+    }
+    return $key;
+}
+
 function ai_settings_save(PDO $pdo, int $actorId, #[SensitiveParameter] array $input, string $action = 'save'): void
 {
     if (!in_array($action, ['save', 'remove'], true)) throw new InvalidArgumentException('Choose a valid AI settings action.');
@@ -92,11 +104,8 @@ function ai_settings_save(PDO $pdo, int $actorId, #[SensitiveParameter] array $i
             $settings = ['enabled' => false, 'model' => $saved['model'] ?? 'gemini-3.8-flash', 'encrypted_key' => null];
         } else {
             $model = $input['model'] ?? '';
-            $secret = $input['api_key'] ?? '';
+            $secret = ai_settings_normalize_key($input['api_key'] ?? '');
             if (!is_string($model) || !preg_match('/\Agemini-[a-zA-Z0-9.-]{1,80}\z/', $model)) throw new InvalidArgumentException('Enter a valid Gemini model name.');
-            if (!is_string($secret)) throw new InvalidArgumentException('Enter a valid API key.');
-            $secret = trim($secret);
-            if ($secret !== '' && (!preg_match('/\A[A-Za-z0-9_-]{20,250}\z/', $secret))) throw new InvalidArgumentException('The API key format is invalid. Paste the complete key from Google AI Studio.');
             $enabled = ($input['enabled'] ?? '') === 'yes';
             $encrypted = $saved['encrypted_key'] ?? null;
             if ($secret !== '') $encrypted = ai_settings_encrypt($secret);

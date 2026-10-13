@@ -31,6 +31,8 @@ The server checks teacher ownership and CSRF, source type/size, provider complet
 
 Admin-stored settings take priority over `GEMINI_API_KEY`, `QUIZWEB_GEMINI_MODEL`, and the optional `includes/gemini.local.php` legacy defaults. The saved key is encrypted with AES-256-GCM inside the existing `academic_settings` table, under `ai_quiz_settings`. Admin-only actions verify active role and CSRF. Settings changes/removal are audited with action names only, without keys. The teacher panel and administrator HTML never receive the saved key or ciphertext.
 
+The API key field accepts standard and authorization keys without assuming a prefix or a legacy key length. Keys are treated as opaque printable ASCII tokens up to 4096 characters. Surrounding paste whitespace is trimmed; internal whitespace/control characters are rejected for HTTP-header safety. Use **Test saved connection** to ask Google to validate the key and model access.
+
 For local XAMPP, the application creates `data/ai_master.local.php` on the first key save. It is a guarded PHP file that returns 404 when requested directly, ignored by Git and Docker. Back up this file securely alongside the database; losing it prevents reading the saved API key until it is replaced. Do not publish it or reuse it between unrelated installations.
 
 For Render, a key derived from the existing server-side database password provides stable encryption across redeployments. Rotating that password requires replacing the saved Gemini key. You can use a dedicated stable secret instead: set `QUIZWEB_AI_ENCRYPTION_KEY` to a base64-encoded random 32-byte key in the service environment before saving/replacing the API key. Preserve that secret during redeploys and restores. Adding the dedicated secret does not migrate an existing key until you replace it in the admin form. Never store the encryption secret in the database or source control.
@@ -46,6 +48,7 @@ If local HTTPS calls fail, configure a valid CA bundle for PHP cURL via `curl.ca
 & C:/xampppp/php/php.exe tests/ai_quiz_database_test.php
 & C:/xampppp/php/php.exe tests/admin_ai_test.php
 & C:/xampppp/php/php.exe tests/ai_key_storage_test.php
+& C:/xampppp/php/php.exe tests/ai_key_validation_test.php
 node tests/ai_quiz_ui_test.cjs
 node tests/admin_ai_ui_test.cjs
 ```
