@@ -37,6 +37,13 @@ ai_check(ai_quiz_provider_text(200, $provider) === $json, 'Documented REST respo
 $validated = ai_quiz_validate($json, $options);
 ai_check(count($validated['questions']) === 3 && $validated['questions'][0]['points'] === 10 && $validated['questions'][2]['level'] === 'hard', 'Generated questions pass existing builder validation');
 foreach ([429, 401, 403, 500] as $status) ai_reject(fn() => ai_quiz_provider_text($status, '{"error":"secret-key"}'), 'Provider error sanitized', $status === 429 ? 429 : (in_array($status, [401, 403]) ? 503 : 502));
+foreach ([400 => 'INVALID_ARGUMENT', 404 => 'NOT_FOUND', 429 => 'RESOURCE_EXHAUSTED', 500 => 'INTERNAL', 503 => 'UNAVAILABLE'] as $status => $label) {
+    $providerError = ai_quiz_provider_error($status, json_encode(['error' => ['status' => $label, 'message' => 'secret-key and private lesson text']]));
+    ai_check(str_contains($providerError->getMessage(), 'HTTP ' . $status) && str_contains($providerError->getMessage(), $label), 'Failure preserves safe provider status');
+    ai_check(!str_contains($providerError->getMessage(), 'secret-key') && !str_contains($providerError->getMessage(), 'private lesson'), 'Provider details remain private');
+}
+ai_check(!str_contains(ai_quiz_provider_error(400, '{"error":{"status":"secret-key"}}')->getMessage(), 'secret-key'), 'Unknown status label must not leak');
+ai_check(str_contains(ai_quiz_provider_error(400, '{"error":{"status":"FAILED_PRECONDITION"}}')->getMessage(), 'project'), 'Project setup error distinguished from request syntax');
 ai_reject(fn() => ai_quiz_provider_text(200, '{"status":"incomplete"}'), 'Partial generation rejected', 502);
 ai_reject(fn() => ai_quiz_validate('not-json', $options), 'Invalid JSON rejected', 502);
 ai_reject(fn() => ai_quiz_validate('{"questions":[]}', $options), 'Wrong count rejected', 502);

@@ -41,6 +41,8 @@ Legacy server defaults remain supported until settings are first saved in Admini
 
 If local HTTPS calls fail, configure a valid CA bundle for PHP cURL via `curl.cainfo` in `php.ini`, then restart Apache. Keep TLS verification enabled.
 
+A successful **Test saved connection** checks model metadata access, not a generation request. Generation errors display Google's HTTP status and a known status label without exposing the provider's raw message or private details. HTTP 400 indicates rejected request/settings; 404 indicates unavailable model/endpoint; 429 indicates Google quota; 5xx indicates a service failure. A `FAILED_PRECONDITION` label indicates a project/region/setup requirement. Do not assume every failure is fixed by reducing the question count or adding billing.
+
 ## Checks
 
 ```powershell

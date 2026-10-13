@@ -67,7 +67,10 @@
             const response = await fetch('/QuizWeb/ai_quiz_generate.php', {method: 'POST', body: data, signal: controller.signal});
             if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Your session may have expired. Reload the builder and sign in again.');
             const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Could not generate questions. Try again later.');
+            if (!response.ok) {
+                const quota = Number.isInteger(result.remaining) ? ` ${result.remaining} application requests left today.` : '';
+                throw new Error((result.error || 'Could not generate questions. Try again later.') + quota);
+            }
             if (!Array.isArray(result.questions) || !result.questions.length) throw new Error('No questions were generated. Try more lesson content.');
             draft = result.questions;
             draftMode = requestedMode;

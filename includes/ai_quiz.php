@@ -110,11 +110,34 @@ function ai_quiz_request(array $options, array $source, string $model): array
     ];
 }
 
+function ai_quiz_provider_error(int $status, string $body): RuntimeException
+{
+    $data = json_decode($body, true);
+    $providerStatus = is_array($data) ? ($data['error']['status'] ?? '') : '';
+    // Only known status labels are safe to expose. Never echo arbitrary provider
+    // messages/details: they may include credentials or source material.
+    $allowed = ['INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'NOT_FOUND', 'RESOURCE_EXHAUSTED', 'INTERNAL', 'UNAVAILABLE', 'DEADLINE_EXCEEDED', 'UNIMPLEMENTED'];
+    $label = 'Gemini HTTP ' . $status . (in_array($providerStatus, $allowed, true) ? ' (' . $providerStatus . ')' : '') . ': ';
+    $message = match ($status) {
+        400, 422 => 'Google rejected the generation request or its settings. A successful connection test checks model access only; it does not verify quiz generation. Ask the administrator to check the model and request compatibility.',
+        401, 403 => 'Google denied access to quiz generation. Ask the administrator to check the saved key permissions and project restrictions.',
+        402 => 'Google requires billing or available credits for this request. Use a model and project with an available free tier; no paid upgrade was made.',
+        404 => 'The configured model or generation endpoint was not found. Ask the administrator to verify the model name and its support for the Interactions API.',
+        413 => 'The lesson is too large for this request. Use a smaller document or shorter lesson text.',
+        429 => 'The Google project generation quota is exhausted. Try again later; your quiz draft is unchanged.',
+        500, 502, 503, 504 => 'Google encountered a temporary service error. Try again later; your quiz draft is unchanged.',
+        501 => 'Google does not support this generation operation for the configured endpoint or model. Ask the administrator to check the model.',
+        default => 'Google rejected quiz generation. Ask the administrator to check this HTTP error code; your quiz draft is unchanged.',
+    };
+    // These provider statuses further distinguish malformed requests from account
+    // restrictions, even when both arrive as HTTP 400.
+    if ($providerStatus === 'FAILED_PRECONDITION') $message = 'The Google project does not meet a requirement for generation. Check model availability, region eligibility, and project setup in Google AI Studio. No paid upgrade was made.';
+    return new RuntimeException($label . $message, $status === 429 ? 429 : (in_array($status, [401, 402, 403, 404], true) ? 503 : 502));
+}
+
 function ai_quiz_provider_text(int $status, string $body): string
 {
-    if ($status === 429) throw new RuntimeException('Gemini generation limit reached. Try again later; your quiz draft is unchanged.', 429);
-    if (in_array($status, [401, 403], true)) throw new RuntimeException('Gemini rejected the server API key. Ask the administrator to check its configuration.', 503);
-    if ($status < 200 || $status >= 300) throw new RuntimeException('Gemini could not generate this draft. Try again later or check the configured model.', 502);
+    if ($status < 200 || $status >= 300) throw ai_quiz_provider_error($status, $body);
     $response = json_decode($body, true);
     if (!is_array($response) || ($response['status'] ?? '') !== 'completed') throw new RuntimeException('Generation was incomplete or blocked. Try fewer questions or clearer source material.', 502);
     $text = '';
