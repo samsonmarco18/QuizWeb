@@ -47,19 +47,23 @@ foreach ([[$timeout], [$unavailable, $timeout], [['status' => 200, 'body' => '{"
 }
 $run = retry_run([array_merge($unavailable, ['retry_after_ms' => 5000]), $success]);
 retry_check($run['delays'] === [5000] && $run['result'] === 'draft fixture', 'Honor Retry-After');
-$run = retry_run([array_merge($unavailable, ['retry_after_ms' => 120000])]);
+$run = retry_run([array_merge($unavailable, ['retry_after_ms' => 240000])]);
 retry_check(count($run['calls']) === 1 && !$run['delays'] && $run['error']->httpStatus === 503, 'Do not exceed budget to honor Retry-After');
-$run = retry_run([$unavailable, $unavailable], 60);
-retry_check(count($run['calls']) === 2 && $run['calls'][0] === 60000 && $run['calls'][1] < 5000 && $run['now'] <= 65, 'All attempts share the deadline');
+$run = retry_run([$unavailable, $unavailable], 120);
+retry_check(count($run['calls']) === 2 && $run['calls'][0] === 180000 && $run['calls'][1] < 60000 && $run['now'] <= 180, 'All attempts share the deadline');
 retry_check($run['error'] instanceof AiQuizProviderException && $run['error']->httpStatus === 503, 'Deadline after confirmed rejection remains refundable');
 $run = retry_run([new AiQuizTransportException(28, true), $success], 30, true);
-retry_check($run['result'] === 'draft fixture' && $run['calls'] === [30000, 25000] && !$run['delays'], 'Timeout fails over immediately within separate primary/backup budgets');
+retry_check($run['result'] === 'draft fixture' && $run['calls'] === [120000, 60000] && !$run['delays'], 'Timeout fails over immediately within separate primary/backup budgets');
+$run = retry_run([$success], 90, true);
+retry_check($run['result'] === 'draft fixture' && count($run['calls']) === 1 && $run['now'] === 90.0, 'A slow primary can finish without a duplicate backup request');
+$run = retry_run([new AiQuizTransportException(28, true), $success], 120, true);
+retry_check($run['result'] === 'draft fixture' && $run['calls'] === [120000, 60000] && $run['now'] === 180.0, 'Backup still has a full minute after primary timeout');
 $run = retry_run([new AiQuizTransportException(28, true), $unavailable, $unavailable], 0, true);
 retry_check($run['error'] instanceof AiQuizProviderException && !$run['error']->allowanceRefundable, 'A sent timeout prevents refund even when backup returns HTTP 503');
 $run = retry_run([new AiQuizTransportException(28, false), $unavailable, $unavailable], 0, true);
 retry_check($run['error'] instanceof AiQuizProviderException && $run['error']->allowanceRefundable, 'Unsent timeout followed by confirmed rejections is refundable');
 $run = retry_run([new AiQuizTransportException(28, true), new AiQuizTransportException(28, true)], 30, true);
-retry_check(count($run['calls']) === 2 && $run['now'] === 55.0, 'Do not repeat an ambiguous backup timeout');
+retry_check(count($run['calls']) === 2 && $run['now'] === 60.0, 'Do not repeat an ambiguous backup timeout');
 $run = retry_run([new AiQuizTransportException(28, true), new AiQuizTransportException(6, false)], 0, true);
 retry_check($run['error'] instanceof AiQuizTransportException && $run['error']->requestSent, 'An unsent backup failure cannot erase the primary timeout uncertainty');
 foreach ([6, 7, 60, 77] as $code) {

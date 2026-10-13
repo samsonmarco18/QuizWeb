@@ -27,7 +27,7 @@ try {
     $remaining = ai_quiz_reserve($quotaDb, (int) $user['id'], $reservedAt);
     $reservationMade = true;
     session_write_close();
-    set_time_limit(75);
+    set_time_limit(AI_QUIZ_EXECUTION_TIMEOUT_SECONDS);
     $generated = ai_quiz_generate_result($request, $config['key'], $config['backup_model']);
     $draft = ai_quiz_validate($generated['text'], $options);
     // Include usage from other tabs and the current Manila day. A failed read

@@ -63,7 +63,7 @@
         get('progress').hidden = false;
         get('progress').dataset.state = 'loading';
         get('progress-label').textContent = 'Generating your draft…';
-        get('progress-note').textContent = 'You can keep editing while the generator works.';
+        get('progress-note').textContent = 'Generation can take up to 3 minutes. You can keep editing while it works.';
         get('progress-bar').hidden = false;
         get('progress-bar').removeAttribute('aria-valuenow');
         get('progress-bar').setAttribute('aria-valuetext', 'Waiting for the generator');
@@ -149,7 +149,8 @@
         beginProgress();
         get('status').textContent = '';
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 80000);
+        // Allow the server's 180-second provider budget plus response overhead.
+        const timer = setTimeout(() => controller.abort(), 210000);
         try {
             const response = await fetch('/QuizWeb/ai_quiz_generate.php', {method: 'POST', body: data, signal: controller.signal});
             progressStage(1);

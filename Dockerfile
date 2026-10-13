@@ -2,11 +2,12 @@ FROM php:8.3-apache
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libpq-dev libcurl4-openssl-dev \
     && update-ca-certificates \
-    && docker-php-ext-install pdo_pgsql curl \
-    && a2enmod rewrite \
+    && docker-php-ext-install pdo_pgsql curl opcache \
+    && a2enmod rewrite deflate expires headers \
     && rm -rf /var/lib/apt/lists/* \
     && rm /etc/apache2/sites-enabled/000-default.conf
 COPY docker/000-default.conf /etc/apache2/sites-enabled/000-default.conf
+COPY docker/php-performance.ini /usr/local/etc/php/conf.d/quizweb-performance.ini
 COPY docker/start-apache.sh /usr/local/bin/start-apache
 COPY . /var/www/html/QuizWeb
 RUN sed -i 's/\r$//' /usr/local/bin/start-apache \

@@ -1,0 +1,24 @@
+# Compress text assets and responses when mod_deflate is available.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json image/svg+xml
+</IfModule>
+
+# XAMPP may have mod_headers enabled without mod_expires.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|svg|png|jpe?g|gif|webp|ico|woff2?)$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+</IfModule>
+
+# Cache static assets briefly; PHP/authenticated responses are not covered.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 hour"
+    ExpiresByType application/javascript "access plus 1 hour"
+    ExpiresByType text/javascript "access plus 1 hour"
+    ExpiresByType image/png "access plus 1 day"
+    ExpiresByType image/jpeg "access plus 1 day"
+    ExpiresByType image/webp "access plus 1 day"
+    ExpiresByType image/svg+xml "access plus 1 hour"
+    ExpiresByType font/woff2 "access plus 1 day"
+</IfModule>

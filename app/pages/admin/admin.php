@@ -16,12 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $lastTest = (int) ($_SESSION['ai_admin_last_test'] ?? 0);
                 if (time() - $lastTest < 30) throw new InvalidArgumentException('Wait 30 seconds between AI tests.');
                 $_SESSION['ai_admin_last_test'] = time();
-                set_time_limit($adminAction === 'ai_test_generation' ? 75 : 30);
+                set_time_limit($adminAction === 'ai_test_generation' ? AI_QUIZ_EXECUTION_TIMEOUT_SECONDS : 30);
+                // Persist the cooldown and let other tabs run during provider I/O.
+                session_write_close();
+                try {
+                    if ($adminAction === 'ai_test_generation') {
+                        $testedModel = ai_settings_test_generation(db(), (int) $user['id']);
+                    } else {
+                        ai_settings_test(db(), (int) $user['id']);
+                    }
+                } finally {
+                    // Reload concurrent session changes before writing the flash.
+                    session_start();
+                }
                 if ($adminAction === 'ai_test_generation') {
-                    $testedModel = ai_settings_test_generation(db(), (int) $user['id']);
                     flash_set('success', 'Quiz generation succeeded: 3 sample questions passed validation using ' . $testedModel . '. No quiz was saved.');
                 } else {
-                    ai_settings_test(db(), (int) $user['id']);
                     flash_set('success', 'Connected to Gemini. The saved key can access the configured model. Quiz generation has not been tested.');
                 }
             } elseif (in_array($adminAction, ['ai_save_settings', 'ai_remove_key'], true)) {

@@ -5,6 +5,9 @@ data/*.json
 data/uploads
 data/ui-layout-browser
 data/ui-*.png
+data/qa
+data/qa-cache
+**/node_modules
 data/sess_*
 tests
 .env

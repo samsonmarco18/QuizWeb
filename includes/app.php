@@ -111,9 +111,9 @@ function db(): PDO
 
 function ensure_database_schema(PDO $pdo): void
 {
-    static $initialized = false;
-
-    if ($initialized) {
+    static $initialized = null;
+    $initialized ??= new WeakMap();
+    if (isset($initialized[$pdo])) {
         return;
     }
 
@@ -121,11 +121,26 @@ function ensure_database_schema(PDO $pdo): void
     if ($schema === false || !str_contains($schema, '-- DEMO ADMIN: explicit import only')) {
         throw new RuntimeException('The selected database schema file is missing or invalid.');
     }
-    // Web requests apply schema only. Render's CLI bootstrap explicitly imports
-    // the demo section before Apache starts.
-    $pdo->exec(explode('-- DEMO ADMIN: explicit import only', $schema, 2)[0]);
-
-    $initialized = true;
+    // Keep the version in the database, so restores/new databases cannot inherit
+    // a stale filesystem marker. Never include the demo account import.
+    $schema = explode('-- DEMO ADMIN: explicit import only', $schema, 2)[0];
+    $version = hash('sha256', $schema);
+    try {
+        $savedVersion = $pdo->query('SELECT version FROM quizweb_schema_state WHERE id = 1')->fetchColumn();
+    } catch (PDOException $error) {
+        // Only a missing version table is a first installation. Other database
+        // failures must remain visible rather than triggering schema writes.
+        if (!in_array((string) ($error->errorInfo[0] ?? $error->getCode()), ['42P01', '42S02'], true)) throw $error;
+        $pdo->exec('CREATE TABLE IF NOT EXISTS quizweb_schema_state (id INTEGER PRIMARY KEY, version VARCHAR(64) NOT NULL)');
+        $savedVersion = false;
+    }
+    if ($savedVersion !== $version) {
+        $pdo->exec($schema);
+        $sql = 'INSERT INTO quizweb_schema_state (id, version) VALUES (1, ?) '
+            . (DB_DRIVER === 'mysql' ? 'ON DUPLICATE KEY UPDATE version = VALUES(version)' : 'ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version');
+        $pdo->prepare($sql)->execute([$version]);
+    }
+    $initialized[$pdo] = true;
 }
 
 function table_has_column(PDO $pdo, string $table, string $column): bool
@@ -147,9 +162,9 @@ function table_is_empty(PDO $pdo, string $table): bool
         throw new InvalidArgumentException('Unsupported table name.');
     }
 
-    $statement = $pdo->query('SELECT COUNT(*) FROM ' . $table);
+    $statement = $pdo->query('SELECT 1 FROM ' . $table . ' LIMIT 1');
 
-    return (int) $statement->fetchColumn() === 0;
+    return $statement->fetchColumn() === false;
 }
 
 function database_upsert_record(PDO $pdo, string $table, string $key, array $record): void
@@ -239,19 +254,19 @@ function migrate_legacy_json_data(PDO $pdo): void
         return;
     }
 
-    if (table_is_empty($pdo, 'users')) {
+    if (is_file(USERS_FILE) && table_is_empty($pdo, 'users')) {
         foreach (read_json(USERS_FILE) as $user) {
             insert_user_record($pdo, $user);
         }
     }
 
-    if (table_is_empty($pdo, 'classrooms')) {
+    if (is_file(CLASSROOMS_FILE) && table_is_empty($pdo, 'classrooms')) {
         foreach (read_json(CLASSROOMS_FILE) as $classroom) {
             insert_classroom_record($pdo, $classroom);
         }
     }
 
-    if (table_is_empty($pdo, 'attempts')) {
+    if (is_file(ATTEMPTS_FILE) && table_is_empty($pdo, 'attempts')) {
         foreach (read_json(ATTEMPTS_FILE) as $attempt) {
             insert_attempt_record($pdo, $attempt);
         }
@@ -1315,18 +1330,19 @@ function generate_join_code(): string
     return $code;
 }
 
-function teacher_classrooms(int $teacherId): array
+function teacher_classrooms(int $teacherId, ?PDO $pdo = null): array
 {
-    return array_values(array_filter(classrooms(), function (array $classroom) use ($teacherId) {
-        return (int) $classroom['teacher_id'] === $teacherId;
-    }));
+    $query = ($pdo ?? db())->prepare('SELECT * FROM classrooms WHERE teacher_id = ? ORDER BY id ASC');
+    $query->execute([$teacherId]);
+    return array_map('hydrate_classroom', $query->fetchAll());
 }
 
 function student_classrooms(int $studentId): array
 {
-    return array_values(array_filter(classrooms(), function (array $classroom) use ($studentId) {
-        return in_array($studentId, $classroom['student_ids'] ?? [], true);
-    }));
+    $predicate = DB_DRIVER === 'mysql' ? 'JSON_CONTAINS(student_ids, ?)' : 'student_ids @> CAST(? AS jsonb)';
+    $query = db()->prepare('SELECT * FROM classrooms WHERE ' . $predicate . ' ORDER BY id ASC');
+    $query->execute([json_encode([$studentId])]);
+    return array_map('hydrate_classroom', $query->fetchAll());
 }
 
 function user_classrooms(array $user): array
@@ -1466,45 +1482,26 @@ function update_quiz_in_classroom(array $classroom, array $quiz): array
     return $classroom;
 }
 
-function latest_attempt_for_quiz(int $studentId, int $classroomId, int $quizId): ?array
+function latest_attempt_for_quiz(int $studentId, int $classroomId, int $quizId, ?PDO $pdo = null): ?array
 {
-    $matches = array_values(array_filter(attempts(), function (array $attempt) use ($studentId, $classroomId, $quizId) {
-        return (int) $attempt['student_id'] === $studentId
-            && (int) $attempt['classroom_id'] === $classroomId
-            && (int) $attempt['quiz_id'] === $quizId;
-    }));
-
-    usort($matches, function (array $a, array $b) {
-        return strcmp($b['played_at'], $a['played_at']);
-    });
-
-    return $matches[0] ?? null;
+    $query = ($pdo ?? db())->prepare('SELECT * FROM attempts WHERE student_id = ? AND classroom_id = ? AND quiz_id = ? ORDER BY played_at DESC, id ASC LIMIT 1');
+    $query->execute([$studentId, $classroomId, $quizId]);
+    $row = $query->fetch();
+    return $row ? hydrate_attempt($row) : null;
 }
 
-function classroom_attempts(int $classroomId): array
+function classroom_attempts(int $classroomId, ?PDO $pdo = null): array
 {
-    $records = array_values(array_filter(attempts(), function (array $attempt) use ($classroomId) {
-        return (int) $attempt['classroom_id'] === $classroomId;
-    }));
-
-    usort($records, function (array $a, array $b) {
-        return strcmp($b['played_at'], $a['played_at']);
-    });
-
-    return $records;
+    $query = ($pdo ?? db())->prepare('SELECT * FROM attempts WHERE classroom_id = ? ORDER BY played_at DESC, id ASC');
+    $query->execute([$classroomId]);
+    return array_map('hydrate_attempt', $query->fetchAll());
 }
 
-function student_attempts(int $studentId): array
+function student_attempts(int $studentId, ?PDO $pdo = null): array
 {
-    $records = array_values(array_filter(attempts(), function (array $attempt) use ($studentId) {
-        return (int) $attempt['student_id'] === $studentId;
-    }));
-
-    usort($records, function (array $a, array $b) {
-        return strcmp($b['played_at'], $a['played_at']);
-    });
-
-    return $records;
+    $query = ($pdo ?? db())->prepare('SELECT * FROM attempts WHERE student_id = ? ORDER BY played_at DESC, id ASC');
+    $query->execute([$studentId]);
+    return array_map('hydrate_attempt', $query->fetchAll());
 }
 
 function create_attempt(int $studentId, int $classroomId, array $quiz, array $answers, int $elapsedSeconds, bool $forceZero = false): array

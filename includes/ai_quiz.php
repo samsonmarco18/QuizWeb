@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/ai_settings.php';
 
+// Bound all retries together; leave time for validation and the HTTP response.
+const AI_QUIZ_GENERATION_TIMEOUT_SECONDS = 180;
+const AI_QUIZ_PRIMARY_TIMEOUT_MS = 120000;
+const AI_QUIZ_BACKUP_TIMEOUT_MS = 60000;
+const AI_QUIZ_EXECUTION_TIMEOUT_SECONDS = AI_QUIZ_GENERATION_TIMEOUT_SECONDS + 20;
+
 // The browser never receives credentials or provider error bodies.
 function ai_quiz_server_config(): array
 {
@@ -123,7 +129,7 @@ function ai_quiz_request(array $options, array $source, string $model): array
         . ($options['mode'] === 'crossword'
             ? 'Return a pool of up to ' . $candidateCount . ' distinct lesson words, with at least ' . $options['count'] . ' candidates when supported by the source. The application will choose exactly the requested count by constructing a connected grid. Include short bridging terms and varied shared letters, not isolated words. Never pad the pool with invented or unrelated answers. '
             : 'Return exactly the requested item count. ')
-        . 'Return a topic under 100 characters and a concise explanation under 1500 characters. '
+        . 'Return a topic under 100 characters and a concise explanation in one or two sentences, under 1500 characters. '
         . 'Keep prompts under 1500 characters and 2000 UTF-8 bytes. For typed-answer and matching activities, keep answers and alternative answers under 250 UTF-8 bytes and hints under 500 characters. '
         . 'Do not invent facts or page references. If the material is unreadable or insufficient, return an empty questions array and explain in warning. '
         . 'Mixed difficulty must include every allowed level, distributing questions evenly. Easy means recall, medium means understanding, hard means application, master means multi-step reasoning.';
@@ -346,7 +352,7 @@ function ai_quiz_http(string $path, #[SensitiveParameter] string $key, ?array $r
     $curl = curl_init('https://generativelanguage.googleapis.com/v1beta/' . $path);
     $body = '';
     $retryAfterMs = null;
-    $timeoutMs = $timeoutMs ?? ($request === null ? 15000 : 60000);
+    $timeoutMs = $timeoutMs ?? ($request === null ? 15000 : AI_QUIZ_GENERATION_TIMEOUT_SECONDS * 1000);
     curl_setopt_array($curl, [
         CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'x-goog-api-key: ' . $key],
         CURLOPT_CONNECTTIMEOUT_MS => min(10000, $timeoutMs), CURLOPT_TIMEOUT_MS => $timeoutMs, CURLOPT_FOLLOWLOCATION => false,
@@ -409,14 +415,17 @@ function ai_quiz_generate_with_transport(callable $send, ?callable $pause = null
 {
     $pause ??= static fn(int $ms) => usleep($ms * 1000);
     $clock ??= static fn(): float => hrtime(true) / 1e9;
-    $deadline = $clock() + 65;
+    $deadline = $clock() + AI_QUIZ_GENERATION_TIMEOUT_SECONDS;
     $lastError = null;
     $ambiguous = false;
     for ($attempt = 0; $attempt < 3; $attempt++) {
         $budgetMs = (int) floor(($deadline - $clock()) * 1000);
-        if ($budgetMs <= 0) throw $lastError ?? new RuntimeException('Generation timed out. Please try again later.', 502);
+        if ($budgetMs < 1000) throw $lastError ?? new RuntimeException('Generation timed out. Please try again later.', 502);
         try {
-            $response = $send(min($useBackup ? ($attempt === 0 ? 30000 : 25000) : 60000, $budgetMs), $attempt);
+            $attemptMs = $useBackup
+                ? ($attempt === 0 ? AI_QUIZ_PRIMARY_TIMEOUT_MS : AI_QUIZ_BACKUP_TIMEOUT_MS)
+                : AI_QUIZ_GENERATION_TIMEOUT_SECONDS * 1000;
+            $response = $send(min($attemptMs, $budgetMs), $attempt);
         } catch (AiQuizTransportException $error) {
             if ($ambiguous && !$error->requestSent) $error = new AiQuizTransportException($error->curlCode, true);
             // Only one failover for a timeout. Do not repeat an ambiguous backup

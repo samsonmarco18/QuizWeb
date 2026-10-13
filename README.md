@@ -82,6 +82,26 @@ credentials apply to newly provisioned accounts.
 
 ## Local XAMPP setup with MySQL/MariaDB
 
+Database startup stores a hash of the schema section in `quizweb_schema_state`.
+Unchanged schemas require only a version lookup on later requests; changed schemas
+are applied before the version is saved. Legacy JSON imports check for a first row
+instead of counting whole tables. Classroom and attempt-history helpers filter in
+SQL so unrelated records are not loaded into PHP.
+
+The root `.htaccess` caches static assets for one hour and compresses text when
+Apache's `mod_deflate` is enabled. PHP pages and authenticated JSON responses are
+not covered by the static cache rules. XAMPP must permit `.htaccess` overrides;
+compression additionally requires `mod_deflate`, and MIME-based expiry requires
+`mod_expires`. The Docker image enables these modules and PHP OPcache, with source
+timestamp checks so changes are detected. Restart/rebuild the Docker service to
+apply the image settings. QA caches, screenshots, and Node dependencies are excluded
+from the deployment image; keep the test sources and local QA dependencies for checks.
+
+Run `php tests/schema_test.php` and `php tests/query_efficiency_test.php` to verify
+schema versioning and filtered query behavior without a live database. The query
+fixture includes 20,000 unrelated attempts; production latency still depends on
+the database, hosting resources, and external providers.
+
 Profile pictures uploaded through Profile are stored in `users.profile` along with
 their image bytes, so they survive web redeployments while the database is retained.
 Older pictures stored in `data/uploads/profiles` remain readable and are copied
