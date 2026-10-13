@@ -7,26 +7,26 @@
     const mode = () => form.elements.game_type.value;
     const supported = () => Boolean(window.quizBuilderModes?.[mode()]);
     const textMode = value => ['crossword', 'fill_blank', 'emoji_quiz', 'flip_match'].includes(value);
-    const countLimits = () => ({min: mode() === 'master_ladder' ? 4 : (mode() === 'flip_match' && get('difficulty').value !== 'mixed' ? 2 : 3), max: mode() === 'flip_match' ? 12 : 20});
+    const countLimits = () => ({min: mode() === 'master_ladder' ? 4 : (mode() === 'flip_match' && get('difficulty').value !== 'mixed' ? 2 : 3), max: 100});
     let busy = false;
     let draft = null;
     let draftMode = '';
     let progressTimer = null;
     let progressStartedAt = 0;
     const initialRemaining = get('remaining').dataset.remaining;
-    let remaining = /^(?:[0-9]|10)$/.test(initialRemaining) ? Number(initialRemaining) : null;
+    let remaining = /^(?:[0-9]|1[0-9]|20)$/.test(initialRemaining) ? Number(initialRemaining) : null;
     function setRemaining(value) {
-        if (!Number.isInteger(value) || value < 0 || value > 10) return;
+        if (!Number.isInteger(value) || value < 0 || value > 20) return;
         remaining = value;
         get('remaining').dataset.remaining = String(value);
-        get('remaining').textContent = `${value} / 10 attempts left today`;
+        get('remaining').textContent = `${value} / 20 attempts left today`;
     }
     function update() {
         const notes = {
             crossword: 'Lesson words are checked in a real grid before review. Each draft has the requested number of connected words (3–15 letters). Preview again when combining with existing words.',
             fill_blank: 'Generate sentences with a blank, an expected answer, optional alternatives, and a hint.',
             emoji_quiz: 'Generate emoji clues, expected answers, optional alternatives, and explanations. Review each clue for clarity.',
-            flip_match: 'Generate distinct term-and-definition pairs. An activity supports up to 12 pairs; you can add your own images after importing.',
+            flip_match: 'Generate distinct term-and-definition pairs. An activity supports up to 100 pairs; you can add your own images after importing.',
             master_ladder: 'Mixed difficulty includes Easy, Medium, Hard, and Master. Generate at least 4 questions.'
         };
         get('mode-note').textContent = supported() ? (notes[mode()] || '') : 'Choose an activity type to generate a draft.';
@@ -183,7 +183,7 @@
         const existing = api.collect();
         const blank = existing.length === 1 && !existing[0].prompt && existing[0].options?.every(value => !value) && !existing[0].answer && !existing[0].topic && !existing[0].explanation && !existing[0].hint && !existing[0].accepted_answers?.length && !existing[0].prompt_image && !existing[0].answer_image;
         const kept = blank ? 0 : existing.length;
-        const maximum = mode() === 'flip_match' ? 12 : 40;
+        const maximum = 100;
         if (kept + draft.length > maximum) { get('status').textContent = `An activity supports up to ${maximum} ${mode() === 'flip_match' ? 'matching pairs' : 'questions'}. Remove some existing items before adding this draft.`; return; }
         if (!blank && ['crossword', 'flip_match'].includes(mode())) {
             const normalize = value => mode() === 'crossword' ? (value || '').replace(/[^a-z]/gi, '').toUpperCase() : (value || '').trim().toLowerCase();
@@ -196,9 +196,12 @@
         }
         if (blank) document.getElementById('question-list').replaceChildren();
         const added = draft.length;
-        draft.forEach(question => api.add(question));
-        api.refresh();
-        form.dispatchEvent(new Event('activity:changed'));
+        if (api.addMany) api.addMany(draft);
+        else {
+            draft.forEach(question => api.add(question));
+            api.refresh();
+            form.dispatchEvent(new Event('activity:changed'));
+        }
         draft = null;
         get('progress').hidden = true;
         get('draft').hidden = true;

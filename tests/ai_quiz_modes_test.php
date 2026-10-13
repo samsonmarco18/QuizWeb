@@ -39,13 +39,29 @@ foreach (array_keys(game_modes()) as $mode) {
         mode_check(isset($validated['questions'][0]['crossword']) && $validated['questions'][0]['preferred_direction'] === 'auto', 'Every crossword word receives a connected layout and automatic direction');
     } elseif ($textMode) mode_check($validated['questions'][0]['answer'] === 'PYTHON' && $validated['questions'][0]['options'] === [], $mode . ' typed answers remain intact');
 }
+foreach ($sets as $mode => $set) {
+    $options = ai_quiz_options(array_replace($set['options'], ['count' => 100, 'game_type' => $mode]));
+    $request = ai_quiz_request($options, $source, 'gemini-3.8-flash');
+    mode_check($request['response_format']['schema']['properties']['questions']['maxItems'] >= 100 && $request['generation_config']['max_output_tokens'] > 12000, 'Large drafts have sufficient schema and output budget');
+    mode_reject(fn() => ai_quiz_options(array_replace($options, ['count' => 101, 'game_type' => $mode])), 'Reject item 101 in every mode');
+    if ($mode === 'crossword') continue; // Word geometry is tested separately.
+    $questions = [];
+    for ($i = 0; $i < 100; $i++) {
+        $q = $set['questions'][$i % count($set['questions'])];
+        $q['prompt'] .= ' Item ' . $i;
+        if (isset($q['answer'])) $q['answer'] .= ' ' . $i;
+        $questions[] = $q;
+    }
+    $validated = ai_quiz_validate(json_encode(['questions' => $questions]), $options);
+    mode_check(count($validated['questions']) === 100 && !prepare_activity_questions($mode, $validated['questions'])['errors'], '100-item ' . $mode . ' draft imports and passes save validation');
+}
 mode_check(ai_quiz_options(['count' => 2, 'game_type' => 'flip_match', 'difficulty' => 'easy', 'language' => 'Filipino'])['count'] === 2, 'Two pairs supported for single difficulty');
 $twoPairs = array_slice($sets['flip_match']['questions'], 0, 2);
 foreach ($twoPairs as &$pair) $pair['level'] = 'easy';
 unset($pair);
 $twoPairOptions = ai_quiz_options(['count' => 2, 'game_type' => 'flip_match', 'difficulty' => 'easy', 'language' => 'Filipino']);
 mode_check(count(ai_quiz_validate(json_encode(['questions' => $twoPairs]), $twoPairOptions)['questions']) === 2, 'Two matching pairs pass full generation validation');
-foreach ([['count' => 13, 'difficulty' => 'easy'], ['count' => 2, 'difficulty' => 'mixed']] as $invalid) mode_reject(fn() => ai_quiz_options($invalid + ['game_type' => 'flip_match', 'language' => 'English']), 'Matching count rules must be enforced');
+foreach ([['count' => 101, 'difficulty' => 'easy'], ['count' => 2, 'difficulty' => 'mixed']] as $invalid) mode_reject(fn() => ai_quiz_options($invalid + ['game_type' => 'flip_match', 'language' => 'English']), 'Matching count rules must be enforced');
 foreach (['crossword', 'flip_match', 'fill_blank', 'emoji_quiz'] as $mode) {
     $set = $sets[$mode]; $bad = $set['questions'];
     $bad[0]['answer'] = str_repeat('a', 251);

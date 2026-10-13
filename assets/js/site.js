@@ -201,7 +201,7 @@
         }
     }
 
-    function buildQuestionCard(seed = {}) {
+    function buildQuestionCard(seed = {}, notify = true) {
         if (!questionTemplate || !questionList) {
             return null;
         }
@@ -238,8 +238,10 @@
 
         questionList.appendChild(fragment);
         applyBuilderModeToCard(card);
-        refreshQuestionLabels();
-        builderForm.dispatchEvent(new Event('activity:changed'));
+        if (notify) {
+            refreshQuestionLabels();
+            builderForm.dispatchEvent(new Event('activity:changed'));
+        }
 
         return card;
     }
@@ -293,7 +295,7 @@
             modeNote.querySelector('strong').textContent = isCrossword ? 'Crossword checklist' : 'Activity checklist';
             modeNote.querySelector('span').textContent = isCrossword
                 ? 'Add at least 3 unique words with shared letters. Automatic direction helps connect them; preview the grid before saving.'
-                : currentBuilderMode() === 'flip_match' ? 'Add 2–12 distinct pairs. Students flip cards to match each term with its definition.'
+                : currentBuilderMode() === 'flip_match' ? 'Add 2–100 distinct pairs. Students flip cards to match each term with its definition.'
                 : ['fill_blank', 'emoji_quiz'].includes(currentBuilderMode()) ? 'Add a prompt, expected answer, and optional alternatives. Answers are graded after submission.'
                 : 'Add four options and select one correct answer per question. Preview before saving.';
         }
@@ -370,7 +372,8 @@
     if (questionList && builderForm && payloadInput) {
         const seed = Array.isArray(window.quizBuilderSeed) ? window.quizBuilderSeed : [];
         if (seed.length) {
-            seed.forEach((question) => buildQuestionCard(question));
+            seed.forEach((question) => buildQuestionCard(question, false));
+            refreshQuestionLabels();
         } else {
             buildQuestionCard();
         }
@@ -379,7 +382,15 @@
         gameTypeSelect?.addEventListener("change", applyBuilderMode);
         applyBuilderMode();
         builderForm.addEventListener('activity:collect', () => { payloadInput.value = JSON.stringify(collectQuestions()); });
-        window.quizBuilder = {collect: collectQuestions, add: buildQuestionCard, refresh: refreshQuestionLabels, imagesPending: () => pendingMatchImages > 0};
+        window.quizBuilder = {
+            collect: collectQuestions, add: buildQuestionCard,
+            addMany: questions => {
+                questions.forEach(question => buildQuestionCard(question, false));
+                refreshQuestionLabels();
+                builderForm.dispatchEvent(new Event('activity:changed'));
+            },
+            refresh: refreshQuestionLabels, imagesPending: () => pendingMatchImages > 0
+        };
 
         builderForm.addEventListener("submit", (event) => {
             if (window.quizBuilderWorkflow) {

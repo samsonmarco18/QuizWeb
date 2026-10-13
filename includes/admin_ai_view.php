@@ -25,7 +25,7 @@ if ($hasAIKey) {
             <label for="admin-gemini-backup"><span>Backup model (optional)</span><input id="admin-gemini-backup" name="backup_model" maxlength="87" value="<?php echo esc($aiBackupModel); ?>" pattern="gemini-[a-zA-Z0-9.\-]+"><small>Default: gemini-3.5-flash-lite. Used when the primary model is busy or times out. Leave blank to disable.</small></label>
         </div>
         <label class="admin-ai-toggle"><input type="checkbox" name="enabled" value="yes" <?php echo $aiEnabled ? 'checked' : ''; ?>><span>Enable AI quiz generation for teachers</span></label>
-        <p class="admin-ai-note">Use a Google project on the Free tier without paid billing to avoid charges. QuizWeb does not control Google's billing. Teachers receive 10 generation requests per day, with provider quotas also applying.</p>
+        <p class="admin-ai-note">Use a Google project on the Free tier without paid billing to avoid charges. QuizWeb does not control Google's billing. Teachers receive 20 generation requests per day, with provider quotas also applying.</p>
         <div class="action-row"><button type="submit" class="button button-primary">Save AI settings</button><a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Get a Gemini API key</a></div>
         <p role="status" data-ai-form-status></p>
     </form>

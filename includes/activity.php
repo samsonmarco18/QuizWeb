@@ -1,4 +1,5 @@
 <?php
+const ACTIVITY_MAX_ITEMS = 100;
 
 function activity_uses_text_answers(string $mode): bool
 {
@@ -156,8 +157,8 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
     $errors = [];
     $questions = [];
     $crosswordLayout = null;
-    if (!is_array($decodedQuestions) || count($decodedQuestions) < 1 || count($decodedQuestions) > 40) {
-        $errors[] = 'Add between 1 and 40 questions to the quiz.';
+    if (!is_array($decodedQuestions) || count($decodedQuestions) < 1 || count($decodedQuestions) > ACTIVITY_MAX_ITEMS) {
+        $errors[] = 'Add between 1 and ' . ACTIVITY_MAX_ITEMS . ' questions to the quiz.';
     } else {
         $levelCounts = array_fill_keys(array_keys($masteryLevels), 0);
         $answerLengths = [];
@@ -306,8 +307,8 @@ function prepare_activity_questions(string $gameType, $decodedQuestions): array
         }
     }
 
-    if ($gameType === 'flip_match' && (count($questions) < 2 || count($questions) > 12)) {
-        $errors[] = 'Flip Match needs 2 to 12 pairs.';
+    if ($gameType === 'flip_match' && (count($questions) < 2 || count($questions) > ACTIVITY_MAX_ITEMS)) {
+        $errors[] = 'Flip Match needs 2 to ' . ACTIVITY_MAX_ITEMS . ' pairs.';
     }
     if ($gameType === 'flip_match') {
         foreach (['prompt', 'answer'] as $field) {

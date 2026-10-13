@@ -6,6 +6,7 @@ const AI_QUIZ_GENERATION_TIMEOUT_SECONDS = 180;
 const AI_QUIZ_PRIMARY_TIMEOUT_MS = 120000;
 const AI_QUIZ_BACKUP_TIMEOUT_MS = 60000;
 const AI_QUIZ_EXECUTION_TIMEOUT_SECONDS = AI_QUIZ_GENERATION_TIMEOUT_SECONDS + 20;
+const AI_QUIZ_DAILY_ATTEMPTS = 20;
 
 // The browser never receives credentials or provider error bodies.
 function ai_quiz_server_config(): array
@@ -54,7 +55,7 @@ function ai_quiz_options(array $input): array
     if (!in_array($difficulty, ['mixed', 'easy', 'medium', 'hard'], true)) throw new InvalidArgumentException('Choose a valid difficulty.');
     if (!in_array($language, ['English', 'Filipino'], true)) throw new InvalidArgumentException('Choose English or Filipino.');
     $minimum = $mode === 'flip_match' && $difficulty !== 'mixed' ? 2 : ($mode === 'master_ladder' ? 4 : 3);
-    $maximum = $mode === 'flip_match' ? 12 : 20;
+    $maximum = ACTIVITY_MAX_ITEMS;
     if ($count === false || $count < $minimum || $count > $maximum) throw new InvalidArgumentException('Generate between ' . $minimum . ' and ' . $maximum . ($mode === 'flip_match' ? ' matching pairs.' : ' items.'));
     if ($mode === 'master_ladder' && ($count < 4 || $difficulty !== 'mixed')) throw new InvalidArgumentException('Master Ladder needs at least 4 questions and mixed difficulty.');
     $topic = $input['topic'] ?? '';
@@ -93,7 +94,7 @@ function ai_quiz_file_part(string $extension, string $bytes): array
 
 function ai_quiz_candidate_count(array $options): int
 {
-    return $options['mode'] === 'crossword' ? min(40, max($options['count'] + 6, $options['count'] * 2)) : $options['count'];
+    return $options['mode'] === 'crossword' ? min(120, max($options['count'] + 6, $options['count'] * 2)) : $options['count'];
 }
 
 function ai_quiz_request(array $options, array $source, string $model): array
@@ -136,7 +137,7 @@ function ai_quiz_request(array $options, array $source, string $model): array
     $source[] = ['type' => 'text', 'text' => 'Teacher settings: ' . json_encode($options, JSON_UNESCAPED_UNICODE)];
     return [
         'model' => $model, 'system_instruction' => $instructions, 'input' => $source,
-        'store' => false, 'generation_config' => ['max_output_tokens' => min(12000, 1500 + $candidateCount * ($options['mode'] === 'crossword' ? 250 : 450))] + ai_quiz_thinking_config($model),
+        'store' => false, 'generation_config' => ['max_output_tokens' => min(60000, 1500 + $candidateCount * ($options['mode'] === 'crossword' ? 250 : 450))] + ai_quiz_thinking_config($model),
         'response_format' => ['type' => 'text', 'mime_type' => 'application/json', 'schema' => [
             'type' => 'object', 'properties' => [
                 'questions' => ['type' => 'array', 'maxItems' => $candidateCount, 'items' => ['type' => 'object', 'properties' => $properties, 'required' => array_keys($properties)]],
@@ -292,7 +293,7 @@ function ai_quiz_remaining(PDO $pdo, int $teacherId, ?int $now = null): int
     $read = $pdo->prepare('SELECT request_count FROM ai_quiz_usage WHERE teacher_id = :id AND usage_day = :day');
     $read->execute(['id' => $teacherId, 'day' => date('Y-m-d', $now ?? time())]);
     $count = $read->fetchColumn();
-    return max(0, min(10, 10 - ($count === false ? 0 : (int) $count)));
+    return max(0, min(AI_QUIZ_DAILY_ATTEMPTS, AI_QUIZ_DAILY_ATTEMPTS - ($count === false ? 0 : (int) $count)));
 }
 
 function ai_quiz_reserve(PDO $pdo, int $teacherId, int $now): int
@@ -307,14 +308,14 @@ function ai_quiz_reserve(PDO $pdo, int $teacherId, int $now): int
         $read = $pdo->prepare('SELECT request_count, last_requested_at FROM ai_quiz_usage WHERE teacher_id = :id AND usage_day = :day');
         $read->execute(['id' => $teacherId, 'day' => $day]);
         $usage = $read->fetch();
-        if ($usage && ((int) $usage['request_count'] >= 10 || $now - (int) $usage['last_requested_at'] < 30)) throw new RuntimeException((int) $usage['request_count'] >= 10 ? 'Your 10 daily generation requests are used. Try again tomorrow.' : 'Wait 30 seconds between generation requests.', 429);
+        if ($usage && ((int) $usage['request_count'] >= AI_QUIZ_DAILY_ATTEMPTS || $now - (int) $usage['last_requested_at'] < 30)) throw new RuntimeException((int) $usage['request_count'] >= AI_QUIZ_DAILY_ATTEMPTS ? 'Your ' . AI_QUIZ_DAILY_ATTEMPTS . ' daily generation requests are used. Try again tomorrow.' : 'Wait 30 seconds between generation requests.', 429);
         $count = $usage ? (int) $usage['request_count'] + 1 : 1;
         $write = $pdo->prepare($usage
             ? 'UPDATE ai_quiz_usage SET request_count = :count, last_requested_at = :now WHERE teacher_id = :id AND usage_day = :day'
             : 'INSERT INTO ai_quiz_usage (teacher_id, usage_day, request_count, last_requested_at) VALUES (:id, :day, :count, :now)');
         $write->execute(['id' => $teacherId, 'day' => $day, 'count' => $count, 'now' => $now]);
         $pdo->commit();
-        return 10 - $count;
+        return AI_QUIZ_DAILY_ATTEMPTS - $count;
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
@@ -339,7 +340,7 @@ function ai_quiz_refund_unavailable(PDO $pdo, int $teacherId, int $reservedAt): 
         $write = $pdo->prepare('UPDATE ai_quiz_usage SET request_count = :count WHERE teacher_id = :id AND usage_day = :day');
         $write->execute(['count' => $count, 'id' => $teacherId, 'day' => $day]);
         $pdo->commit();
-        return 10 - $count;
+        return AI_QUIZ_DAILY_ATTEMPTS - $count;
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;

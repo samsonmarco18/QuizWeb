@@ -990,7 +990,8 @@ function crossword_search(array $entries, int $target, array $requiredLevels = [
             if (strpbrk($entry['answer'], $other['answer']) !== false) $links[$i][] = $j;
         }
     }
-    $size = max(13, min(25, max(array_map(static fn($q) => strlen($q['answer']), $entries)) + $target * 3));
+    $maxSize = min(65, 25 + (int) ceil(max(0, $target - 20) / 2));
+    $size = max(13, min($maxSize, max(array_map(static fn($q) => strlen($q['answer']), $entries)) + $target * 3));
     $center = intdiv($size, 2);
     $roots = array_keys($entries);
     usort($roots, static fn($a, $b) => (count($links[$b]) <=> count($links[$a])) ?: (strlen($entries[$b]['answer']) <=> strlen($entries[$a]['answer'])) ?: ($a <=> $b));

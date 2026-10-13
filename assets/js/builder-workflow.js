@@ -70,6 +70,7 @@
         }
         const target = Number(form.elements.mastery_threshold.value);
         if (target < 50 || target > 100 || !Number.isInteger(target)) issues.push('Mastery target must be 50–100%.');
+        if (questions.length > 100) issues.push('Use up to 100 items.');
         if (mode() === 'master_ladder') {
             ['easy', 'medium', 'hard', 'master'].forEach(level => {
                 if (!questions.some(q => q.level === level)) issues.push(`Add a ${level} question.`);
@@ -78,7 +79,7 @@
         if (mode() === 'crossword' || mode() === 'flip_match') {
             const minimum = mode() === 'crossword' ? 3 : 2;
             if (questions.length < minimum) issues.push(`Add at least ${minimum} items.`);
-            if (mode() === 'flip_match' && questions.length > 12) issues.push('Use up to 12 matching pairs.');
+            if (mode() === 'flip_match' && questions.length > 100) issues.push('Use up to 100 matching pairs.');
             const answers = questions.map(q => mode() === 'crossword' ? (q.answer || '').replace(/[^a-z]/gi, '').toUpperCase() : q.answer_image || (q.answer || '').trim().toLowerCase());
             if (new Set(answers).size !== answers.length) issues.push('Use unique answers for every item.');
         }
@@ -134,10 +135,10 @@
             button.setAttribute('aria-current', index === active ? 'true' : 'false');
             button.classList.toggle('is-incomplete', Boolean(issue)); navigator.append(button);
         });
-        document.getElementById('duplicate-question').disabled = !questions.length || questions.length >= 40;
+        document.getElementById('duplicate-question').disabled = !questions.length || questions.length >= 100;
         document.getElementById('move-question-up').disabled = active === 0;
         document.getElementById('move-question-down').disabled = active >= questions.length - 1;
-        document.getElementById('add-question-button').disabled = questions.length >= 40;
+        document.getElementById('add-question-button').disabled = questions.length >= 100;
         renderLive(questions[active]);
         const settings = document.getElementById('builder-settings');
         const categorySelect = form.elements.grade_category_id;
@@ -174,7 +175,7 @@
     document.getElementById('builder-previous').addEventListener('click', () => showStep(step - 1));
     document.getElementById('builder-next').addEventListener('click', () => showStep(step + 1));
     document.getElementById('duplicate-question').addEventListener('click', () => {
-        const q = api.collect()[active]; if (!q || cards().length >= 40) return;
+        const q = api.collect()[active]; if (!q || cards().length >= 100) return;
         api.add(q); selectQuestion(cards().length - 1);
     });
     function move(delta) {
@@ -193,9 +194,11 @@
     ['input', 'change', 'activity:changed'].forEach(type => form.addEventListener(type, () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveLocalDraft, 300); }));
     document.getElementById('builder-recovery').hidden = !recoveredDraft || recoveredDraft.version !== 1;
     document.getElementById('restore-builder-draft').addEventListener('click', () => {
-        if (!recoveredDraft || !Array.isArray(recoveredDraft.questions) || recoveredDraft.questions.length > 40) return;
+        if (!recoveredDraft || !Array.isArray(recoveredDraft.questions) || recoveredDraft.questions.length > 100) return;
         Object.entries(recoveredDraft.fields).forEach(([name, value]) => { if (form.elements[name] && typeof value === 'string') form.elements[name].value = value; });
-        list.replaceChildren(); recoveredDraft.questions.forEach(q => api.add(q));
+        list.replaceChildren();
+        if (api.addMany) api.addMany(recoveredDraft.questions);
+        else recoveredDraft.questions.forEach(q => api.add(q));
         form.elements.game_type.dispatchEvent(new Event('change', {bubbles: true}));
         document.getElementById('builder-recovery').hidden = true; showStep(recoveredDraft.step || 0);
         status.textContent = 'Local draft restored. Preview and save when ready.';

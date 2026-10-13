@@ -8,7 +8,7 @@ const html = page.slice(page.indexOf('<section class="glass panel builder-panel"
     .replace(/<\?php require dirname\(__DIR__, 3\) \. '\/includes\/ai_quiz_panel.php'; \?>/, panel)
     .replace(/<\?php[\s\S]*?\?>/g, '');
 const questions = ['easy', 'medium', 'hard'].map((level, index) => ({prompt: index === 0 ? '<img src=x onerror=alert(1)>' : `Generated ${index}`, topic: 'Plants', options: ['A', 'B', 'C', 'D'], correct_index: index, points: 10, explanation: 'Lesson explanation', level}));
-function setup(seed = [], remaining = 10) {
+function setup(seed = [], remaining = 20) {
     const dom = new JSDOM(`<!doctype html><body>${html}</body>`, {url: 'http://localhost/QuizWeb/quiz_builder.php?classroom_id=1', runScripts: 'outside-only'});
     const w = dom.window, doc = w.document;
     w.TextEncoder = TextEncoder; w.AbortController = AbortController;
@@ -22,7 +22,7 @@ function setup(seed = [], remaining = 10) {
     doc.getElementById('ai-quiz-panel').dataset.ready = 'true';
     doc.getElementById('ai-quiz-panel').dataset.classroomId = '1';
     doc.getElementById('ai-quiz-remaining').dataset.remaining = String(remaining);
-    doc.getElementById('ai-quiz-remaining').textContent = `${remaining} / 10 attempts left today`;
+    doc.getElementById('ai-quiz-remaining').textContent = `${remaining} / 20 attempts left today`;
     let sent;
     w.fetch = async (url, init) => { sent = {url, body: init.body}; return {ok: true, headers: {get: () => 'application/json'}, json: async () => ({questions, remaining: 9, warning: ''})}; };
     w.eval(fs.readFileSync('assets/js/site.js', 'utf8'));
@@ -35,9 +35,9 @@ function setup(seed = [], remaining = 10) {
 const tick = () => new Promise(resolve => setImmediate(resolve));
 (async () => {
     const a = setup();
-    assert.match(a.get('remaining').textContent, /^10 \/ 10 attempts left today$/);
+    assert.match(a.get('remaining').textContent, /^20 \/ 20 attempts left today$/);
     a.get('generate').click(); await tick();
-    assert.match(a.get('remaining').textContent, /^9 \/ 10 attempts left today$/);
+    assert.match(a.get('remaining').textContent, /^9 \/ 20 attempts left today$/);
     assert.equal(a.w.quizBuilder.collect().length, 1, 'Generation must not alter the question editor');
     assert.equal(a.get('preview').querySelectorAll('details').length, 3);
     assert.equal(a.get('preview').querySelector('img'), null, 'Generated HTML is displayed as text');
@@ -56,7 +56,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
     assert.equal(b.w.quizBuilder.collect()[0].prompt, 'Original');
     assert.equal(b.w.quizBuilder.collect().length, 4);
     b.get('generate').click(); await tick(); b.get('discard').click();
-    assert.match(b.get('remaining').textContent, /^9 \/ 10 attempts left today$/, 'Discard keeps the remaining attempt count visible');
+    assert.match(b.get('remaining').textContent, /^9 \/ 20 attempts left today$/, 'Discard keeps the remaining attempt count visible');
     assert.equal(b.w.quizBuilder.collect().length, 4, 'Discard must preserve quiz');
     b.doc.querySelector('[name="game_type"]').value = 'crossword';
     b.doc.querySelector('[name="game_type"]').dispatchEvent(new b.w.Event('change'));
@@ -70,23 +70,23 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
     assert.equal(b.w.quizBuilder.collect().length, 4, 'Provider failure preserves quiz');
     assert.equal(b.get('progress').dataset.state, 'error');
     assert(b.get('progress-bar').hidden, 'A failed request must not show completed progress');
-    assert.match(b.get('remaining').textContent, /^9 \/ 10 attempts left today$/, 'Errors without a quota count do not invent a new value');
+    assert.match(b.get('remaining').textContent, /^9 \/ 20 attempts left today$/, 'Errors without a quota count do not invent a new value');
     b.w.fetch = async () => ({ok: true, headers: {get: () => 'application/json'}, json: async () => ({questions, remaining: 8, used_backup: true, model: 'gemini-3.5-flash-lite'})});
     b.get('generate').click(); await tick();
     assert.match(b.get('status').textContent, /backup model gemini-3.5-flash-lite/);
-    assert.match(b.get('remaining').textContent, /^8 \/ 10 attempts left today$/);
+    assert.match(b.get('remaining').textContent, /^8 \/ 20 attempts left today$/);
     assert.equal(b.w.quizBuilder.collect().length, 4, 'Backup results still require explicit import');
     b.w.fetch = async () => ({ok: false, headers: {get: () => 'application/json'}, json: async () => ({error: 'Google unavailable; allowance restored.', remaining: 8})});
     b.get('generate').click(); await tick();
-    assert.match(b.get('remaining').textContent, /^8 \/ 10 attempts left today$/, 'Refunded failures use the server allowance');
+    assert.match(b.get('remaining').textContent, /^8 \/ 20 attempts left today$/, 'Refunded failures use the server allowance');
     b.w.fetch = async () => ({ok: false, headers: {get: () => 'application/json'}, json: async () => ({error: 'Daily limit reached.', remaining: 0})});
     b.get('generate').click(); await tick();
-    assert.match(b.get('remaining').textContent, /^0 \/ 10 attempts left today$/);
+    assert.match(b.get('remaining').textContent, /^0 \/ 20 attempts left today$/);
     assert(b.get('generate').disabled, 'Disable generation once the daily allowance is exhausted');
-    const c = setup(Array.from({length: 39}, (_, i) => ({...questions[1], prompt: `Saved ${i}`})));
+    const c = setup(Array.from({length: 99}, (_, i) => ({...questions[1], prompt: `Saved ${i}`})));
     c.get('generate').click(); await tick(); c.get('add').click();
-    assert.equal(c.w.quizBuilder.collect().length, 39);
-    assert.match(c.get('status').textContent, /up to 40/);
+    assert.equal(c.w.quizBuilder.collect().length, 99);
+    assert.match(c.get('status').textContent, /up to 100/);
     const d = setup([], 0);
     assert(d.get('generate').disabled, 'A refreshed page retains the exhausted allowance');
     d.get('generate').click(); await tick();
@@ -163,24 +163,39 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
         }
         activity.close();
     }
-    const matching = setup(Array.from({length: 10}, (_, i) => ({prompt: `Existing term ${i}`, answer: `Existing definition ${i}`, options: [], points: 10, level: 'easy'})));
+    const matching = setup(Array.from({length: 98}, (_, i) => ({prompt: `Existing term ${i}`, answer: `Existing definition ${i}`, options: [], points: 10, level: 'easy'})));
     matching.doc.querySelector('[name="game_type"]').value = 'flip_match';
     matching.doc.querySelector('[name="game_type"]').dispatchEvent(new matching.w.Event('change'));
-    assert.equal(matching.get('count').max, '12');
+    assert.equal(matching.get('count').max, '100');
     matching.get('difficulty').value = 'easy'; matching.get('difficulty').dispatchEvent(new matching.w.Event('change'));
     assert.equal(matching.get('count').min, '2');
     const pairs = Array.from({length: 3}, (_, i) => ({prompt: `New term ${i}`, answer: `New definition ${i}`, accepted_answers: [], hint: '', options: [], points: 10, level: 'easy', explanation: 'Feedback'}));
     matching.w.fetch = async () => ({ok: true, headers: {get: () => 'application/json'}, json: async () => ({questions: pairs, remaining: 9})});
     matching.get('generate').click(); await tick(); matching.get('add').click();
-    assert.match(matching.get('status').textContent, /up to 12 matching pairs/);
-    assert.equal(matching.w.quizBuilder.collect().length, 10, 'Matching capacity preserves existing pairs');
+    assert.match(matching.get('status').textContent, /up to 100 matching pairs/);
+    assert.equal(matching.w.quizBuilder.collect().length, 98, 'Matching capacity preserves existing pairs');
     // A smaller draft that overlaps an existing term still cannot create an ambiguous match.
     matching.get('count').value = 2;
     matching.w.fetch = async () => ({ok: true, headers: {get: () => 'application/json'}, json: async () => ({questions: [{...pairs[0], prompt: 'Existing term 0'}, pairs[1]], remaining: 8})});
     matching.get('generate').click(); await tick(); matching.get('add').click();
     assert.match(matching.get('status').textContent, /already exist/);
-    assert.equal(matching.w.quizBuilder.collect().length, 10);
+    assert.equal(matching.w.quizBuilder.collect().length, 98);
     matching.close();
+    const large = setup();
+    let importChanges = 0;
+    large.doc.getElementById('quiz-builder-form').addEventListener('activity:changed', () => importChanges++);
+    large.get('count').value = 100;
+    const hundred = Array.from({length: 100}, (_, i) => ({...questions[i % 3], prompt: `Large draft ${i}`}));
+    large.w.fetch = async (url, init) => {
+        assert.equal(init.body.get('count'), '100');
+        return {ok: true, headers: {get: () => 'application/json'}, json: async () => ({questions: hundred, remaining: 19})};
+    };
+    large.get('generate').click(); await tick(); large.get('add').click();
+    assert.equal(large.w.quizBuilder.collect().length, 100, 'Import a full 100-item draft');
+    assert.equal(importChanges, 1, 'A large import refreshes the editor once');
+    assert.match(large.get('remaining').textContent, /^19 \/ 20 attempts left today$/);
+    assert(large.doc.getElementById('add-question-button').disabled, 'Builder stops adding at 100');
+    large.close();
     a.close(); b.close(); c.close(); d.close(); e.close();
     console.log('AI builder UI checks passed for all 11 modes: format previews/imports, typed answers, alternatives/hints, safe rendering, preserved items, mode switching, quotas, progress and matching limits.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

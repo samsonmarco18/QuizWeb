@@ -128,14 +128,14 @@ The compact wizard separates Game → Details → Questions → Settings → Gra
 
 | Content | Implemented rules |
 | --- | --- |
-| General activity | Between 1 and 40 items; required title up to 255 bytes |
+| General activity | Between 1 and 100 items; required title up to 255 bytes |
 | Question points | Converted to integers and constrained to 5–1,000 |
 | Multiple choice | Required prompt and four nonblank choices; one correct index from 0–3; the saved question retains four choices |
 | Difficulty | Easy, Medium, Hard, or Master; unknown labels fall back to Easy |
 | Mastery Ladder | At least one question in every difficulty level; target from 50% to 100%, default 75% |
 | Crossword | At least three distinct normalized words; each 3–15 letters; all words must fit a connected grid |
 | Written-answer activities | Required prompt and main answer; up to 20 alternative answers; optional case sensitivity, hint, and explanation |
-| Flip Match | 2–12 pairs with distinct terms and distinct definitions |
+| Flip Match | 2–100 pairs with distinct terms and distinct definitions |
 | Grade maximum | 0.01–100,000, with at most two decimal places |
 
 The written-answer validator uses byte-length limits: 2,000 for prompts, 250 for main answers, 2,000 for hints, and 8,000 for explanations. Its hint/explanation error message expresses smaller character limits, so the displayed wording and backend byte thresholds are not identical.

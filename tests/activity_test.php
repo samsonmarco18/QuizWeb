@@ -21,7 +21,7 @@ foreach (['fill_blank', 'emoji_quiz'] as $mode) {
 $pairs = [$item, array_replace($item, ['prompt' => 'HTML', 'answer' => 'Markup'])];
 check_activity(!prepare_activity_questions('flip_match', $pairs)['errors'], 'Valid matching pairs.');
 check_activity((bool) prepare_activity_questions('flip_match', [$item, $item])['errors'], 'Ambiguous pairs rejected.');
-check_activity((bool) prepare_activity_questions('fill_blank', array_fill(0, 41, $item))['errors'], 'Question count bounded.');
+check_activity((bool) prepare_activity_questions('fill_blank', array_fill(0, 101, $item))['errors'], 'Question count bounded.');
 check_activity((bool) prepare_activity_questions('fill_blank', [['prompt' => []]])['errors'], 'Malformed prompt rejected.');
 $words = [
     ['prompt' => 'A programming language', 'answer' => 'PYTHON', 'preferred_direction' => 'across', 'options' => [], 'level' => 'easy'],

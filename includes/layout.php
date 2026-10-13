@@ -4,6 +4,18 @@ require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/profile.php';
 require_once __DIR__ . '/chat.php';
 
+function versioned_asset_url(string $url): string
+{
+    // Only read local assets; keep external URLs and unknown paths unchanged.
+    if (!preg_match('#\A/QuizWeb/assets/[A-Za-z0-9_./-]+\z#', $url)) return $url;
+    $root = realpath(__DIR__ . '/../assets');
+    $path = realpath(__DIR__ . '/..' . substr($url, strlen('/QuizWeb')));
+    if (!$root || !$path || !is_file($path) || !str_starts_with($path, $root . DIRECTORY_SEPARATOR)) return $url;
+    static $versions = [];
+    if (!isset($versions[$path])) $versions[$path] = substr(hash_file('sha256', $path), 0, 12);
+    return $url . '?v=' . $versions[$path];
+}
+
 function score_game_type(string $type): array
 {
     $modes = game_modes();
@@ -141,12 +153,12 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="/QuizWeb/assets/css/site.css">
-        <link rel="stylesheet" href="/QuizWeb/assets/css/refinements.css">
-        <link rel="stylesheet" href="/QuizWeb/assets/css/visual-polish.css">
-        <link rel="stylesheet" href="/QuizWeb/assets/css/game-experience.css">
-        <link rel="stylesheet" href="/QuizWeb/assets/css/app-motion.css">
-        <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc($style); ?>"><?php endforeach; ?>
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/site.css')); ?>">
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/refinements.css')); ?>">
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/visual-polish.css')); ?>">
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/game-experience.css')); ?>">
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/app-motion.css')); ?>">
+        <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc(versioned_asset_url($style)); ?>"><?php endforeach; ?>
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>
@@ -454,11 +466,11 @@ function render_footer(array $scripts = []): void
     ?>
         </main>
         <?php render_messenger_dock(); ?>
-        <script src="/QuizWeb/assets/js/app-motion.js"></script>
-        <script src="/QuizWeb/assets/js/submission-confirm.js"></script>
-        <script src="/QuizWeb/assets/js/site.js"></script>
+        <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/app-motion.js')); ?>"></script>
+        <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/submission-confirm.js')); ?>"></script>
+        <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/site.js')); ?>"></script>
         <?php foreach ($scripts as $script): ?>
-            <script src="<?php echo esc($script); ?>"></script>
+            <script src="<?php echo esc(versioned_asset_url($script)); ?>"></script>
         <?php endforeach; ?>
     </body>
     </html>

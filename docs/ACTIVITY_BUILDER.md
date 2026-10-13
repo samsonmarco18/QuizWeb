@@ -28,7 +28,7 @@ recording a score.
 - Fill in the Blank and Emoji Quiz use teacher-defined text answers, optional
   alternatives, capitalization settings, hints, and explanations. Students review
   their responses before submission; the backend grades their answers.
-- Flip Match uses 2–12 distinct term/definition pairs with shuffled cards,
+- Flip Match uses 2–100 distinct term/definition pairs with shuffled cards,
   pair matching, a move counter, elapsed time, and final submission.
 - New activity results use the existing PostgreSQL attempts storage, results,
   learning analytics, and class leaderboard paths. No duplicate tables were added.
