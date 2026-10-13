@@ -55,7 +55,7 @@
     });
 
     document.querySelectorAll('.flash').forEach((notification) => {
-        window.setTimeout(() => notification.remove(), 2000);
+        window.setTimeout(() => notification.remove(), 8000);
     });
 
     function setSidebarOpen(open) {

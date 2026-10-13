@@ -9,9 +9,17 @@
     let busy = false;
     let draft = null;
     let draftMode = '';
+    const initialRemaining = get('remaining').dataset.remaining;
+    let remaining = /^(?:[0-9]|10)$/.test(initialRemaining) ? Number(initialRemaining) : null;
+    function setRemaining(value) {
+        if (!Number.isInteger(value) || value < 0 || value > 10) return;
+        remaining = value;
+        get('remaining').dataset.remaining = String(value);
+        get('remaining').textContent = `${value} / 10 attempts left today`;
+    }
     function update() {
         get('mode-note').hidden = supported();
-        get('generate').disabled = busy || !supported() || panel.dataset.ready !== 'true';
+        get('generate').disabled = busy || remaining === 0 || !supported() || panel.dataset.ready !== 'true';
         get('add').disabled = busy || !draft || draftMode !== mode();
         get('discard').disabled = busy;
         panel.setAttribute('aria-busy', String(busy));
@@ -39,7 +47,7 @@
         get('draft').hidden = false;
     }
     get('generate').addEventListener('click', async () => {
-        if (busy || !supported() || panel.dataset.ready !== 'true') return;
+        if (busy || remaining === 0 || !supported() || panel.dataset.ready !== 'true') return;
         const count = Number(get('count').value);
         if (!Number.isInteger(count) || count < 3 || count > 20) { get('status').textContent = 'Choose 3–20 questions.'; return; }
         if (mode() === 'master_ladder' && (count < 4 || get('difficulty').value !== 'mixed')) { get('status').textContent = 'Master Ladder needs at least 4 questions and mixed difficulty.'; return; }
@@ -67,6 +75,7 @@
             const response = await fetch('/QuizWeb/ai_quiz_generate.php', {method: 'POST', body: data, signal: controller.signal});
             if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Your session may have expired. Reload the builder and sign in again.');
             const result = await response.json();
+            setRemaining(result.remaining);
             if (!response.ok) {
                 const quota = Number.isInteger(result.remaining) ? ` ${result.remaining} application requests left today.` : '';
                 throw new Error((result.error || 'Could not generate questions. Try again later.') + quota);

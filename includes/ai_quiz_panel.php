@@ -2,6 +2,9 @@
 try { $aiConfig = ai_quiz_config(); $aiReady = $aiConfig['enabled'] && $aiConfig['key'] !== ''; }
 catch (Throwable $error) { $aiReady = false; }
 unset($aiConfig);
+$aiRemaining = null;
+try { $aiRemaining = ai_quiz_remaining(db(), (int) $user['id']); }
+catch (Throwable $error) { /* Do not invent an allowance if usage cannot be read. */ }
 ?>
 <details class="ai-quiz-panel" id="ai-quiz-panel" data-classroom-id="<?php echo $classroomId; ?>" data-ready="<?php echo $aiReady ? 'true' : 'false'; ?>">
     <summary>Generate with AI <span class="ai-quiz-tag">Gemini</span></summary>
@@ -18,7 +21,7 @@ unset($aiConfig);
             <label for="ai-quiz-topic"><span>Focus topic (optional)</span><input id="ai-quiz-topic" maxlength="100" placeholder="Use the lesson's topics"></label>
         </div>
         <p class="ai-quiz-privacy">The text and attachment you select are sent to Google. Free-tier content may be used to improve its products. Use lesson materials without student personal information.</p>
-        <div class="action-row"><button id="ai-quiz-generate" type="button" class="button button-secondary">Generate draft</button><small>10 requests per teacher per day; provider quotas also apply.</small></div>
+        <div class="action-row"><button id="ai-quiz-generate" type="button" class="button button-secondary" <?php echo $aiRemaining === 0 ? 'disabled' : ''; ?>>Generate draft</button><small class="ai-quiz-usage"><strong id="ai-quiz-remaining" data-remaining="<?php echo $aiRemaining === null ? '' : $aiRemaining; ?>" role="status" aria-live="polite"><?php echo $aiRemaining === null ? 'Attempts unavailable' : $aiRemaining . ' / 10 attempts left today'; ?></strong><span>Resets at midnight (Manila). Google quotas also apply.</span></small></div>
         <p id="ai-quiz-status" role="status" aria-live="polite"></p>
         <section id="ai-quiz-draft" hidden aria-label="Generated questions to review">
             <strong>Review generated questions</strong>

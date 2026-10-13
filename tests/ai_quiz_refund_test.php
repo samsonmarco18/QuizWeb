@@ -23,8 +23,12 @@ $pdo = new AiRefundTestPDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => 
 $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY); CREATE TABLE ai_quiz_usage (teacher_id INTEGER, usage_day TEXT, request_count INTEGER, last_requested_at INTEGER, PRIMARY KEY (teacher_id, usage_day))');
 $pdo->exec('INSERT INTO users VALUES (1), (2)');
 $now = strtotime('2026-10-13 23:59:20');
+refund_check(ai_quiz_remaining($pdo, 1, $now) === 10, 'Unused teacher starts with 10 attempts');
+refund_check((int) $pdo->query('SELECT COUNT(*) FROM ai_quiz_usage')->fetchColumn() === 0, 'Reading the allowance cannot consume or reserve an attempt');
 refund_check(ai_quiz_reserve($pdo, 1, $now) === 9, 'Reserve request');
+refund_check(ai_quiz_remaining($pdo, 1, $now) === 9, 'Read persisted remaining attempts after reservation');
 refund_check(ai_quiz_refund_unavailable($pdo, 1, $now) === 10, 'Restore confirmed unavailable request');
+refund_check(ai_quiz_remaining($pdo, 1, $now) === 10, 'Read restored attempts');
 refund_limited(fn() => ai_quiz_reserve($pdo, 1, $now + 10));
 refund_check(!$pdo->inTransaction(), 'Cooldown rejection closes transaction');
 refund_check(ai_quiz_reserve($pdo, 1, $now + 30) === 9, 'Refunded slot is usable after cooldown');
@@ -42,6 +46,8 @@ refund_check(ai_quiz_refund_unavailable($pdo, 1, $dayTime) === 9, 'Only one of o
 refund_limited(fn() => ai_quiz_reserve($pdo, 1, $dayTime + 35));
 for ($i = 2; $i <= 10; $i++) ai_quiz_reserve($pdo, 1, $dayTime + $i * 30);
 refund_limited(fn() => ai_quiz_reserve($pdo, 1, $dayTime + 330));
+refund_check(ai_quiz_remaining($pdo, 1, $dayTime) === 0, 'Exhausted teacher reads zero remaining attempts');
+refund_check(ai_quiz_remaining($pdo, 1, $dayTime + 86400) === 10, 'Next-day display resets without a usage row');
 refund_check(ai_quiz_refund_unavailable($pdo, 1, $dayTime + 300) === 1, 'Restore a slot at the daily limit');
 refund_check(ai_quiz_reserve($pdo, 1, $dayTime + 330) === 0, 'Restored slot can be used');
 $pdo->exec("CREATE TRIGGER reject_refund BEFORE UPDATE ON ai_quiz_usage WHEN NEW.request_count < OLD.request_count BEGIN SELECT RAISE(ABORT, 'Fixture storage unavailable'); END");

@@ -10,6 +10,8 @@
 .builder-page .ai-quiz-content input[type=file] { white-space: normal; }
 .builder-page .ai-quiz-fields { display: grid; grid-template-columns: 80px 1.3fr 1fr 1.3fr; gap: 10px; }
 .builder-page .ai-quiz-privacy, .builder-page .ai-quiz-content small { color: var(--text-secondary); }
+.builder-page .ai-quiz-usage { display: grid; gap: 3px; }
+.builder-page .ai-quiz-usage strong { color: var(--accent); font-size: inherit; }
 .builder-page .ai-quiz-setup { padding: 9px 10px; border-left: 2px solid var(--accent); }
 .builder-page #ai-quiz-draft { display: grid; gap: 10px; }
 .builder-page #ai-quiz-draft[hidden], .builder-page .ai-quiz-panel [hidden] { display: none; }

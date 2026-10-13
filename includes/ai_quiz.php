@@ -214,6 +214,14 @@ function ai_quiz_validate(string $text, array $options): array
     return ['questions' => $prepared['questions'], 'warning' => is_string($data['warning'] ?? null) ? mb_substr($data['warning'], 0, 500) : ''];
 }
 
+function ai_quiz_remaining(PDO $pdo, int $teacherId, ?int $now = null): int
+{
+    $read = $pdo->prepare('SELECT request_count FROM ai_quiz_usage WHERE teacher_id = :id AND usage_day = :day');
+    $read->execute(['id' => $teacherId, 'day' => date('Y-m-d', $now ?? time())]);
+    $count = $read->fetchColumn();
+    return max(0, min(10, 10 - ($count === false ? 0 : (int) $count)));
+}
+
 function ai_quiz_reserve(PDO $pdo, int $teacherId, int $now): int
 {
     $day = date('Y-m-d', $now);
