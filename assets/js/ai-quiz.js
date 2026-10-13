@@ -23,7 +23,7 @@
     }
     function update() {
         const notes = {
-            crossword: 'Generate unique words with connected clues. Words use 3–15 letters; preview the complete grid after adding them to existing words.',
+            crossword: 'Lesson words are checked in a real grid before review. Each draft has the requested number of connected words (3–15 letters). Preview again when combining with existing words.',
             fill_blank: 'Generate sentences with a blank, an expected answer, optional alternatives, and a hint.',
             emoji_quiz: 'Generate emoji clues, expected answers, optional alternatives, and explanations. Review each clue for clarity.',
             flip_match: 'Generate distinct term-and-definition pairs. An activity supports up to 12 pairs; you can add your own images after importing.',

@@ -958,99 +958,121 @@ function crossword_place_word(array &$grid, string $word, int $row, int $col, st
     }
 }
 
-function build_crossword_layout(array $questions): ?array
+// Search actual grid placements rather than assuming shared letters are enough.
+// A target smaller than the pool selects a connected subset for AI drafts.
+function crossword_search(array $entries, int $target, array $requiredLevels = []): ?array
 {
-    if (count($questions) < 2) {
-        return null;
+    if ($target < 2 || count($entries) < $target) return null;
+    $entries = array_values($entries);
+    $links = [];
+    foreach ($entries as $i => $entry) {
+        $links[$i] = [];
+        foreach ($entries as $j => $other) {
+            if ($i === $j) continue;
+            $a = $entry['preferred_direction'] ?? 'auto';
+            $b = $other['preferred_direction'] ?? 'auto';
+            if ($a !== 'auto' && $a === $b) continue;
+            if (strpbrk($entry['answer'], $other['answer']) !== false) $links[$i][] = $j;
+        }
     }
-
-    $entries = array_values($questions);
-    usort($entries, function (array $a, array $b) {
-        return strlen($b['answer'] ?? '') <=> strlen($a['answer'] ?? '');
-    });
-
-    $longest = strlen($entries[0]['answer'] ?? '');
-    $size = max(13, min(25, $longest + (count($entries) * 3)));
+    $size = max(13, min(25, max(array_map(static fn($q) => strlen($q['answer']), $entries)) + $target * 3));
     $center = intdiv($size, 2);
-    $grid = [];
-    $placements = [];
-    $firstWord = $entries[0]['answer'];
-    $firstDirection = ($entries[0]['preferred_direction'] ?? '') === 'down' ? 'down' : 'across';
-    $firstRow = $firstDirection === 'down' ? max(0, $center - intdiv(strlen($firstWord), 2)) : $center;
-    $firstCol = $firstDirection === 'across' ? max(0, $center - intdiv(strlen($firstWord), 2)) : $center;
-
-    crossword_place_word($grid, $firstWord, $firstRow, $firstCol, $firstDirection);
-    $placements[] = [
-        'question_id' => (int) $entries[0]['id'],
-        'answer' => $firstWord,
-        'row' => $firstRow,
-        'col' => $firstCol,
-        'direction' => $firstDirection,
-        'intersections' => 0,
-    ];
-
-    foreach (array_slice($entries, 1) as $entry) {
-        $word = $entry['answer'];
-        $candidates = [];
-        $preferredDirection = $entry['preferred_direction'] ?? 'auto';
-
-        foreach ($placements as $placed) {
-            $placedWord = $placed['answer'];
-            $direction = $placed['direction'] === 'across' ? 'down' : 'across';
-
-            if ($preferredDirection !== 'auto' && $direction !== $preferredDirection) {
-                continue;
+    $roots = array_keys($entries);
+    usort($roots, static fn($a, $b) => (count($links[$b]) <=> count($links[$a])) ?: (strlen($entries[$b]['answer']) <=> strlen($entries[$a]['answer'])) ?: ($a <=> $b));
+    $totalBudget = 8000;
+    $placementBudget = 100000;
+    foreach ($roots as $root) {
+        // Reject disconnected components before spending time on geometry.
+        $component = [$root => true];
+        $queue = [$root];
+        for ($head = 0; $head < count($queue); $head++) {
+            foreach ($links[$queue[$head]] as $next) if (!isset($component[$next])) {
+                $component[$next] = true;
+                $queue[] = $next;
             }
-
-            for ($wordIndex = 0; $wordIndex < strlen($word); $wordIndex += 1) {
-                for ($placedIndex = 0; $placedIndex < strlen($placedWord); $placedIndex += 1) {
-                    if ($word[$wordIndex] !== $placedWord[$placedIndex]) {
-                        continue;
-                    }
-
-                    if ($direction === 'down') {
-                        $row = $placed['row'] - $wordIndex;
-                        $col = $placed['col'] + $placedIndex;
-                    } else {
-                        $row = $placed['row'] + $placedIndex;
-                        $col = $placed['col'] - $wordIndex;
-                    }
-
-                    [$canPlace, $intersections] = crossword_can_place_word($grid, $word, $row, $col, $direction, $size);
-
-                    if ($canPlace && $intersections > 0) {
-                        $distance = abs($center - $row) + abs($center - $col);
-                        $candidates[] = [
-                            'row' => $row,
-                            'col' => $col,
-                            'direction' => $direction,
-                            'score' => ($intersections * 20) - $distance,
-                            'intersections' => $intersections,
-                        ];
+        }
+        if (count($component) < $target || array_diff($requiredLevels, array_column(array_intersect_key($entries, $component), 'level'))) continue;
+        $preference = $entries[$root]['preferred_direction'] ?? 'auto';
+        foreach ($preference === 'auto' ? ['across', 'down'] : [$preference] as $firstDirection) {
+            $budget = min(1500, max(200, $target * 50));
+            $visited = [];
+            $search = function (array $grid, array $placements, array $selected) use (&$search, &$budget, &$totalBudget, &$placementBudget, &$visited, $entries, $component, $target, $requiredLevels, $size, $center): ?array {
+                if (--$budget < 0 || --$totalBudget < 0) return null;
+                $missing = array_diff($requiredLevels, array_column(array_intersect_key($entries, $selected), 'level'));
+                $slots = $target - count($selected);
+                if (count($missing) > $slots) return null;
+                if ($slots === 0) return ['grid' => $grid, 'placements' => $placements, 'size' => $size, 'selected' => array_keys($selected)];
+                $remaining = array_diff_key($component, $selected);
+                if (array_diff($missing, array_column(array_intersect_key($entries, $remaining), 'level'))) return null;
+                $signature = array_map(static fn($p) => $p['question_id'] . ':' . $p['row'] . ':' . $p['col'] . ':' . $p['direction'], $placements);
+                sort($signature);
+                $key = implode('|', $signature);
+                if (isset($visited[$key])) return null;
+                $visited[$key] = true;
+                $orientations = [];
+                foreach ($placements as $placed) {
+                    for ($i = 0; $i < strlen($placed['answer']); $i++) {
+                        $orientations[crossword_cell_key($placed['row'] + ($placed['direction'] === 'down' ? $i : 0), $placed['col'] + ($placed['direction'] === 'across' ? $i : 0))][$placed['direction']] = true;
                     }
                 }
-            }
+                $choices = [];
+                foreach ($remaining as $index => $_) {
+                    $entry = $entries[$index];
+                    $word = $entry['answer'];
+                    $candidates = [];
+                    foreach ($placements as $placed) {
+                        $direction = $placed['direction'] === 'across' ? 'down' : 'across';
+                        if (($entry['preferred_direction'] ?? 'auto') !== 'auto' && $entry['preferred_direction'] !== $direction) continue;
+                        for ($i = 0; $i < strlen($word); $i++) for ($j = 0; $j < strlen($placed['answer']); $j++) {
+                            if ($word[$i] !== $placed['answer'][$j]) continue;
+                            if (--$placementBudget < 0) return null;
+                            $row = $direction === 'down' ? $placed['row'] - $i : $placed['row'] + $j;
+                            $col = $direction === 'across' ? $placed['col'] - $i : $placed['col'] + $j;
+                            [$canPlace, $intersections] = crossword_can_place_word($grid, $word, $row, $col, $direction, $size);
+                            if (!$canPlace || !$intersections) continue;
+                            // Shared cells must cross perpendicular words, never overlap
+                            // along the same direction or hold a third word.
+                            for ($k = 0; $k < strlen($word); $k++) {
+                                if (isset($orientations[crossword_cell_key($row + ($direction === 'down' ? $k : 0), $col + ($direction === 'across' ? $k : 0))][$direction])) { $canPlace = false; break; }
+                            }
+                            if (!$canPlace) continue;
+                            $candidates[$row . ':' . $col . ':' . $direction] = ['question_id' => (int) $entry['id'], 'answer' => $word, 'row' => $row, 'col' => $col, 'direction' => $direction, 'intersections' => $intersections,
+                                'score' => $intersections * 20 - abs($center - $row) - abs($center - $col)];
+                        }
+                    }
+                    usort($candidates, static fn($a, $b) => $b['score'] <=> $a['score']);
+                    foreach (array_slice($candidates, 0, 8) as $candidate) $choices[] = ['index' => $index, 'placement' => $candidate, 'needed' => in_array($entry['level'] ?? '', $missing, true)];
+                }
+                usort($choices, static fn($a, $b) => ($b['needed'] <=> $a['needed']) ?: (strlen($b['placement']['answer']) <=> strlen($a['placement']['answer'])) ?: ($b['placement']['score'] <=> $a['placement']['score']));
+                foreach ($choices as $choice) {
+                    $placement = $choice['placement'];
+                    unset($placement['score']);
+                    $nextGrid = $grid;
+                    crossword_place_word($nextGrid, $placement['answer'], $placement['row'], $placement['col'], $placement['direction']);
+                    $result = $search($nextGrid, [...$placements, $placement], $selected + [$choice['index'] => true]);
+                    if ($result !== null) return $result;
+                    if ($budget <= 0 || $totalBudget <= 0 || $placementBudget <= 0) break;
+                }
+                return null;
+            };
+            $word = $entries[$root]['answer'];
+            $row = $firstDirection === 'down' ? $center - intdiv(strlen($word), 2) : $center;
+            $col = $firstDirection === 'across' ? $center - intdiv(strlen($word), 2) : $center;
+            $grid = [];
+            crossword_place_word($grid, $word, $row, $col, $firstDirection);
+            $result = $search($grid, [['question_id' => (int) $entries[$root]['id'], 'answer' => $word, 'row' => $row, 'col' => $col, 'direction' => $firstDirection, 'intersections' => 0]], [$root => true]);
+            if ($result !== null) return $result;
+            if ($totalBudget <= 0 || $placementBudget <= 0) return null;
         }
-
-        if (!$candidates) {
-            return null;
-        }
-
-        usort($candidates, function (array $a, array $b) {
-            return $b['score'] <=> $a['score'];
-        });
-
-        $best = $candidates[0];
-        crossword_place_word($grid, $word, $best['row'], $best['col'], $best['direction']);
-        $placements[] = [
-            'question_id' => (int) $entry['id'],
-            'answer' => $word,
-            'row' => $best['row'],
-            'col' => $best['col'],
-            'direction' => $best['direction'],
-            'intersections' => $best['intersections'],
-        ];
     }
+    return null;
+}
+
+function build_crossword_layout(array $questions): ?array
+{
+    $result = crossword_search($questions, count($questions));
+    if ($result === null) return null;
+    ['grid' => $grid, 'placements' => $placements, 'size' => $size] = $result;
 
     $rows = array_map('intval', array_map(function (string $key) {
         return explode(':', $key)[0];

@@ -19,7 +19,7 @@ During generation, a compact animated progress indicator shows elapsed time and 
 - Mastery Ladder requires at least 4 mixed questions including Master. Standard mixed drafts include Easy, Medium and Hard, suitable for the teacher-enabled adaptive practice bank.
 - Multiple-choice modes: Standard, Time Attack, Rocket Rush, Memory Flip, Treasure Dive, Boss Battle, and Mastery Ladder. Each question has four distinct options and one correct answer.
 - Fill in the Blank: a sentence with one blank, expected answer, optional alternatives, hint, topic, and explanation. Emoji Quiz: emoji clues with expected answers and optional alternatives/hints.
-- Crossword: unique 3–15-letter answers with clues and automatic directions. The generated set must form a connected grid through the normal crossword validator. If lesson terms cannot form a grid, generation returns an actionable error; try fewer words or a different focus topic. Preview the complete puzzle after combining with existing words.
+- Crossword: unique 3–15-letter answers with clues and automatic directions. A single generation call requests extra lesson candidates (up to 40). The server constructs a grid and selects exactly the requested number, retaining all selected difficulty levels. It tries bridge words and alternate placements, excludes isolated candidates, and checks the result through normal preview/save validation. The search is bounded; if no legal grid is found, use more lesson content or fewer words. No invented filler words or additional generation calls are used to connect the grid. Preview again after combining with existing words.
 - Flip Match: 2–12 distinct text pairs (mixed difficulty needs at least 3). Teachers can add images in the editor after importing. Imports respect the complete activity's 12-pair maximum and reject overlap with existing terms/answers.
 - Every generated item includes a topic, explanation, difficulty, and 10 editable points. Typed answers and alternatives must fit the existing 250-byte answer limit.
 - Text/TXT: 60 KB UTF-8, at least 100 characters. PDF: 5 MB. Convert Word/PowerPoint to PDF first. XAMPP's `upload_max_filesize` and `post_max_size` must permit the upload (at least 5 MB and 8 MB respectively).
@@ -58,6 +58,7 @@ A successful **Test saved connection** checks model metadata access, not a gener
 ```powershell
 & C:/xampppp/php/php.exe tests/ai_quiz_test.php
 & C:/xampppp/php/php.exe tests/ai_quiz_modes_test.php
+& C:/xampppp/php/php.exe tests/crossword_generation_test.php
 & C:/xampppp/php/php.exe tests/ai_quiz_retry_test.php
 & C:/xampppp/php/php.exe tests/ai_quiz_failover_test.php
 & C:/xampppp/php/php.exe tests/admin_ai_configuration_test.php
