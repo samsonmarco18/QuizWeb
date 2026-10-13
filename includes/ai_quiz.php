@@ -110,7 +110,15 @@ function ai_quiz_request(array $options, array $source, string $model): array
     ];
 }
 
-function ai_quiz_provider_error(int $status, string $body): RuntimeException
+class AiQuizProviderException extends RuntimeException
+{
+    public function __construct(string $message, int $code, public readonly int $httpStatus)
+    {
+        parent::__construct($message, $code);
+    }
+}
+
+function ai_quiz_provider_error(int $status, string $body): AiQuizProviderException
 {
     $data = json_decode($body, true);
     $providerStatus = is_array($data) ? ($data['error']['status'] ?? '') : '';
@@ -132,7 +140,7 @@ function ai_quiz_provider_error(int $status, string $body): RuntimeException
     // These provider statuses further distinguish malformed requests from account
     // restrictions, even when both arrive as HTTP 400.
     if ($providerStatus === 'FAILED_PRECONDITION') $message = 'The Google project does not meet a requirement for generation. Check model availability, region eligibility, and project setup in Google AI Studio. No paid upgrade was made.';
-    return new RuntimeException($label . $message, $status === 429 ? 429 : (in_array($status, [401, 402, 403, 404], true) ? 503 : 502));
+    return new AiQuizProviderException($label . $message, $status === 429 ? 429 : (in_array($status, [401, 402, 403, 404], true) ? 503 : 502), $status);
 }
 
 function ai_quiz_provider_text(int $status, string $body): string
@@ -206,14 +214,52 @@ function ai_quiz_reserve(PDO $pdo, int $teacherId, int $now): int
     }
 }
 
-function ai_quiz_http(string $path, #[SensitiveParameter] string $key, ?array $request = null): array
+// Called once by the endpoint only after a confirmed HTTP 503 rejection. Keep
+// the cooldown and use the reservation date even if generation crosses midnight.
+function ai_quiz_refund_unavailable(PDO $pdo, int $teacherId, int $reservedAt): int
+{
+    $day = date('Y-m-d', $reservedAt);
+    $pdo->beginTransaction();
+    try {
+        $lock = $pdo->prepare('SELECT id FROM users WHERE id = :id FOR UPDATE');
+        $lock->execute(['id' => $teacherId]);
+        if (!$lock->fetchColumn()) throw new RuntimeException('Teacher account not found.', 403);
+        $read = $pdo->prepare('SELECT request_count FROM ai_quiz_usage WHERE teacher_id = :id AND usage_day = :day');
+        $read->execute(['id' => $teacherId, 'day' => $day]);
+        $count = $read->fetchColumn();
+        if ($count === false || (int) $count < 1) throw new RuntimeException('Generation reservation not found.');
+        $count = (int) $count - 1;
+        $write = $pdo->prepare('UPDATE ai_quiz_usage SET request_count = :count WHERE teacher_id = :id AND usage_day = :day');
+        $write->execute(['count' => $count, 'id' => $teacherId, 'day' => $day]);
+        $pdo->commit();
+        return 10 - $count;
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+}
+
+function ai_quiz_http(string $path, #[SensitiveParameter] string $key, ?array $request = null, ?int $timeoutMs = null): array
 {
     if (!function_exists('curl_init')) throw new RuntimeException('Enable the PHP cURL extension on the server to use Gemini.', 503);
     $curl = curl_init('https://generativelanguage.googleapis.com/v1beta/' . $path);
     $body = '';
+    $retryAfterMs = null;
+    $timeoutMs = $timeoutMs ?? ($request === null ? 15000 : 60000);
     curl_setopt_array($curl, [
         CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'x-goog-api-key: ' . $key],
-        CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => $request === null ? 15 : 60, CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_CONNECTTIMEOUT_MS => min(10000, $timeoutMs), CURLOPT_TIMEOUT_MS => $timeoutMs, CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HEADERFUNCTION => static function ($handle, string $header) use (&$retryAfterMs): int {
+            if (stripos($header, 'Retry-After:') === 0) {
+                $value = trim(substr($header, strlen('Retry-After:')));
+                $until = ctype_digit($value) ? false : strtotime($value);
+                if (ctype_digit($value) || $until !== false) {
+                    $seconds = ctype_digit($value) ? (int) $value : max(0, $until - time());
+                    $retryAfterMs = min(86400, $seconds) * 1000;
+                }
+            }
+            return strlen($header);
+        },
         CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body): int {
             if (strlen($body) + strlen($chunk) > 1024 * 1024) return 0;
             $body .= $chunk;
@@ -228,11 +274,34 @@ function ai_quiz_http(string $path, #[SensitiveParameter] string $key, ?array $r
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     curl_close($curl);
     if ($ok === false) throw new RuntimeException('Could not connect to Gemini. Check server internet access and HTTPS certificates, then try again.', 502);
-    return ['status' => $status, 'body' => $body];
+    return ['status' => $status, 'body' => $body, 'retry_after_ms' => $retryAfterMs];
 }
 
 function ai_quiz_generate(array $request, #[SensitiveParameter] string $key): string
 {
-    $response = ai_quiz_http('interactions', $key, $request);
-    return ai_quiz_provider_text($response['status'], $response['body']);
+    return ai_quiz_generate_with_transport(static fn(int $timeoutMs) => ai_quiz_http('interactions', $key, $request, $timeoutMs));
+}
+
+// Retry only definite unavailability, never an ambiguous network timeout or a
+// rejected configuration/quota request. All attempts share a 65-second budget.
+function ai_quiz_generate_with_transport(callable $send, ?callable $pause = null, ?callable $clock = null): string
+{
+    $pause ??= static fn(int $ms) => usleep($ms * 1000);
+    $clock ??= static fn(): float => hrtime(true) / 1e9;
+    $deadline = $clock() + 65;
+    $lastError = null;
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        $budgetMs = (int) floor(($deadline - $clock()) * 1000);
+        if ($budgetMs <= 0) throw $lastError ?? new RuntimeException('Generation timed out. Please try again later.', 502);
+        $response = $send(min(60000, $budgetMs));
+        if ($response['status'] !== 503) return ai_quiz_provider_text($response['status'], $response['body']);
+        $lastError = ai_quiz_provider_error(503, $response['body']);
+        if ($attempt === 2) throw $lastError;
+        $delayMs = max(1000 * (2 ** $attempt) + random_int(0, 250), (int) ($response['retry_after_ms'] ?? 0));
+        // Respect Retry-After without extending the request or starting an
+        // attempt with less than one second left to receive a response.
+        if ($delayMs + 1000 > ($deadline - $clock()) * 1000) throw $lastError;
+        $pause($delayMs);
+    }
+    throw $lastError;
 }

@@ -21,7 +21,7 @@ Official references: [API key setup](https://ai.google.dev/gemini-api/docs/api-k
 
 ## Limits and data handling
 
-The app allows 10 generation requests per teacher per Manila calendar day, at least 30 seconds apart. Database quotas apply across sessions. The `ai_quiz_usage` table is added through normal schema startup. Requests reaching Gemini count even when rejected, blocked, incomplete, or timed out. Invalid input, missing key, and permission failures do not count. Google's project quotas also apply and may be lower. There is no automatic retry, paid upgrade, provider fallback, or background generation.
+The app allows 10 generation requests per teacher per Manila calendar day, at least 30 seconds apart. Database quotas apply across sessions. The `ai_quiz_usage` table is added through normal schema startup. HTTP 503 unavailability receives up to two automatic retries with increasing delays and jitter, respecting Google's `Retry-After` header within a shared 65-second generation budget. These retries share one application reservation. If the final result is a confirmed HTTP 503, that reservation is restored; the 30-second cooldown remains. Other rejections, blocked/incomplete responses, and ambiguous network timeouts still count. Invalid input, missing key, and local permission failures do not count. Google's project quotas also apply to provider calls and may be lower; restoring an application allowance cannot restore Google's quota. There is no paid upgrade, model/provider fallback, or background generation.
 
 Only selected lesson content and generation settings go to Google. Uploads are read from PHP temporary storage, without a permanent lesson upload. `store: false` disables provider interaction storage, but Google's free-tier data-use terms still apply. Avoid student personal information in the lesson source. Only quota counts go into the usage table; generated questions are saved only through the normal teacher save workflow.
 
@@ -47,6 +47,8 @@ A successful **Test saved connection** checks model metadata access, not a gener
 
 ```powershell
 & C:/xampppp/php/php.exe tests/ai_quiz_test.php
+& C:/xampppp/php/php.exe tests/ai_quiz_retry_test.php
+& C:/xampppp/php/php.exe tests/ai_quiz_refund_test.php
 & C:/xampppp/php/php.exe tests/ai_quiz_database_test.php
 & C:/xampppp/php/php.exe tests/admin_ai_test.php
 & C:/xampppp/php/php.exe tests/ai_key_storage_test.php

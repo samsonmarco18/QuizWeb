@@ -60,7 +60,7 @@
         if (file) data.set('lesson', file);
         busy = true;
         update();
-        get('status').textContent = 'Generating your draft. You can continue editing your quiz…';
+        get('status').textContent = 'Generating your draft. Temporary Google unavailability will be retried automatically. You can continue editing your quiz…';
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 80000);
         try {

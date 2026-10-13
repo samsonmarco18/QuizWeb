@@ -5,6 +5,8 @@ require_once __DIR__ . '/includes/ai_quiz.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 $remaining = null;
+$reservedAt = null;
+$quotaDb = null;
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Use the quiz builder to generate questions.', 405);
     $user = current_user();
@@ -17,16 +19,31 @@ try {
     if (!$config['enabled']) throw new RuntimeException('AI quiz generation is disabled by the administrator.', 503);
     if ($config['key'] === '') throw new RuntimeException('Gemini is not configured yet. Ask the administrator to add the server API key.', 503);
     if (!function_exists('curl_init')) throw new RuntimeException('Enable PHP cURL on the server to use Gemini.', 503);
-    $remaining = ai_quiz_reserve(db(), (int) $user['id'], time());
+    $request = ai_quiz_request($options, $source, $config['model']);
+    $quotaDb = db();
+    $reservedAt = time();
+    $remaining = ai_quiz_reserve($quotaDb, (int) $user['id'], $reservedAt);
     session_write_close();
     set_time_limit(75);
-    $generated = ai_quiz_generate(ai_quiz_request($options, $source, $config['model']), $config['key']);
+    $generated = ai_quiz_generate($request, $config['key']);
     echo json_encode(ai_quiz_validate($generated, $options) + ['remaining' => $remaining], JSON_THROW_ON_ERROR);
 } catch (InvalidArgumentException $error) {
     http_response_code(422);
     echo json_encode(['error' => $error->getMessage(), 'remaining' => $remaining]);
 } catch (Throwable $error) {
+    $refunded = false;
+    if ($error instanceof AiQuizProviderException && $error->httpStatus === 503 && $remaining !== null) {
+        try {
+            $remaining = ai_quiz_refund_unavailable($quotaDb, (int) $user['id'], $reservedAt);
+            $refunded = true;
+        } catch (Throwable $refundError) {
+            // Retain the original provider error without logging private details.
+            error_log('QuizWeb: unable to restore an AI generation allowance after HTTP 503.');
+        }
+    }
     $status = in_array($error->getCode(), [403, 405, 429, 502, 503], true) ? $error->getCode() : 500;
     http_response_code($status);
-    echo json_encode(['error' => $status === 500 ? 'Could not generate questions. Please try again later.' : $error->getMessage(), 'remaining' => $remaining]);
+    $message = $status === 500 ? 'Could not generate questions. Please try again later.' : $error->getMessage();
+    if ($refunded) $message .= ' This attempt did not use your application allowance.';
+    echo json_encode(['error' => $message, 'remaining' => $remaining]);
 }
