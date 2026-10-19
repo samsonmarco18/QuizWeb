@@ -2,7 +2,7 @@
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/ai_quiz.php';
 $user = require_role('admin');
-$views = ['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'ai' => 'AI settings', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit'];
+$views = ['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'ai' => 'AI settings', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit', 'releases' => 'Grade releases'];
 $view = is_string($_GET['tab'] ?? null) && isset($views[$_GET['tab']]) ? $_GET['tab'] : 'overview';
 $_SESSION['admin_csrf'] ??= bin2hex(random_bytes(32));
 $error = '';
@@ -80,12 +80,12 @@ if ($view === 'users') {
     $page = min($page, max(1, (int) ceil($total / $limit)));
     $select = db()->prepare('SELECT id, name, email, role, account_status, created_at FROM users WHERE ' . $where . ' ORDER BY id DESC LIMIT 15 OFFSET ' . (($page - 1) * $limit));
     $select->execute($params); $records = $select->fetchAll();
-} elseif (in_array($view, ['security', 'logs', 'classes', 'grade_logs'], true)) {
-    $table = $view === 'classes' ? 'classrooms' : ($view === 'grade_logs' ? 'grade_changes' : 'audit_logs');
-    $where = $view === 'security' ? " WHERE action = 'login_failed'" : '';
+} elseif (in_array($view, ['security', 'logs', 'classes', 'grade_logs', 'releases'], true)) {
+    $table = $view === 'classes' ? 'classrooms' : (in_array($view, ['grade_logs', 'releases'], true) ? 'grade_changes' : 'audit_logs');
+    $where = $view === 'security' ? " WHERE action = 'login_failed'" : ($view === 'releases' ? " WHERE action = 'publish'" : '');
     $total = (int) db()->query('SELECT COUNT(*) FROM ' . $table . $where)->fetchColumn();
     $page = min($page, max(1, (int) ceil($total / $limit)));
-    $fields = $view === 'classes' ? 'id, name, subject, teacher_id, created_at' : ($view === 'grade_logs' ? '*' : 'id, actor_id, target_id, action, occurred_at');
+    $fields = $view === 'classes' ? 'id, name, subject, teacher_id, created_at' : (in_array($view, ['grade_logs', 'releases'], true) ? '*' : 'id, actor_id, target_id, action, occurred_at');
     $records = db()->query('SELECT ' . $fields . ' FROM ' . $table . $where . ' ORDER BY id DESC LIMIT 15 OFFSET ' . (($page - 1) * $limit))->fetchAll();
 }
 header('Cache-Control: no-store');
@@ -118,7 +118,7 @@ render_header('Administration', 'admin-page', ['/QuizWeb/assets/css/admin-ai.css
                 <label><input type="checkbox" name="confirm" value="yes" required> Confirm this account change</label>
                 <button class="button button-secondary" type="submit"><?php echo $nextStatus === 'suspended' ? 'Suspend account' : 'Reactivate account'; ?></button>
             </form><?php else: ?><p>Administrator accounts are protected from status changes.</p><?php endif; ?></details>
-        <?php elseif ($view === 'grade_logs'): ?>
+        <?php elseif (in_array($view, ['grade_logs', 'releases'], true)): ?>
             <details><summary><?php echo esc(ucwords(str_replace('_', ' ', $record['action'])) . ' · ' . format_date($record['created_at'])); ?></summary><p>Class #<?php echo (int) $record['classroom_id']; ?> · Teacher #<?php echo (int) $record['actor_id']; ?> · Student <?php echo $record['student_id'] === null ? '—' : '#' . (int) $record['student_id']; ?> · Item <?php echo esc($record['item_id'] ?? 'Class grading'); ?></p><pre class="grade-audit-data"><?php echo esc('Previous: ' . $record['previous_value'] . "\nNew: " . $record['new_value']); ?></pre><p>Read-only audit. Academic changes belong to the classroom teacher.</p></details>
         <?php elseif ($view === 'classes'): ?>
             <strong><?php echo esc($record['name']); ?></strong><span><?php echo esc($record['subject']); ?></span><small>Teacher #<?php echo (int) $record['teacher_id']; ?> · <?php echo esc(format_date($record['created_at'])); ?></small>
