@@ -23,6 +23,7 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
         $academicMeta = academic_validate_meta($_POST, academic_settings());
         $templateId = $_POST['grading_template'] ?? '';
         if (!is_string($templateId) || (!isset(grading_templates()[$templateId]) && $templateId !== 'custom')) throw new InvalidArgumentException('Choose a grading template or Custom.');
+        $creationConfig = grading_validate_config($_POST['creation_config'] ?? (grading_templates()[$templateId]['config'] ?? null), grading_empty_book());
         if (strlen($name) > 190 || strlen($subject) > 190) throw new InvalidArgumentException('Classroom and subject names must be under 190 characters.');
     } catch (InvalidArgumentException $ex) { $errors[] = $ex->getMessage(); }
 
@@ -49,11 +50,9 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
             $classroom['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM classrooms')->fetchColumn();
             insert_classroom_record($pdo, $classroom);
             academic_save_meta($pdo, (int) $classroom['id'], $academicMeta);
-            if ($templateId !== 'custom') {
-                $newBook = grading_empty_book(); $newBook['config'] = grading_validate_config(grading_templates()[$templateId]['config'], $newBook);
-                grading_write($pdo, (int) $classroom['id'], $newBook);
-                grading_audit($pdo, (int) $classroom['id'], (int) $user['id'], 'config', null, $newBook['config']);
-            }
+            $newBook = grading_empty_book(); $newBook['config'] = $creationConfig;
+            grading_write($pdo, (int) $classroom['id'], $newBook);
+            grading_audit($pdo, (int) $classroom['id'], (int) $user['id'], 'config', null, $newBook['config']);
             $pdo->commit();
             flash_set('success', 'Classroom created. Share the join code with your students.');
             redirect('/QuizWeb/classroom.php?id=' . $classroom['id']);
@@ -319,30 +318,7 @@ if ($user['role'] === 'teacher') {
                     <h2>Create a class hub</h2>
                 </div>
             </div>
-            <form method="post" class="stack-form">
-                <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
-                <input type="hidden" name="action" value="create_classroom">
-                <?php foreach ($errors as $error): ?>
-                    <div class="inline-error"><?php echo esc($error); ?></div>
-                <?php endforeach; ?>
-                <label>
-                    <span>Classroom Name</span>
-                    <input type="text" name="name" maxlength="190" required placeholder="Grade 10 Science" value="<?php echo esc($_POST['name'] ?? ''); ?>">
-                </label>
-                <label>
-                    <span>Subject</span>
-                    <input type="text" name="subject" maxlength="190" required placeholder="Earth and Life Science" value="<?php echo esc($_POST['subject'] ?? ''); ?>">
-                </label>
-                <label>
-                    <span>Description</span>
-                    <textarea name="description" rows="4" placeholder="Add a short classroom description"></textarea>
-                </label>
-                <label><span>Assigned teacher</span><input readonly value="<?php echo esc($user['name']); ?>"></label>
-                <?php render_academic_fields($_POST, academic_settings()); ?>
-                <label><span>Grading configuration</span><select name="grading_template"><?php foreach (grading_templates() as $id => $template): ?><option value="<?php echo esc($id); ?>" <?php echo ($_POST['grading_template'] ?? 'balanced') === $id ? 'selected' : ''; ?>><?php echo esc($template['name']); ?></option><?php endforeach; ?><option value="custom" <?php echo ($_POST['grading_template'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom — configure manually</option></select></label>
-                <p class="muted">Prelim, Midterm, and Finals weights can be customized in Grades. Academic terms are configured by your administrator.</p>
-                <button class="button button-primary" type="submit">Create Classroom</button>
-            </form>
+            <?php require dirname(__DIR__, 3) . '/includes/class_creation_form.php'; ?>
         </article>
         <article class="glass panel">
             <div class="section-heading">
@@ -464,4 +440,4 @@ if ($user['role'] === 'teacher') {
 <?php endif; ?>
 <?php if ($user['role'] === 'student'): ?></div><?php endif; ?>
 
-<?php render_footer(); ?>
+<?php render_footer(['/QuizWeb/assets/js/class-creation.js']); ?>
