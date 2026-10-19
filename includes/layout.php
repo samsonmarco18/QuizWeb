@@ -261,7 +261,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <?php endif; ?>
             <?php if ($flash): ?>
                 <div class="flash flash-<?php echo esc($flash['type']); ?>" role="status">
-                    <span class="flash-message"><?php echo esc($flash['message']); ?></span>
+                    <span class="flash-message"><?php echo esc($flash['message']); ?></span><button type="button" class="flash-dismiss" data-dismiss-flash aria-label="Dismiss notification">&times;</button>
                 </div>
             <?php endif; ?>
         <main class="page-shell">

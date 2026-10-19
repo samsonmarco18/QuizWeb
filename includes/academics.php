@@ -85,7 +85,8 @@ function academic_calculate(array $book, int $student, array $attempts): array {
     }
     $unassigned = array_filter($book['items'], fn($item) => empty($item['archived']) && !isset($periods[$item['period_id'] ?? '']));
     if ($unassigned) $complete = false;
-    $overall = $active > 0 ? round($weighted / $active, 2) : null;
+    $allTermsGraded = !array_filter($periods, fn($period) => $period['weight'] > 0 && ($period['overall'] === null || $period['graded'] === 0));
+    $overall = $allTermsGraded && $active > 0 ? round($weighted / $active, 2) : null;
     $label = null; foreach ($book['config']['scale'] as $band) if ($overall !== null && $overall >= $band['min']) $label = $band['label'];
     $special = $book['academic_statuses'][(string) $student]['status'] ?? 'enrolled';
     return ['student_id' => $student, 'overall' => $overall, 'calculated' => $overall, 'override' => null, 'categories' => [], 'periods' => $periods,

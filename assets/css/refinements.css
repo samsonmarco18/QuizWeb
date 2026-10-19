@@ -616,3 +616,12 @@ body.ui-refined.student-progress .dashboard-study-plan { display: block; }
     .builder-toolbar > a { grid-column: 1 / -1; }
     body.ui-refined .builder-panel .question-meta-grid { grid-template-columns: 1fr; }
 }
+
+/* Shared form controls and dismissible feedback. */
+body.ui-refined label.grade-confirm { display: flex; align-items: flex-start; gap: 12px; text-align: left; }
+body.ui-refined label.grade-confirm > input[type="checkbox"] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 0; margin: 3px 0 0; }
+body.ui-refined label.grade-confirm > span { flex: 1; line-height: 1.6; }
+body.ui-refined .flash { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.flash-dismiss { flex-shrink: 0; border: 0; background: transparent; color: inherit; font-size: 1.5rem; cursor: pointer; width: 36px; height: 36px; }
+.password-match { color: var(--accent); font-size: .85rem; margin: 6px 0 0; }
+.submission-confirm #submission-confirm-message { white-space: pre-line; max-height: 50dvh; overflow: auto; text-align: left; }

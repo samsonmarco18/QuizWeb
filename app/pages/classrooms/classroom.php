@@ -127,12 +127,12 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
 <section class="classroom-banner glass">
     <div class="classroom-banner-copy">
         <span class="classroom-subject"><i aria-hidden="true"></i><?php echo esc($classroom['subject']); ?></span>
-        <h1><?php echo esc($classroom['name']); ?></h1>
+        <h1><a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=overview"><?php echo esc($classroom['name']); ?></a></h1>
         <p class="lead"><?php echo esc($classroom['description'] ?: 'Gamified classroom space for your quizzes and student activity.'); ?></p>
         <div class="feature-pills">
-            <span><?php echo nav_icon('document'); ?><?php echo esc(count($classroom['quizzes'] ?? [])); ?> quizzes</span>
-            <span><?php echo nav_icon('Join Class'); ?><?php echo esc(count($classroom['student_ids'] ?? [])); ?> students</span>
-            <span><?php echo nav_icon('Focus Practice'); ?><?php echo esc($user['role'] === 'teacher' ? 'Teaching hub' : 'Learning hub'); ?></span>
+            <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=quizzes" aria-label="View classroom quizzes"><?php echo nav_icon('document'); ?><?php echo esc(count($classroom['quizzes'] ?? [])); ?> quizzes</a>
+            <a href="<?php echo $user['role'] === 'teacher' ? '#class-roster' : '/QuizWeb/classroom.php?id=' . (int) $classroom['id'] . '&amp;tab=results#results'; ?>" aria-label="<?php echo $user['role'] === 'teacher' ? 'View class roster' : 'View class results'; ?>"><?php echo nav_icon('Join Class'); ?><?php echo esc(count($classroom['student_ids'] ?? [])); ?> students</a>
+            <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=overview"><?php echo nav_icon('Focus Practice'); ?><?php echo esc($user['role'] === 'teacher' ? 'Teaching hub' : 'Learning hub'); ?></a>
         </div>
     </div>
     <img class="classroom-banner-art" src="/QuizWeb/assets/images/classroom/hero.png" alt="" width="1536" height="1024" aria-hidden="true" fetchpriority="high">
@@ -494,7 +494,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
 <?php endif; ?>
 
 <?php if ($activeView === 'results'): ?>
-<section class="glass panel leaderboard-panel" id="results">
+<section class="glass panel leaderboard-panel" id="results" tabindex="-1">
     <div class="section-heading">
         <div>
             <span class="eyebrow">Leaderboards</span>
@@ -570,7 +570,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
         <section class="glass panel classroom-upcoming-panel"><div class="classroom-aside-heading"><h2>Upcoming</h2><a href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=quizzes&amp;quiz_sort=due">View all</a></div><ul class="classroom-upcoming-list"><?php foreach (array_slice($upcomingQuizzes, 0, 3) as $upcoming): $upQuiz = $upcoming['quiz']; ?><li><a href="/QuizWeb/play.php?classroom_id=<?php echo $classroomId; ?>&amp;quiz_id=<?php echo (int) $upQuiz['id']; ?>"><img src="<?php echo esc(classroom_game_art($upQuiz['game_type'])); ?>" alt="" width="40" height="40" loading="lazy"><div><strong><?php echo esc($upQuiz['title']); ?></strong><small><?php echo esc($modes[$upQuiz['game_type']]['label'] ?? 'Quiz'); ?> · <?php echo $upcoming['points']; ?> pts</small></div><div class="upcoming-due<?php echo $upcoming['due_status'] === 'soon' ? ' is-due' : ''; ?>"><time datetime="<?php echo esc($upQuiz['due_at']); ?>"><?php echo esc(date('M j', $upcoming['due'])); ?></time><small><?php echo $upcoming['days_left'] === 0 ? 'Due today' : $upcoming['days_left'] . ' days left'; ?></small></div></a></li><?php endforeach; ?></ul></section>
     <?php endif; ?>
     <section class="glass panel classroom-announcements-panel"><div class="classroom-aside-heading"><h2><?php echo nav_icon('message'); ?>Announcements</h2><?php if ($announcements): ?><a href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=materials">View all</a><?php endif; ?></div><?php if ($announcements): ?><ul class="classroom-announcement-list"><?php foreach (array_slice($announcements, 0, 2) as $announcement): ?><li><a href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=materials"><strong><?php echo esc($announcement['title']); ?></strong><time datetime="<?php echo esc($announcement['created_at']); ?>"><?php echo esc(format_date($announcement['created_at'])); ?></time></a></li><?php endforeach; ?></ul><?php else: ?><div class="classroom-announcement-empty"><div aria-hidden="true"><?php echo nav_icon('document'); ?></div><strong>No new announcements</strong><p>You're all caught up!</p></div><?php endif; ?></section>
-    <?php if ($user['role'] === 'teacher'): ?><section class="glass panel classroom-roster-panel"><span class="eyebrow">Students</span><h2>Class roster</h2><div class="classroom-roster-list"><?php foreach ($roster as $student): ?><div><?php render_profile_avatar($student, 'classroom-member-avatar'); ?><div><strong><?php echo esc($student['name']); ?></strong><small><?php echo esc($student['email']); ?></small></div></div><?php endforeach; ?><?php if (!$roster): ?><p>No students have joined this classroom yet.</p><?php endif; ?></div></section><?php endif; ?>
+    <?php if ($user['role'] === 'teacher'): ?><section class="glass panel classroom-roster-panel" id="class-roster" tabindex="-1"><span class="eyebrow">Students</span><h2>Class roster</h2><div class="classroom-roster-list"><?php foreach ($roster as $student): ?><div><?php render_profile_avatar($student, 'classroom-member-avatar'); ?><div><strong><?php echo esc($student['name']); ?></strong><small><?php echo esc($student['email']); ?></small></div></div><?php endforeach; ?><?php if (!$roster): ?><p>No students have joined this classroom yet.</p><?php endif; ?></div></section><?php endif; ?>
 </aside>
 </div>
 <?php render_footer(['/QuizWeb/assets/js/classroom.js']); ?>

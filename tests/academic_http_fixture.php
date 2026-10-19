@@ -21,7 +21,7 @@ foreach ([200=>80,201=>90,202=>70,203=>null] as $id=>$score) {
         $item='manual-'.($book['next_item_id']-1);
         grading_apply_action($book,$class,$teacher,'scores',['item_id'=>$item,'scores'=>[$student['id']=>(string)$score,$peer['id']=>'95']],[]);
     }
-    if ($score!==null) { grading_apply_action($book,$class,$teacher,'review',[],[]); grading_apply_action($book,$class,$teacher,'publish',['confirm'=>'yes'],[]); }
+    if ($score!==null) { grading_apply_action($book,$class,$teacher,'review',[],[]); grading_apply_action($book,$class,$teacher,'publish',['confirm'=>'yes','final_confirm'=>'yes','ignore_warnings_hash'=>academic_review_hash($book,$class,[])],[]); }
     grading_write(db(),$id,$book);
 }
 echo json_encode(['teacher'=>$teacher['id'],'student'=>$student['id'],'peer'=>$peer['id'],'outsider'=>$outsider['id']]);

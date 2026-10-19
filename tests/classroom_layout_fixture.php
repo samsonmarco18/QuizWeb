@@ -42,6 +42,10 @@ $classLearningProfile = ['overall_accuracy' => 75, 'analyzed_attempts' => 3, 'we
 $studentClassProfile = ['overall_accuracy' => 70, 'questions_seen' => 4, 'focus_items' => [], 'trend_message' => 'Keep practising.'];
 $studentClassPracticeQuestions = [];
 $source = file_get_contents(__DIR__ . '/../app/pages/classrooms/classroom.php');
+// Private reminders are database-backed and outside this offline layout fixture.
+$reminderStart = strpos($source, "<?php if (\$user['role'] === 'student'): \$reminderQuery");
+$reminderEnd = strpos($source, '<?php endif; ?>', $reminderStart) + strlen('<?php endif; ?>');
+$source = substr_replace($source, '', $reminderStart, $reminderEnd - $reminderStart);
 $start = strpos($source, '<section class="classroom-banner glass">');
 $end = strpos($source, '<?php render_footer(', $start);
 echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';

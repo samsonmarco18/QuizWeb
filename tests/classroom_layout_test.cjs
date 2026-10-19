@@ -26,6 +26,15 @@ function setup(options = {}) {
 }
 (async () => {
     const a = setup();
+    assert.match(a.d.querySelector('.classroom-banner h1 a').getAttribute('href'), /tab=overview/);
+    const shortcuts = [...a.d.querySelectorAll('.classroom-banner .feature-pills a')];
+    assert.equal(shortcuts.length, 3);
+    assert.match(shortcuts[0].getAttribute('href'), /tab=quizzes/);
+    assert.match(shortcuts[1].getAttribute('href'), /tab=results#results/);
+    assert.match(shortcuts[2].getAttribute('href'), /tab=overview/);
+    const teacherShortcuts = setup({role:'teacher'});
+    assert.equal(teacherShortcuts.d.querySelectorAll('.classroom-banner .feature-pills a')[1].getAttribute('href'), '#class-roster');
+    assert(teacherShortcuts.d.getElementById('class-roster')); teacherShortcuts.close();
     assert.equal(a.d.querySelectorAll('.assigned-game-card').length, 6, 'Pagination still limits the initial page');
     assert.match(a.d.querySelector('[data-quiz-filter-status]').textContent, /7 of 7/);
     assert.equal(a.d.querySelector('.quiz-best-score strong').textContent.trim(), '40 / 40', 'Displays best, not lower latest attempt');

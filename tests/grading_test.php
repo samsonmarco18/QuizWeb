@@ -15,7 +15,7 @@ foreach (grading_templates() as $template) {
         $templateBook['scores'][$id]['1'] = ['quiz' => 80, 'work' => 90, 'exam' => 70][$category['id']];
     }
     $expected = array_sum(array_map(fn($c) => $c['weight'] * ['quiz' => 80, 'work' => 90, 'exam' => 70][$c['id']] / 100, $templateBook['config']['categories']));
-    grade_near(grading_calculate($templateBook, 1, [])['overall'], $expected, $template['name'] . ' calculation');
+    grade_near(grading_calculate($templateBook, 1, [])['periods']['prelim']['overall'], $expected, $template['name'] . ' calculation');
 }
 $config = ['categories' => [['id' => 'quiz', 'name' => 'Quizzes', 'weight' => 30], ['id' => 'work', 'name' => 'Assignments', 'weight' => 20], ['id' => 'exam', 'name' => 'Exams', 'weight' => 50]], 'scale' => [['min' => 0, 'label' => 'Needs improvement'], ['min' => 75, 'label' => 'Passed'], ['min' => 90, 'label' => 'Excellent']], 'passing' => 75, 'missing_policy' => 'exclude'];
 $book['config'] = grading_validate_config($config, $book);
@@ -47,7 +47,7 @@ grade_near(grading_calculate($book, 1, [])['overall'], 91, 'Item override recalc
 grade_assert($book['overrides'][1]['manual-1']['calculated_at_change'] === 18.0 && $book['overrides'][1]['manual-1']['actor_id'] === 5, 'Override keeps original and actor');
 grade_reject(function () use (&$book, $class, $teacher) { grading_apply_action($book, $class, $teacher, 'override', ['student_id' => 1, 'item_id' => 'overall', 'value' => '95', 'reason' => 'Invalid direct final'], []); }, 'Direct final-grade entry accepted');
 grade_near(grading_calculate($book, 1, [])['overall'], 91, 'Final remains assessment-based');
-grading_apply_action($book, $class, $teacher, 'publish', ['confirm' => 'yes'], []);
+grading_apply_action($book, $class, $teacher, 'publish', ['confirm' => 'yes', 'final_confirm' => 'yes', 'ignore_warnings_hash' => academic_review_hash($book, $class, [])], []);
 $student = ['id' => 1, 'role' => 'student']; $published = grading_published_student($book, $class, $student); grade_near($published['overall'], 91, 'Own published grade');
 grading_apply_action($book, $class, $teacher, 'restore', ['student_id' => 1, 'item_id' => 'overall', 'reason' => 'Remove historical adjustment'], []);
 grading_apply_action($book, $class, $teacher, 'restore', ['student_id' => 1, 'item_id' => 'manual-1', 'reason' => 'Restore original assessment'], []);
@@ -84,7 +84,10 @@ $pdo->exec('DROP TRIGGER reject_grade_audit');
 $quiz = ['id' => 4, 'title' => 'Real quiz', 'created_at' => now_iso(), 'grade_category_id' => 'quiz', 'grade_max_score' => 50, 'grade_attempt_policy' => 'latest'];
 $pdo->beginTransaction(); grading_sync_quiz($pdo, 1, 5, $quiz); $pdo->commit();
 $pdo->exec("INSERT INTO attempts VALUES (1, 1, 1, 4, 'Original title', 'standard', '[]', 18, 20, 10, '2026-10-03')");
-grading_mutate($pdo, 1, $teacher, 'publish', ['revision' => '2', 'confirm' => 'yes']);
+grading_mutate($pdo, 1, $teacher, 'publish', ['revision' => '2', 'confirm' => 'yes', 'final_confirm' => 'yes', 'ignore_warnings_hash' => academic_review_hash(grading_load($pdo, 1), $class, array_map('hydrate_attempt', $pdo->query('SELECT * FROM attempts')->fetchAll()))]);
+$releaseAudit = $pdo->query("SELECT * FROM grade_changes WHERE action = 'publish' ORDER BY id DESC LIMIT 1")->fetch();
+$auditRelease = json_decode($releaseAudit['new_value'], true);
+grade_assert((int) $releaseAudit['actor_id'] === 5 && count($auditRelease['ignored_warnings']) > 0 && $auditRelease['confirmed_at'], 'Every release must persist teacher, warnings, and confirmation in admin audit');
 $persisted = grading_load($pdo, 1); grade_near($persisted['published']['students'][1]['items']['quiz-4']['score'], 45, 'Stored legitimate attempt in published grade');
 $quiz['title'] = 'Edited quiz'; $quiz['grade_max_score'] = 100;
 $quiz['grade_correction_reason'] = 'Update the assessment maximum';

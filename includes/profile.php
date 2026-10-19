@@ -132,7 +132,7 @@ function render_profile_fields(array $values, array $keys, string $role = 'stude
         $required = $role === 'student' || in_array($key, ['birthdate', 'gender'], true);
         $academic = in_array($key, ['student_number', 'program', 'year_level'], true);
         ?>
-        <label>
+        <label<?php echo $role !== 'student' && in_array($key, ['student_number', 'year_level'], true) ? ' hidden' : ''; ?>>
             <span><?php echo esc(profile_labels()[$key]); ?><?php if ($academic): ?><small data-optional-label<?php echo $role === 'student' ? ' hidden' : ''; ?>> (optional for teachers)</small><?php endif; ?></span>
             <?php if (isset(profile_options()[$key])): ?>
                 <select name="<?php echo esc($key); ?>" <?php echo $required ? 'required' : ''; ?> <?php echo $academic ? 'data-student-required' : ''; ?>>

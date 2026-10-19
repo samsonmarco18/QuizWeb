@@ -1,0 +1,23 @@
+body.ui-refined .class-creation-panel { max-width: 1000px; margin: 0 auto 28px; }
+body.ui-refined #class-creation .builder-steps { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; padding: 8px; }
+body.ui-refined #class-creation .builder-steps button { padding: 14px 10px; line-height: 1.5; overflow-wrap: normal; }
+body.ui-refined #class-creation fieldset { min-width: 0; margin: 0; padding: 20px; border: 1px solid var(--border); border-radius: 12px; }
+#class-creation legend { padding: 0 8px; font-weight: 600; }
+#class-creation [data-class-review] { display: grid; gap: 16px; }
+.class-review-card { position: relative; padding: 22px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); }
+.class-review-card > h4 { margin: 0 80px 20px 0; font-size: 1rem; }
+.class-review-card > button { position: absolute; right: 16px; top: 12px; }
+.class-review-card dl { display: grid; grid-template-columns: minmax(140px,1fr) minmax(0,1.5fr); gap: 12px 24px; margin: 0; }
+.class-review-card dt { color: var(--text-secondary); }
+.class-review-card dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+@media(max-width:600px) {
+ body.ui-refined #class-creation .builder-steps { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .class-review-card dl { grid-template-columns: 1fr; gap: 6px; }
+ .class-review-card dd { margin-bottom: 12px; }
+}
+
+@media(min-width:800px) { #class-creation [data-class-review] { grid-template-columns: repeat(2,minmax(0,1fr)); } .class-review-card:last-child { grid-column: 1 / -1; } }
+.class-grading-review { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.class-grading-review h5 { margin: 0 0 12px; font-size: .9rem; color: var(--accent); }
+.class-grading-review dl { grid-template-columns: minmax(0,1fr) auto; gap: 10px 16px; font-size: .9rem; }
+@media(max-width:600px) { .class-grading-review { grid-template-columns: minmax(0,1fr); } .class-grading-review dd { margin: 0; } }

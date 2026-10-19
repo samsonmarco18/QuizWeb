@@ -42,6 +42,25 @@
     if (waiting.has(form)) return;
     waiting.add(form); const button = event.submitter;
     const info = messages[action] || ['Save grading changes?', 'Save these changes to the classroom gradebook?', 'Save Changes'];
-    window.chalkConfirm(...info).then(answer => { waiting.delete(form); if (!answer) return; approved.add(form); form.requestSubmit(button || undefined); });
+    (async () => {
+      if (action === 'publish') {
+        form.elements.namedItem('final_confirm').value = '';
+        form.elements.namedItem('ignore_warnings_hash').value = '';
+        const warnings = JSON.parse(form.querySelector('[data-release-warnings]')?.textContent || '[]');
+        if (warnings.length) {
+          const answer = await window.chalkConfirm('Some grades are incomplete', warnings.map(message => `? ${message}`).join('\n') + '\n\nContinuing releases the available grades. Missing term grades will keep the final grade blank. These warnings and your decision will be recorded in the admin audit log.', 'Ignore and continue');
+          if (!answer) { waiting.delete(form); return; }
+          form.elements.namedItem('ignore_warnings_hash').value = form.elements.namedItem('release_hash').value;
+        }
+        const answer = await window.chalkConfirm('Confirm grade release', 'Release these grades to all enrolled students now? This replaces the previous release and records your identity, time, and any ignored warnings in the admin audit log.', 'Yes, release grades');
+        waiting.delete(form);
+        if (!answer) { form.elements.namedItem('ignore_warnings_hash').value = ''; return; }
+        form.elements.namedItem('final_confirm').value = 'yes';
+        approved.add(form); form.requestSubmit(button || undefined);
+      } else {
+        const answer = await window.chalkConfirm(...info); waiting.delete(form);
+        if (answer) { approved.add(form); form.requestSubmit(button || undefined); }
+      }
+    })();
   }, true);
 })();

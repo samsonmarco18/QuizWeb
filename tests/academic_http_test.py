@@ -51,9 +51,9 @@ try:
     action(teacher,200,'unlock',{'reason':'HTTP correction test'})
     page=action(teacher,200,'scores',{'item_id':'manual-1',f'scores[{fixture["student"]}]':'90'}); assert 'Correction reason' in page
     action(teacher,200,'scores',{'item_id':'manual-1',f'scores[{fixture["student"]}]':'90','reason':'Correct scoring'})
-    page=action(teacher,200,'publish',{'confirm':'yes'}); assert 'Review the current' in page
+    page=action(teacher,200,'publish',{'confirm':'yes','final_confirm':'yes'}); assert 'Review the current' in page
     page=request(student,'grades.php?classroom_id=200'); assert '80.00' in page and '>Pending<' in page
-    action(teacher,200,'review'); action(teacher,200,'publish',{'confirm':'yes'})
+    action(teacher,200,'review'); action(teacher,200,'publish',{'confirm':'yes','final_confirm':'yes'})
     request(teacher,'gradebook.php?classroom_id=200&export=csv')
     participant='participants.php?classroom_id=200&quiz_id=9'
     page=request(teacher,participant); assert 'Overdue / Missing' in page

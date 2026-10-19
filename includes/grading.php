@@ -203,6 +203,28 @@ function grading_student_id(array $classroom, $value): int
     return (int) $value;
 }
 
+function grading_release_warnings(array $book, array $classroom, array $attempts): array
+{
+    $warnings = [];
+    if (!$classroom['student_ids']) $warnings[] = 'No students are enrolled in this classroom.';
+    $periods = $book['config']['periods'] ?? [['id' => '', 'name' => 'Overall', 'weight' => 100]];
+    foreach ($periods as $period) foreach ($book['config']['categories'] as $category) {
+        if ($period['weight'] <= 0 || $category['weight'] <= 0) continue;
+        $items = array_filter($book['items'], fn($item) => empty($item['archived']) && $item['category_id'] === $category['id'] && (!$period['id'] || ($item['period_id'] ?? '') === $period['id']));
+        if (!$items) $warnings[] = $period['name'] . ': ' . $category['name'] . ' has no activities or scores.';
+    }
+    foreach ($classroom['student_ids'] as $student) {
+        $row = grading_calculate($book, (int) $student, $attempts);
+        foreach ($row['items'] as $item) {
+            if ($item['score'] === null) $warnings[] = 'Student #' . $student . ': ' . $item['name'] . ($item['source'] === 'quiz' ? ' has no graded quiz attempt.' : ' has no recorded score.');
+            elseif ($item['source'] === 'quiz' && !$item['attempt_count']) $warnings[] = 'Student #' . $student . ': ' . $item['name'] . ' has an adjusted score but no quiz attempt.';
+        }
+        if ($row['overall'] === null) $warnings[] = 'Student #' . $student . ': final grade is unavailable because one or more terms have no grade.';
+    }
+    foreach ($book['items'] as $item) if (!empty($book['config']['periods']) && empty($item['archived']) && empty($item['period_id'])) $warnings[] = $item['name'] . ' is not assigned to a grading period.';
+    return $warnings;
+}
+
 function grading_apply_action(array &$book, array $classroom, array $actor, string $action, array $input, array $attempts): array
 {
     grading_require_teacher($classroom, $actor);
@@ -351,8 +373,11 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
         if (!empty($book['config']['periods']) && ($book['reviewed']['hash'] ?? '') !== $hash) throw new InvalidArgumentException('Review the current calculated grades before publishing.');
         $rows = [];
         foreach ($classroom['student_ids'] as $student) $rows[(string) $student] = grading_calculate($book, (int) $student, $attempts);
+        $warnings = grading_release_warnings($book, $classroom, $attempts);
+        if ($warnings && ($input['ignore_warnings_hash'] ?? '') !== $hash) throw new InvalidArgumentException('Release needs attention: ' . implode(' ', array_slice($warnings, 0, 6)) . ' Review the warnings and choose Ignore and continue to proceed.');
+        if (($input['final_confirm'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm the final grade release before publishing.');
         $old = $book['published'];
-        $book['published'] = ['at' => now_iso(), 'actor_id' => (int) $actor['id'], 'config' => $book['config'], 'students' => $rows, 'hash' => $hash, 'finalized' => false];
+        $book['published'] = ['at' => now_iso(), 'actor_id' => (int) $actor['id'], 'config' => $book['config'], 'students' => $rows, 'hash' => $hash, 'finalized' => false, 'ignored_warnings' => $warnings, 'confirmed_at' => now_iso()];
         $changes[] = ['publish', $old, $book['published'], null, null];
     } elseif ($action === 'unpublish') {
         if (($input['confirm'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm hiding the published grades.');
@@ -421,5 +446,14 @@ function grading_sync_quiz(PDO $pdo, int $classroomId, int $actorId, array $quiz
 function grading_published_student(array $book, array $classroom, array $user): ?array
 {
     if (($user['role'] ?? '') !== 'student' || !classroom_belongs_to_user($classroom, $user)) throw new InvalidArgumentException('You cannot view these grades.');
-    return $book['published']['students'][(string) $user['id']] ?? null;
+    $row = $book['published']['students'][(string) $user['id']] ?? null;
+    // Older snapshots may contain a normalized partial final. Keep their term scores,
+    // but display a final only when every weighted term has a grade.
+    if ($row && !empty($book['published']['config']['periods'])) {
+        foreach ($book['published']['config']['periods'] as $period) if ($period['weight'] > 0 && (($row['periods'][$period['id']]['overall'] ?? null) === null || ($row['periods'][$period['id']]['graded'] ?? 0) === 0)) {
+            $row['overall'] = null; $row['calculated'] = null; $row['scale_label'] = null; $row['passed'] = null;
+            break;
+        }
+    }
+    return $row;
 }

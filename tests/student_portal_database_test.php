@@ -34,7 +34,7 @@ try {
     portal_db_reject(fn()=>portal_save_submission(db(),$student,300,'manual-1','After grading'),'Graded response overwritten.');
     $book=grading_load(db(),300);
     grading_mutate(db(),300,$teacher,'review',['revision'=>$book['revision']]); $book=grading_load(db(),300);
-    grading_mutate(db(),300,$teacher,'publish',['revision'=>$book['revision'],'confirm'=>'yes']); $book=grading_load(db(),300);
+    grading_mutate(db(),300,$teacher,'publish',['revision'=>$book['revision'],'confirm'=>'yes','final_confirm'=>'yes','ignore_warnings_hash'=>academic_review_hash($book,$class,[])]); $book=grading_load(db(),300);
     grading_mutate(db(),300,$teacher,'scores',['revision'=>$book['revision'],'item_id'=>'manual-1','scores'=>[$student['id']=>'77'],'reason'=>'Draft correction']); $book=grading_load(db(),300);
     $activities=portal_activities([$class],(int)$student['id']);
     portal_db_check($activities[0]['status']==='Graded' && $activities[0]['score']===0,'Unpublished scores must not leak into student activity views.');

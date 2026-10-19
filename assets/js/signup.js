@@ -13,6 +13,7 @@
     function updateRole() {
         const student = form.elements.namedItem('role').value === 'student';
         form.querySelectorAll('[data-student-required]').forEach(field => { field.required = student; });
+        for (const name of ['student_number', 'year_level']) { const input = form.elements.namedItem(name); if (input) { input.disabled = !student; input.closest('label').hidden = !student; } }
         form.querySelectorAll('[data-optional-label]').forEach(label => { label.hidden = student; });
     }
     function review() {
@@ -20,6 +21,7 @@
         container.replaceChildren();
         const labels = { name: 'Full Name', email: 'Email Address', role: 'Role', student_number: 'Student Number', birthdate: 'Birthdate', gender: 'Gender', program: 'Program / Course', year_level: 'Year Level' };
         Object.entries(labels).forEach(([name, label]) => {
+            if (form.elements.namedItem(name).disabled) return;
             const term = document.createElement('dt');
             const value = document.createElement('dd');
             term.textContent = label;
@@ -56,7 +58,15 @@
     next.addEventListener('click', () => { if (validateStep(current)) showStep(current + 1); });
     back.addEventListener('click', () => showStep(current - 1));
     form.elements.namedItem('role').addEventListener('change', updateRole);
-    form.addEventListener('input', () => confirm.setCustomValidity(''));
+    const passwordStatus = document.createElement('p'); passwordStatus.id = 'password-match-status'; confirm.setAttribute('aria-describedby', passwordStatus.id); passwordStatus.setAttribute('role', 'status'); passwordStatus.setAttribute('aria-live', 'polite'); confirm.closest('label').append(passwordStatus);
+    function passwordFeedback() {
+        const matches = password.value === confirm.value;
+        confirm.setCustomValidity(confirm.value && !matches ? 'Passwords do not match.' : '');
+        confirm.setAttribute('aria-invalid', String(Boolean(confirm.value && !matches)));
+        passwordStatus.textContent = !confirm.value ? '' : (matches ? 'Passwords match.' : 'Passwords do not match.');
+        passwordStatus.className = matches ? 'password-match' : 'inline-error';
+    }
+    password.addEventListener('input', passwordFeedback); confirm.addEventListener('input', passwordFeedback);
     form.querySelector('[data-password-toggle]').addEventListener('click', event => {
         const visible = password.type === 'password';
         password.type = visible ? 'text' : 'password';

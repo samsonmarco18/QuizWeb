@@ -8,6 +8,7 @@ $createdName = $_SESSION['signup_created_name'] ?? null;
 unset($_SESSION['signup_created_name']);
 $role = is_string($_POST['role'] ?? null) ? $_POST['role'] : 'student';
 $profile = profile_input($_POST);
+if ($role === 'teacher') { $profile['student_number'] = ''; $profile['year_level'] = ''; }
 $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
 $email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

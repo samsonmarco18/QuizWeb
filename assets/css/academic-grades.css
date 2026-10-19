@@ -290,3 +290,24 @@ body.ui-refined.academic-student-detail .academic-inline-form { gap: 10px; margi
 .gradebook-page .academic-submission p { overflow-wrap: anywhere; white-space: normal; }
 .gradebook-page .academic-submission label { margin-top: 10px; }
 .gradebook-page .academic-inline-form .academic-submission { flex: 1 0 100%; }
+
+/* Fit filters to the table panel, including when a grade breakdown is open. */
+.gradebook-page .academic-gradebook { container: gradebook / inline-size; }
+body.ui-refined.gradebook-page .academic-filter-bar {
+    display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+    align-items: end; gap: 14px; margin-bottom: 20px;
+}
+body.ui-refined.gradebook-page .academic-filter-bar label { min-width: 0; margin: 0; }
+body.ui-refined.gradebook-page .academic-filter-bar label:first-of-type { grid-column: 1 / -1; }
+body.ui-refined.gradebook-page .academic-filter-bar :is(input,select) { min-width: 0; min-height: 44px; font-size: 12px; padding: 10px 12px; }
+.academic-filter-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; grid-column: 1 / -1; min-width: 0; }
+body.ui-refined.gradebook-page .academic-filter-actions .button { min-height: 44px; padding: 10px 14px; white-space: nowrap; }
+@container gradebook (min-width:560px) {
+    body.ui-refined.gradebook-page .academic-filter-bar { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    body.ui-refined.gradebook-page .academic-filter-bar label:first-of-type { grid-column: auto; }
+    .academic-filter-actions { grid-column: auto; }
+}
+@container gradebook (min-width:1040px) {
+    body.ui-refined.gradebook-page .academic-filter-bar { grid-template-columns: minmax(180px,1.5fr) repeat(3,minmax(120px,1fr)) 85px auto; gap: 12px; }
+}
+@media(max-width:420px) { .academic-filter-actions .button { flex: 1 1 auto; justify-content: center; } }

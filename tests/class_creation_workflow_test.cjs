@@ -30,16 +30,26 @@ field('creation_config[categories][0][weight]').value=50;
 next(); assert.equal(active(), 2, 'Invalid category total blocks review');
 assert.match(d.querySelector('[data-class-grade-error]').textContent, /100%/);
 field('grading_template').value='coursework';
-field('grading_template').dispatchEvent(new w.Event('change'));
+field('grading_template').dispatchEvent(new w.Event('input', {bubbles:true}));
+field('grading_template').dispatchEvent(new w.Event('change', {bubbles:true}));
+assert.equal(field('grading_template').value, 'coursework', 'Template selection must not be reclassified as custom');
 assert.equal(field('creation_config[categories][1][weight]').value, '50');
 field('creation_config[periods][0][weight]').value=50;
 next(); assert.equal(active(), 2, 'Invalid period total blocks review');
 field('creation_config[periods][0][weight]').value=30;
 next(); assert.equal(active(), 3);
 assert.match(d.querySelector('[data-class-review]').textContent, /Science/);
+assert.equal(d.querySelectorAll('.class-review-card').length, 3);
 assert.match(d.querySelector('[data-class-review]').textContent, /Coursework Focus/);
 d.querySelector('[data-class-back]').click(); assert.equal(active(), 2);
 assert.equal(field('creation_config[categories][1][weight]').value, '50');
 next();
 assert.equal(form.dispatchEvent(new w.Event('submit', {cancelable:true})), true, 'Valid review allows submission');
+if (process.env.CLASS_CREATION_PREVIEW) {
+ d.head.innerHTML = '<meta name="viewport" content="width=device-width,initial-scale=1">' + ['site','refinements','visual-polish','game-experience','class-creation'].map(name => `<style>${fs.readFileSync(`assets/css/${name}.css`,'utf8')}</style>`).join('');
+ d.body.className = 'ui-refined theme-dark classes-page';
+ form.classList.add('glass','panel','class-creation-panel');
+ form.style.margin = '24px auto';
+ fs.writeFileSync(process.env.CLASS_CREATION_PREVIEW, dom.serialize());
+}
 console.log('Class creation steps, required fields, templates, weight validation, review, back navigation, and submission passed.');

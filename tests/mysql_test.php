@@ -60,7 +60,7 @@ try {
     $storedAttempt = hydrate_attempt($pdo->query('SELECT * FROM attempts WHERE id = 1')->fetch());
     mysql_check($storedAttempt['answers']['_quiz_snapshot']['title'] === 'Original quiz', 'Historical quiz snapshot lost.');
     $book = grading_load($pdo, 100);
-    grading_mutate($pdo, 100, $teacher, 'publish', ['revision' => (string) $book['revision'], 'confirm' => 'yes']);
+    grading_mutate($pdo, 100, $teacher, 'publish', ['revision' => (string) $book['revision'], 'confirm' => 'yes', 'final_confirm' => 'yes', 'ignore_warnings_hash' => academic_review_hash($book, hydrate_classroom($pdo->query('SELECT * FROM classrooms WHERE id = 100')->fetch()), array_map('hydrate_attempt', $pdo->query('SELECT * FROM attempts WHERE classroom_id = 100')->fetchAll()))]);
     mysql_check(grading_load($pdo, 100)['published']['students'][6]['overall'] == 80, 'Published score incorrect.');
     $pdo->beginTransaction();
     insert_classroom_record($pdo, array_replace($class, ['name' => 'Must roll back']));

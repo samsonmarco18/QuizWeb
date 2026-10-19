@@ -31,20 +31,46 @@
         return !error;
     }
     function review() {
-        const container = form.querySelector('[data-class-review]');
-        container.replaceChildren();
-        const list = document.createElement('dl');
-        for (const input of form.querySelectorAll('input, select, textarea')) {
-            if (input.type === 'hidden') continue;
-            const label = input.closest('label')?.querySelector('span')?.textContent;
-            if (!label) continue;
-            const term = document.createElement('dt');
-            const value = document.createElement('dd');
-            term.textContent = label;
-            value.textContent = input.tagName === 'SELECT' ? input.selectedOptions[0]?.textContent : (input.value || 'None');
-            list.append(term, value);
+        const container = form.querySelector('[data-class-review]'); container.replaceChildren();
+        function pair(list, label, text) {
+            const term = document.createElement('dt'), value = document.createElement('dd');
+            term.textContent = label; value.textContent = text || 'Not specified'; list.append(term, value);
         }
-        container.append(list);
+        const text = input => input.tagName === 'SELECT' ? input.selectedOptions[0]?.textContent : input.value;
+        for (const [index, title] of ['Class details', 'Academic details', 'Grade configuration'].entries()) {
+            const card = document.createElement('section'); card.className = 'class-review-card';
+            const heading = document.createElement('h4'); heading.textContent = title;
+            const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'button button-secondary'; edit.textContent = 'Edit'; edit.addEventListener('click', () => go(index));
+            card.append(heading, edit);
+            if (index < 2) {
+                const list = document.createElement('dl');
+                for (const input of panels[index].querySelectorAll('input, select, textarea')) {
+                    if (input.type === 'hidden') continue;
+                    const label = input.closest('label')?.querySelector('span')?.textContent;
+                    if (label) pair(list, label.replace(' (optional for semester mean)', ''), text(input));
+                }
+                card.append(list);
+            } else {
+                const grid = document.createElement('div'); grid.className = 'class-grading-review';
+                for (const group of ['Categories', 'Grading periods', 'Rules', 'Grade scale']) {
+                    const block = document.createElement('div'), title = document.createElement('h5'), list = document.createElement('dl'); title.textContent = group;
+                    if (group === 'Categories' || group === 'Grading periods') {
+                        const key = group === 'Categories' ? 'categories' : 'periods';
+                        panels[2].querySelectorAll(`input[name^="creation_config[${key}]"][name$="[name]"]`).forEach(input => pair(list, input.value, `${field(input.name.replace('[name]', '[weight]')).value}%`));
+                    } else if (group === 'Grade scale') {
+                        const bands = [...panels[2].querySelectorAll('input[name^="creation_config[scale]"][name$="[min]"]')].sort((a,b) => Number(a.value)-Number(b.value));
+                        bands.forEach((input,i) => pair(list, field(input.name.replace('[min]', '[label]')).value, `${input.value}%${i === bands.length - 1 ? ' to 100%' : ` to below ${bands[i+1].value}%`}`));
+                    } else {
+                        pair(list, 'Template', text(field('grading_template')));
+                        pair(list, 'Passing grade', `${field('creation_config[passing]').value}%`);
+                        pair(list, 'Missing scores', text(field('creation_config[missing_policy]')));
+                    }
+                    block.append(title, list); grid.append(block);
+                }
+                card.append(grid);
+            }
+            container.append(card);
+        }
     }
     function show(index, focus = true) {
         current = index;
@@ -87,7 +113,7 @@
             else if (field(`creation_config[${key}]`)) field(`creation_config[${key}]`).value = value;
         }
     });
-    panels[2].addEventListener('input', () => { field('grading_template').value = 'custom'; });
+    panels[2].addEventListener('input', event => { if (event.target.name !== 'grading_template') field('grading_template').value = 'custom'; });
     form.addEventListener('submit', event => {
         if (current !== 3) { event.preventDefault(); go(current + 1); return; }
         for (let i = 0; i < 3; i++) {
