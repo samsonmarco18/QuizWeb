@@ -62,9 +62,19 @@ render_header('Register', 'auth-page signup-page');
             <h1 tabindex="-1">Create your account</h1>
             <label><span>Full Name</span><input name="name" autocomplete="name" maxlength="150" required value="<?php echo esc($name); ?>" placeholder="Enter your full name"></label>
             <label><span>Email Address</span><input type="email" name="email" autocomplete="email" maxlength="190" required value="<?php echo esc($email); ?>" placeholder="Enter your email address"></label>
-            <label><span>Password</span><span class="signup-password"><input type="password" name="password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" required placeholder="Create a password" aria-describedby="password-guidance"><button type="button" data-password-toggle aria-label="Show password" aria-pressed="false">Show</button></span></label>
+            <label><span>Password</span><span class="signup-password"><input type="password" name="password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" required placeholder="Create a password" aria-describedby="password-guidance password-strength-text"><button type="button" data-password-toggle aria-label="Show password" aria-pressed="false">Show</button></span></label>
             <label><span>Confirm Password</span><input type="password" name="confirm_password" autocomplete="new-password" required placeholder="Repeat your password"></label>
-            <small id="password-guidance">8+ characters, including a letter and a number.</small>
+            <div class="signup-password-feedback" data-password-feedback>
+                <div class="password-strength-heading"><span>Password strength</span><strong id="password-strength-text" role="status" aria-live="polite">Enter a password</strong></div>
+                <div class="password-strength-meter" role="meter" aria-label="Password strength" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-valuetext="Enter a password"><span></span><span></span><span></span><span></span></div>
+                <ul id="password-guidance" class="password-requirements" aria-label="Password requirements">
+                    <li data-password-rule="length"><span aria-hidden="true"></span>At least 8 characters</li>
+                    <li data-password-rule="letter"><span aria-hidden="true"></span>At least one letter</li>
+                    <li data-password-rule="number"><span aria-hidden="true"></span>At least one number</li>
+                    <li data-password-rule="match"><span aria-hidden="true"></span>Passwords match</li>
+                </ul>
+                <p class="password-ready" data-password-ready role="status" aria-live="polite">Complete the requirements above to continue.</p>
+            </div>
             <label><span>I am joining as</span><select name="role"><option value="student"<?php echo $role === 'student' ? ' selected' : ''; ?>>Student</option><option value="teacher"<?php echo $role === 'teacher' ? ' selected' : ''; ?>>Teacher</option></select></label>
         </section>
         <section data-signup-step="1" class="signup-step">

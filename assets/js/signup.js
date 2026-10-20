@@ -59,12 +59,41 @@
     back.addEventListener('click', () => showStep(current - 1));
     form.elements.namedItem('role').addEventListener('change', updateRole);
     const passwordStatus = document.createElement('p'); passwordStatus.id = 'password-match-status'; confirm.setAttribute('aria-describedby', passwordStatus.id); passwordStatus.setAttribute('role', 'status'); passwordStatus.setAttribute('aria-live', 'polite'); confirm.closest('label').append(passwordStatus);
+    const feedback = form.querySelector('[data-password-feedback]');
     function passwordFeedback() {
         const matches = password.value === confirm.value;
         confirm.setCustomValidity(confirm.value && !matches ? 'Passwords do not match.' : '');
         confirm.setAttribute('aria-invalid', String(Boolean(confirm.value && !matches)));
         passwordStatus.textContent = !confirm.value ? '' : (matches ? 'Passwords match.' : 'Passwords do not match.');
-        passwordStatus.className = matches ? 'password-match' : 'inline-error';
+        passwordStatus.className = matches ? 'password-match-status is-match' : 'password-match-status is-mismatch';
+        if (!feedback) return;
+        const value = password.value;
+        const rules = { length: value.length >= 8, letter: /[A-Za-z]/.test(value), number: /[0-9]/.test(value), match: Boolean(value && confirm.value && matches) };
+        const valid = rules.length && rules.letter && rules.number;
+        // Strength is guidance; the checklist mirrors the server's required rules.
+        let score = !value ? 0 : !valid ? 1 : 2;
+        if (valid && value.length >= 12) score++;
+        if (valid && value.length >= 12 && /[^A-Za-z0-9]/.test(value)) score++;
+        const strength = ['Enter a password', 'Weak', 'Fair', 'Good', 'Strong'][score];
+        feedback.dataset.strength = String(score);
+        feedback.querySelector('#password-strength-text').textContent = strength;
+        const meter = feedback.querySelector('[role="meter"]');
+        meter.setAttribute('aria-valuenow', String(score));
+        meter.setAttribute('aria-valuetext', strength);
+        [...meter.children].forEach((segment, index) => segment.classList.toggle('is-filled', index < score));
+        Object.entries(rules).forEach(([rule, met]) => {
+            const item = feedback.querySelector(`[data-password-rule="${rule}"]`);
+            item.classList.toggle('is-met', met);
+            item.querySelector('span').textContent = met ? '?' : '';
+        });
+        password.classList.toggle('password-valid', Boolean(valid));
+        confirm.classList.toggle('password-valid', rules.match && valid);
+        const ready = valid && rules.match;
+        feedback.classList.toggle('is-ready', ready);
+        feedback.querySelector('[data-password-ready]').textContent = ready
+            ? 'All password requirements met. You?re ready to continue.'
+            : valid ? 'Password requirements met. Confirm your password to continue.'
+            : 'Use 8+ characters with a letter and a number. For more strength, try 12+ characters and a symbol.';
     }
     password.addEventListener('input', passwordFeedback); confirm.addEventListener('input', passwordFeedback);
     form.querySelector('[data-password-toggle]').addEventListener('click', event => {
@@ -86,6 +115,7 @@
         submit.disabled = true;
         submit.textContent = 'Creating account...';
     });
+    passwordFeedback();
     updateRole();
     showStep(0, false);
 })();

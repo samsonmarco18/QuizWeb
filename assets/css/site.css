@@ -4486,3 +4486,41 @@ body:not(.theme-dark) .button-primary { color: #fff; }
     .messenger-thread-top { min-height: 52px; padding: 8px 12px; }
     .messenger-group-item time { display: none; }
 }
+
+/* Registration password feedback and aligned account fields. */
+.signup-page .signup-step > label { align-content: start; }
+.signup-page .signup-card label > .signup-password { display: block; position: relative; margin: 0; }
+.signup-page .signup-card .signup-password input { display: block; width: 100%; margin: 0; padding-right: 58px; }
+.signup-page .signup-password-feedback { grid-column: 1 / -1; min-width: 0; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--text) 3%, transparent); --strength-color: var(--muted); }
+.signup-page .password-strength-heading { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+.signup-page .password-strength-heading strong { color: var(--strength-color); font-size: 11px; }
+.signup-page .password-strength-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.signup-page .password-strength-meter > span { height: 5px; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--muted) 20%, transparent); }
+.signup-page .password-strength-meter > span::after { content: ''; display: block; height: 100%; background: var(--strength-color); transform: scaleX(0); transform-origin: left; transition: transform 300ms ease, background-color 250ms ease; }
+.signup-page .password-strength-meter > .is-filled::after { transform: scaleX(1); }
+.signup-page [data-strength="1"] { --strength-color: #c65c45; }
+.signup-page [data-strength="2"] { --strength-color: #a4771e; }
+.signup-page [data-strength="3"], .signup-page [data-strength="4"] { --strength-color: #27834b; }
+body.theme-dark.signup-page [data-strength="1"] { --strength-color: #ffab98; }
+body.theme-dark.signup-page [data-strength="2"] { --strength-color: #eac46e; }
+body.theme-dark.signup-page [data-strength="3"], body.theme-dark.signup-page [data-strength="4"] { --strength-color: #79dda0; }
+.signup-page .password-requirements { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.signup-page .password-requirements li { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); transition: color 200ms ease; }
+.signup-page .password-requirements li > span { display: inline-grid; place-items: center; flex: 0 0 16px; height: 16px; border: 1px solid currentColor; border-radius: 50%; font-size: 10px; transition: background-color 200ms ease, transform 200ms ease; }
+.signup-page .password-requirements .is-met, .signup-page .password-match-status.is-match, .signup-page .is-ready .password-ready { color: #27834b; }
+body.theme-dark.signup-page .password-requirements .is-met, body.theme-dark.signup-page .password-match-status.is-match, body.theme-dark.signup-page .is-ready .password-ready { color: #79dda0; }
+.signup-page .password-requirements .is-met > span { background: color-mix(in srgb, currentColor 12%, transparent); animation: password-check-in 220ms ease; }
+.signup-page .password-ready, .signup-page .password-match-status { margin: 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.signup-page .password-match-status:empty { display: none; }
+.signup-page .password-match-status.is-mismatch { color: #c65c45; }
+body.theme-dark.signup-page .password-match-status.is-mismatch { color: #ffab98; }
+.signup-page .signup-card input.password-valid { border-color: #27834b; transition: border-color 200ms ease, box-shadow 200ms ease; }
+body.theme-dark.signup-page .signup-card input.password-valid { border-color: #79dda0; }
+@keyframes password-check-in { from { transform: scale(.75); } to { transform: scale(1); } }
+@media (max-width: 480px) {
+    .signup-page .signup-step[data-signup-step="0"] { grid-template-columns: minmax(0, 1fr); }
+    .signup-page .password-requirements { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .signup-page .password-strength-meter > span::after, .signup-page .password-requirements li, .signup-page .password-requirements li > span, .signup-page .signup-card input.password-valid { transition: none; animation: none; }
+}
