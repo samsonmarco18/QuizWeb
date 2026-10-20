@@ -20,6 +20,8 @@
         const preview = form.querySelector('[data-profile-photo-preview] .profile-photo-avatar');
         const status = form.querySelector('[data-profile-photo-status]');
         const savedPhotoUrl = preview.querySelector('img')?.getAttribute('src');
+        const photoSave = form.querySelector('[data-profile-photo-save]');
+        form.querySelectorAll('[data-profile-photo-choose]').forEach(button => button.addEventListener('click', () => input.click()));
         let previewUrl;
         function restorePhoto() {
             if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -31,6 +33,7 @@
             }
         }
         input.addEventListener('change', () => {
+            if (photoSave) photoSave.hidden = true;
             const file = input.files?.[0];
             if (!file) { restorePhoto(); status.textContent = ''; return; }
             if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
@@ -45,6 +48,7 @@
             const image = document.createElement('img');
             image.className = 'profile-avatar-image'; image.alt = ''; image.src = previewUrl;
             preview.append(image);
+            if (photoSave) photoSave.hidden = false;
             status.textContent = 'Photo selected. Upload it to save your changes.';
         });
         form.addEventListener('submit', (event) => {

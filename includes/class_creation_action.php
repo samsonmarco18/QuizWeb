@@ -7,6 +7,7 @@ if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_P
     if ($name === '' || $subject === '') {
         $errors[] = 'Classroom name and subject are required.';
     }
+    if (mb_strlen($description) > 500) $errors[] = 'Keep the classroom description to 500 characters.';
     try {
         $academicMeta = academic_validate_meta($_POST, academic_settings());
         $templateId = $_POST['grading_template'] ?? '';

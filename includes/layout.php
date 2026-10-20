@@ -115,6 +115,15 @@ function nav_icon(string $name): string
         'play' => '<path d="m8 4 12 8-12 8V4Z"/>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
         'bell' => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+        'camera' => '<path d="M8 5l2-2h4l2 2h5v15H3V5h5Z"/><circle cx="12" cy="12" r="4"/>',
+        'upload' => '<path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6"/>',
+        'trash' => '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
+        'save' => '<path d="M4 3h13l4 4v14H3V3h1Zm3 0v7h10V3M7 21v-7h10v7"/>',
+        'id-card' => '<rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M5 16a3 3 0 0 1 6 0m3-7h4m-4 4h4m-4 4h3"/>',
+        'layers' => '<path d="m12 2 10 5-10 5L2 7l10-5Zm-10 10 10 5 10-5M2 17l10 5 10-5"/>',
+        'graduation' => '<path d="m2 8 10-5 10 5-10 5L2 8Zm4 2v7c4 3 8 3 12 0v-7m4-2v8"/>',
+        'plus' => '<path d="M12 4v16M4 12h16"/>',
+        'info' => '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
 }
@@ -249,6 +258,8 @@ function render_header(string $title, string $pageClass = '', array $styles = []
                     <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/student_results.php' ? ' is-active' : ''; ?>" href="/QuizWeb/student_results.php"><?php echo nav_icon('chart'); ?><span>Results</span></a>
                     <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/grades.php' ? ' is-active' : ''; ?>" href="/QuizWeb/grades.php"><?php echo nav_icon('chart'); ?><span>My Grades</span></a>
                 </nav>
+            <?php elseif (str_contains($pageClass, 'class-creation-page')): ?>
+            <h2>Classrooms</h2><nav aria-label="Your classrooms"><a class="classroom-sidebar-link is-active" href="/QuizWeb/classes.php?create=1" aria-current="page"><?php echo nav_icon('plus'); ?><span>Create a classroom</span></a><a class="classroom-sidebar-link" href="/QuizWeb/classes.php"><?php echo nav_icon('Dashboard'); ?><span>Your classrooms</span></a><a class="classroom-sidebar-link" href="/QuizWeb/archive.php"><?php echo nav_icon('archive'); ?><span>Archived</span></a></nav>
             <?php else: ?>
             <h2>Classrooms</h2>
             <nav aria-label="Your classrooms">

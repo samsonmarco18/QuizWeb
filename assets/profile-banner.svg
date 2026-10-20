@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="270" viewBox="0 0 640 270" fill="none">
+  <path d="M-40 300C120 110 340 150 700-40M80 330C250 170 470 230 690 80" stroke="#20b8a4" stroke-opacity=".065" stroke-width="100"/>
+  <g transform="translate(345 38) rotate(-12 80 95)" stroke="#73e5cc" stroke-opacity=".42" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="153" height="188" rx="7"/>
+    <circle cx="76" cy="55" r="17" fill="#73e5cc" fill-opacity=".2" stroke="none"/>
+    <path d="M48 104V94a28 28 0 0 1 56 0v10Z" fill="#73e5cc" fill-opacity=".2" stroke="none"/>
+    <path d="M20 133h111M20 155h65"/>
+  </g>
+  <g transform="translate(521 51) rotate(34)" stroke="#a0f4df" stroke-opacity=".58" stroke-width="6" stroke-linejoin="round">
+    <path d="M0 0h21v126l-10.5 28L0 126V0Z"/>
+    <path d="M0 119h21M5 137h11M11 6v111"/>
+  </g>
+  <g fill="#95e8d4" fill-opacity=".48">
+    <path d="M280 74c2 14 3 16 14 18-11 2-12 4-14 18-2-14-3-16-14-18 11-2 12-4 14-18ZM235 120c2 12 3 14 12 16-9 2-10 4-12 16-2-12-3-14-12-16 9-2 10-4 12-16ZM490 5c2 15 3 18 15 20-12 2-13 5-15 20-2-15-3-18-15-20 12-2 13-5 15-20ZM529 26c1 9 2 11 9 12-7 1-8 3-9 12-1-9-2-11-9-12 7-1 8-3 9-12ZM327 207c1 10 2 12 10 13-8 1-9 3-10 13-1-10-2-12-10-13 8-1 9-3 10-13Z"/>
+  </g>
+</svg>

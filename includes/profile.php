@@ -128,13 +128,14 @@ function profile_errors(array $profile, string $role): array {
     }
     return $errors;
 }
-function render_profile_fields(array $values, array $keys, string $role = 'student'): void {
+function render_profile_fields(array $values, array $keys, string $role = 'student', bool $withIcons = false): void {
     foreach ($keys as $key) {
         $required = $role === 'student' || in_array($key, ['birthdate', 'gender'], true);
         $academic = in_array($key, ['student_number', 'program', 'year_level'], true);
         ?>
         <label<?php echo $role !== 'student' && in_array($key, ['student_number', 'year_level'], true) ? ' hidden' : ''; ?>>
             <span><span<?php echo $key === 'program' ? ' data-program-label' : ''; ?>><?php echo esc($key === 'program' && $role === 'teacher' ? 'Department' : profile_labels()[$key]); ?></span><?php if ($academic): ?><small data-optional-label<?php echo $role === 'student' ? ' hidden' : ''; ?>> (optional for teachers)</small><?php endif; ?></span>
+            <?php if ($withIcons): $fieldIcons = ['student_number' => 'id-card', 'birthdate' => 'calendar', 'gender' => 'Join Class', 'year_level' => 'layers', 'program' => 'graduation']; ?><span class="profile-input-wrap"><span class="profile-input-icon" aria-hidden="true"><?php echo nav_icon($fieldIcons[$key] ?? 'user'); ?></span><?php endif; ?>
             <?php if (isset(profile_options()[$key])): ?>
                 <select name="<?php echo esc($key); ?>" <?php echo $required ? 'required' : ''; ?> <?php echo $academic ? 'data-student-required' : ''; ?>>
                     <option value="">Select <?php echo esc(strtolower(profile_labels()[$key])); ?></option>
@@ -143,6 +144,7 @@ function render_profile_fields(array $values, array $keys, string $role = 'stude
             <?php else: ?>
                 <input type="<?php echo $key === 'birthdate' ? 'date' : 'text'; ?>" name="<?php echo esc($key); ?>" value="<?php echo esc($values[$key] ?? ''); ?>" <?php echo $required ? 'required' : ''; ?> <?php echo $academic ? 'data-student-required' : ''; ?> <?php echo $key === 'birthdate' ? 'min="1900-01-01" max="' . date('Y-m-d') . '" autocomplete="bday"' : 'maxlength="150"'; ?> placeholder="<?php echo esc($key === 'program' ? ($role === 'teacher' ? 'e.g. Department of Information Technology' : 'e.g. BS Information Technology') : 'Enter your student number'); ?>">
             <?php endif; ?>
+            <?php if ($withIcons): ?></span><?php endif; ?>
         </label>
         <?php
     }

@@ -6,6 +6,7 @@ const php = process.env.PHP_BINARY || 'C:/xampppp/php/php.exe';
 const html = execFileSync(php, ['-r', `
 function esc($v) { return htmlspecialchars((string)$v, ENT_QUOTES); }
 function form_csrf() { return 'test'; }
+ $layout=file_get_contents('includes/layout.php'); $start=strpos($layout, 'function nav_icon('); $end=strpos($layout, 'function current_path(', $start); eval(substr($layout, $start, $end-$start));
 function academic_settings() { return ['years'=>['2026-2027'], 'semesters'=>['First Semester']]; }
 function academic_periods() { return [['id'=>'prelim','name'=>'Prelim','weight'=>30],['id'=>'midterm','name'=>'Midterm','weight'=>30],['id'=>'finals','name'=>'Finals','weight'=>40]]; }
 require 'includes/grading.php'; require 'includes/academic_ui.php';
@@ -45,11 +46,47 @@ d.querySelector('[data-class-back]').click(); assert.equal(active(), 2);
 assert.equal(field('creation_config[categories][1][weight]').value, '50');
 next();
 assert.equal(form.dispatchEvent(new w.Event('submit', {cancelable:true})), true, 'Valid review allows submission');
+d.querySelector('[data-class-step="2"]').click();
+d.querySelector('[data-class-add-category]').click();
+assert.equal(d.querySelectorAll('[data-class-category-row]').length, 4);
+const added = d.querySelector('[data-class-category-row]:last-child');
+added.querySelector('input[name$="[name]"]').value = 'Laboratory';
+added.querySelector('input[name$="[weight]"]').value = 10;
+added.querySelector('input[name$="[weight]"]').dispatchEvent(new w.Event('input', {bubbles:true}));
+assert.equal(d.querySelector('[data-class-category-total]').textContent, '110%');
+next(); assert.equal(active(), 2, 'Added categories participate in weight validation');
+field('creation_config[categories][0][weight]').value = 10;
+field('creation_config[categories][0][weight]').dispatchEvent(new w.Event('input', {bubbles:true}));
+assert.equal(d.querySelector('[data-class-category-total]').textContent, '100%');
+d.querySelector('[data-class-add-scale]').click();
+assert.equal(d.querySelectorAll('[data-class-scale-row]').length, 4);
+next(); assert.equal(active(), 3);
+assert.match(d.querySelector('[data-class-review]').textContent, /Laboratory/);
+assert.match(d.querySelector('.class-review-card').textContent, /Assigned teacher/);
+d.querySelector('[data-class-step="2"]').click();
+d.querySelector('[data-class-category-row]:last-child [data-class-remove-category]').click();
+assert.equal(d.querySelectorAll('[data-class-category-row]').length, 3);
+while (!d.querySelector('[data-class-add-category]').disabled) d.querySelector('[data-class-add-category]').click();
+assert.equal(d.querySelectorAll('[data-class-category-row]').length, 8);
+while (!d.querySelector('[data-class-add-scale]').disabled) d.querySelector('[data-class-add-scale]').click();
+assert.equal(d.querySelectorAll('[data-class-scale-row]').length, 10);
+field('grading_template').value = 'balanced'; field('grading_template').dispatchEvent(new w.Event('change', {bubbles:true}));
+assert.equal(d.querySelectorAll('[data-class-category-row]').length, 3, 'Applying a template replaces custom categories');
+assert.equal(d.querySelectorAll('[data-class-scale-row]').length, 3, 'Applying a template replaces custom scale ranges');
+assert.equal(d.querySelector('[data-class-category-total]').textContent, '100%');
+assert.equal(new Set([...d.querySelectorAll('[data-class-category-row] input[type="hidden"]')].map(input => input.value)).size, 3);
+field('description').value = 'A class for Grade 10 students focusing on Earth and Life Science.';
+field('description').dispatchEvent(new w.Event('input', {bubbles:true}));
+assert.equal(d.querySelector('[data-class-description-count]').textContent, `${field('description').value.length}/500`);
+next(); assert.equal(active(), 3);
 if (process.env.CLASS_CREATION_PREVIEW) {
+ [...form.querySelectorAll('input')].forEach(input => input.setAttribute('value', input.value));
+ [...form.querySelectorAll('select')].forEach(select => [...select.options].forEach(option => option.toggleAttribute('selected', option.selected)));
+ [...form.querySelectorAll('textarea')].forEach(input => { input.textContent = input.value; });
  d.head.innerHTML = '<meta name="viewport" content="width=device-width,initial-scale=1">' + ['site','refinements','visual-polish','game-experience','class-creation'].map(name => `<style>${fs.readFileSync(`assets/css/${name}.css`,'utf8')}</style>`).join('');
  d.body.className = 'ui-refined theme-dark classes-page';
  form.classList.add('glass','panel','class-creation-panel');
  form.style.margin = '24px auto';
  fs.writeFileSync(process.env.CLASS_CREATION_PREVIEW, dom.serialize());
 }
-console.log('Class creation steps, required fields, templates, weight validation, review, back navigation, and submission passed.');
+console.log('Class creation steps, required fields, dynamic category/scale limits, template resets, live totals, review, back navigation, and submission passed.');

@@ -1,53 +1,69 @@
 <?php
 $creationDraft = is_array($_POST['creation_config'] ?? null) ? $_POST['creation_config'] : grading_templates()['balanced']['config'];
+$creationSettings = academic_settings();
 ?>
-<form method="post" class="stack-form" id="class-creation">
+<form method="post" id="class-creation">
     <input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>">
     <input type="hidden" name="action" value="create_classroom">
     <?php foreach ($errors as $error): ?><p class="inline-error" role="alert"><?php echo esc($error); ?></p><?php endforeach; ?>
-    <nav class="builder-steps" aria-label="Class creation steps" data-class-navigation hidden>
-        <?php foreach (['Class details', 'Academic details', 'Grade configuration', 'Review'] as $index => $label): ?><button type="button" data-class-step="<?php echo $index; ?>"><?php echo ($index + 1) . '. ' . $label; ?></button><?php endforeach; ?>
+    <nav class="builder-steps class-creation-steps" aria-label="Class creation steps" data-class-navigation hidden>
+        <?php foreach (['Class details', 'Academic details', 'Grade configuration', 'Review'] as $index => $label): ?><button type="button" data-class-step="<?php echo $index; ?>" data-class-label="<?php echo esc($label); ?>"><span class="class-step-number" aria-hidden="true"><?php echo $index + 1; ?></span><span><?php echo esc($label); ?></span></button><?php endforeach; ?>
     </nav>
-    <p data-class-status role="status" aria-live="polite"></p>
-    <section data-class-panel="0" class="stack-form">
-        <h3 tabindex="-1">Class details</h3>
-        <label><span>Classroom name</span><input name="name" maxlength="190" required placeholder="Grade 10 Science" value="<?php echo esc($_POST['name'] ?? ''); ?>"></label>
-        <label><span>Subject</span><input name="subject" maxlength="190" required placeholder="Earth and Life Science" value="<?php echo esc($_POST['subject'] ?? ''); ?>"></label>
-        <label><span>Description</span><textarea name="description" rows="3" placeholder="Add a short classroom description"><?php echo esc($_POST['description'] ?? ''); ?></textarea></label>
-        <label><span>Assigned teacher</span><input readonly value="<?php echo esc($user['name']); ?>"></label>
+    <div class="class-step-introduction"><p data-class-status role="status" aria-live="polite"></p><p data-class-step-help>Provide the basic information for your classroom.</p></div>
+    <section data-class-panel="0" class="class-details-grid">
+        <h3 tabindex="-1" class="class-visually-hidden">Class details</h3>
+        <label class="class-detail-field"><span class="class-field-icon" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span><span class="class-field-content"><span class="class-field-label">Classroom name <span class="class-required" aria-hidden="true">*</span></span><input name="name" maxlength="190" required placeholder="Enter classroom name (e.g., Grade 10 Science)" value="<?php echo esc($_POST['name'] ?? ''); ?>"><small>Choose a clear and unique name for your classroom.</small></span></label>
+        <label class="class-detail-field"><span class="class-field-icon" aria-hidden="true"><?php echo nav_icon('graduation'); ?></span><span class="class-field-content"><span class="class-field-label">Subject <span class="class-required" aria-hidden="true">*</span></span><input name="subject" list="class-subjects" maxlength="190" required placeholder="Select or enter subject" value="<?php echo esc($_POST['subject'] ?? ''); ?>"><small>Select or enter the subject for this classroom.</small></span></label>
+        <datalist id="class-subjects"><?php foreach (array_unique(array_column($myClassrooms ?? [], 'subject')) as $subject): ?><option value="<?php echo esc($subject); ?>"><?php endforeach; ?></datalist>
+        <label class="class-detail-field class-field-wide"><span class="class-field-icon" aria-hidden="true"><?php echo nav_icon('document'); ?></span><span class="class-field-content"><span class="class-field-label">Description</span><textarea name="description" maxlength="500" rows="3" placeholder="Add a short classroom description..."><?php echo esc($_POST['description'] ?? ''); ?></textarea><span class="class-description-help"><small>Provide a short description to help students understand the purpose of the classroom.</small><small data-class-description-count>0/500</small></span></span></label>
+        <label class="class-detail-field class-field-wide"><span class="class-field-icon" aria-hidden="true"><?php echo nav_icon('Join Class'); ?></span><span class="class-field-content"><span class="class-field-label">Assigned teacher <span class="class-required" aria-hidden="true">*</span></span><input readonly value="<?php echo esc($user['name']); ?>"><small>You will manage this classroom as its assigned teacher.</small></span></label>
     </section>
-    <section data-class-panel="1" class="stack-form">
-        <h3 tabindex="-1">Academic details</h3>
-        <?php render_academic_fields($_POST, academic_settings()); ?>
-        <p class="muted">Academic years and semesters are configured by your administrator.</p>
+    <section data-class-panel="1">
+        <div class="class-academic-card">
+            <div class="class-config-heading"><span class="class-heading-icon"><?php echo nav_icon('graduation'); ?></span><div><h3 tabindex="-1">Academic details</h3><p>Set the subject, section, and academic term for this classroom.</p></div></div>
+            <div class="class-academic-grid">
+                <?php
+                $academicFields = [
+                    'subject_code' => ['Subject code', 'Focus Practice', 'Enter the official subject code (e.g., ELS101).', null],
+                    'section' => ['Section', 'Join Class', 'Enter the section name (e.g., 10-A).', null],
+                    'academic_year' => ['Academic year', 'calendar', 'Select the academic year for this classroom.', $creationSettings['years']],
+                    'semester' => ['Semester', 'layers', 'Select the semester for this classroom.', $creationSettings['semesters']],
+                    'credit_units' => ['Credit units (optional for semester mean)', 'document', 'Enter the credit units for this subject (optional).', null],
+                    'required' => ['Required for semester result', 'star', 'Select if this subject is required for the semester result.', ['yes' => 'Required subject', 'no' => 'Optional / excluded from semester result']],
+                ];
+                foreach ($academicFields as $key => [$label, $icon, $help, $options]): $value = $_POST[$key] ?? ($key === 'required' ? 'yes' : ''); ?>
+                <label><span class="class-field-label"><?php echo esc($label); ?><?php if ($key !== 'credit_units'): ?> <span class="class-required" aria-hidden="true">*</span><?php endif; ?></span><span class="class-input-wrap"><span class="class-input-icon" aria-hidden="true"><?php echo nav_icon($icon); ?></span>
+                    <?php if ($options !== null): ?><select name="<?php echo esc($key); ?>" required aria-describedby="class-help-<?php echo esc($key); ?>"><?php if ($key !== 'required'): ?><option value="">Select <?php echo esc(strtolower($label)); ?></option><?php endif; ?><?php foreach ($options as $id => $option): $optionValue = $key === 'required' ? $id : $option; ?><option value="<?php echo esc($optionValue); ?>" <?php echo $value === $optionValue ? 'selected' : ''; ?>><?php echo esc($option); ?></option><?php endforeach; ?></select>
+                    <?php else: ?><input name="<?php echo esc($key); ?>" <?php echo $key === 'credit_units' ? 'type="number" min="0.01" max="100" step="0.01"' : 'required maxlength="' . ($key === 'section' ? 80 : 40) . '"'; ?> value="<?php echo esc((string) $value); ?>" placeholder="<?php echo $key === 'credit_units' ? 'Enter credit units' : ($key === 'subject_code' ? 'e.g., ELS101' : 'e.g., 10-A'); ?>" aria-describedby="class-help-<?php echo esc($key); ?>"><?php endif; ?>
+                </span><small id="class-help-<?php echo esc($key); ?>"><?php echo esc($help); ?></small></label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <p class="class-information-note"><?php echo nav_icon('info'); ?><span>The academic year and semester settings are configured by your administrator.</span></p>
     </section>
-    <section data-class-panel="2" class="stack-form">
-        <h3 tabindex="-1">Grade configuration</h3>
-        <label><span>Grading template</span><select name="grading_template"><?php foreach (grading_templates() as $id => $template): ?><option value="<?php echo esc($id); ?>" <?php echo ($_POST['grading_template'] ?? 'balanced') === $id ? 'selected' : ''; ?>><?php echo esc($template['name']); ?></option><?php endforeach; ?><option value="custom" <?php echo ($_POST['grading_template'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom</option></select></label>
-        <p class="muted">Templates fill in starting values. Edit the category names, weights, periods, and rules below.</p>
-        <fieldset class="stack-form"><legend>Category weights (total 100%)</legend>
-        <?php foreach ($creationDraft['categories'] ?? [] as $i => $category): ?>
-            <input type="hidden" name="creation_config[categories][<?php echo (int) $i; ?>][id]" value="<?php echo esc($category['id']); ?>">
-            <div class="split-fields"><label><span>Category name</span><input name="creation_config[categories][<?php echo (int) $i; ?>][name]" maxlength="50" required value="<?php echo esc($category['name']); ?>"></label><label><span>Weight (%)</span><input type="number" name="creation_config[categories][<?php echo (int) $i; ?>][weight]" min="0" max="100" step="0.01" required value="<?php echo esc((string) $category['weight']); ?>"></label></div>
-        <?php endforeach; ?></fieldset>
-        <fieldset class="stack-form"><legend>Grading periods (total 100%)</legend>
-        <?php foreach ($creationDraft['periods'] ?? academic_periods() as $i => $period): ?>
-            <input type="hidden" name="creation_config[periods][<?php echo (int) $i; ?>][id]" value="<?php echo esc($period['id']); ?>">
-            <input type="hidden" name="creation_config[periods][<?php echo (int) $i; ?>][name]" value="<?php echo esc($period['name']); ?>">
-            <label><span><?php echo esc($period['name']); ?> (%)</span><input type="number" name="creation_config[periods][<?php echo (int) $i; ?>][weight]" min="0" max="100" step="0.01" required value="<?php echo esc((string) $period['weight']); ?>"></label>
-        <?php endforeach; ?></fieldset>
-        <label><span>Passing grade (%)</span><input name="creation_config[passing]" type="number" min="0" max="100" step="0.01" required value="<?php echo esc((string) ($creationDraft['passing'] ?? 75)); ?>"></label>
-        <label><span>Missing scores</span><select name="creation_config[missing_policy]"><option value="exclude">Exclude ungraded scores</option><option value="zero" <?php echo ($creationDraft['missing_policy'] ?? '') === 'zero' ? 'selected' : ''; ?>>Count assigned missing scores as zero</option></select></label>
-        <fieldset class="stack-form"><legend>Grade scale</legend><p>Band minimums must be unique and start at 0.</p>
-        <?php foreach ($creationDraft['scale'] ?? [] as $i => $band): ?><div class="split-fields"><label><span>Minimum (%)</span><input name="creation_config[scale][<?php echo (int) $i; ?>][min]" type="number" min="0" max="100" step="0.01" required value="<?php echo esc((string) $band['min']); ?>"></label><label><span>Label</span><input name="creation_config[scale][<?php echo (int) $i; ?>][label]" maxlength="50" required value="<?php echo esc($band['label']); ?>"></label></div><?php endforeach; ?></fieldset>
+    <section data-class-panel="2">
+        <div class="class-grading-intro"><div class="class-config-card class-config-heading"><span class="class-heading-icon"><?php echo nav_icon('chart'); ?></span><div><h3 tabindex="-1">Grade configuration</h3><p>Choose a grading template or customize the weights, grading periods, and scale for this classroom.</p></div></div><label class="class-config-card class-template"><span>Grading template</span><span class="class-input-wrap"><span class="class-input-icon"><?php echo nav_icon('filter'); ?></span><select name="grading_template"><?php foreach (grading_templates() as $id => $template): ?><option value="<?php echo esc($id); ?>" <?php echo ($_POST['grading_template'] ?? 'balanced') === $id ? 'selected' : ''; ?>><?php echo esc($template['name']); ?></option><?php endforeach; ?><option value="custom" <?php echo ($_POST['grading_template'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom</option></select></span><small>Templates fill in starting values. You can still edit all fields.</small></label></div>
+        <div class="class-config-grid">
+            <fieldset class="class-config-card"><legend class="class-visually-hidden">Category weights</legend><div class="class-card-title"><div><h4>Category weights (total 100%)</h4><p>Add or edit the assessment categories and set their weights.</p></div><button class="button button-secondary" type="button" data-class-add-category><?php echo nav_icon('plus'); ?>Add category</button></div>
+                <div data-class-categories><?php foreach ($creationDraft['categories'] ?? [] as $i => $category): ?>
+                    <div class="class-category-row" data-class-category-row><input type="hidden" name="creation_config[categories][<?php echo (int) $i; ?>][id]" value="<?php echo esc($category['id']); ?>"><span class="class-row-icon" aria-hidden="true"><?php echo nav_icon('document'); ?></span><label class="class-category-name"><span class="class-visually-hidden">Category name</span><input name="creation_config[categories][<?php echo (int) $i; ?>][name]" maxlength="50" required value="<?php echo esc($category['name']); ?>"></label><label class="class-category-weight"><span>Weight (%)</span><span class="class-percent"><input type="number" name="creation_config[categories][<?php echo (int) $i; ?>][weight]" min="0" max="100" step="0.01" required value="<?php echo esc((string) $category['weight']); ?>"><span aria-hidden="true">%</span></span></label><button type="button" class="class-remove-row" data-class-remove-category aria-label="Remove category"><?php echo nav_icon('trash'); ?></button></div>
+                <?php endforeach; ?></div>
+                <div class="class-weight-total"><span><b aria-hidden="true">&Sigma;</b>Total weight</span><strong data-class-category-total aria-live="polite">100%</strong></div>
+            </fieldset>
+            <fieldset class="class-config-card"><legend class="class-visually-hidden">Grading periods</legend><h4>Grading periods (total 100%)</h4><p>Set the weight for each grading period.</p><div data-class-periods>
+                <?php foreach ($creationDraft['periods'] ?? academic_periods() as $i => $period): ?>
+                    <div class="class-period-row"><input type="hidden" name="creation_config[periods][<?php echo (int) $i; ?>][id]" value="<?php echo esc($period['id']); ?>"><input type="hidden" name="creation_config[periods][<?php echo (int) $i; ?>][name]" value="<?php echo esc($period['name']); ?>"><span class="class-period-initial" aria-hidden="true"><?php echo esc(substr($period['name'], 0, 1)); ?></span><label><span><?php echo esc($period['name']); ?> (%)</span><span class="class-percent"><input type="number" name="creation_config[periods][<?php echo (int) $i; ?>][weight]" min="0" max="100" step="0.01" required value="<?php echo esc((string) $period['weight']); ?>"><span aria-hidden="true">%</span></span></label></div>
+                <?php endforeach; ?></div><div class="class-weight-total"><span><b aria-hidden="true">&Sigma;</b>Total weight</span><strong data-class-period-total aria-live="polite">100%</strong></div>
+            </fieldset>
+            <div class="class-config-card class-rule-fields"><label><span>Passing grade (%)</span><small>Set the minimum overall grade required to pass.</small><span class="class-input-wrap"><span class="class-input-icon"><?php echo nav_icon('star'); ?></span><span class="class-percent"><input name="creation_config[passing]" type="number" min="0" max="100" step="0.01" required value="<?php echo esc((string) ($creationDraft['passing'] ?? 75)); ?>"><span aria-hidden="true">%</span></span></span></label><label><span>Missing scores</span><small>Choose how to handle missing or ungraded scores.</small><span class="class-input-wrap"><span class="class-input-icon"><?php echo nav_icon('graduation'); ?></span><select name="creation_config[missing_policy]"><option value="exclude">Exclude ungraded scores</option><option value="zero" <?php echo ($creationDraft['missing_policy'] ?? '') === 'zero' ? 'selected' : ''; ?>>Count assigned missing scores as zero</option></select></span></label></div>
+            <fieldset class="class-config-card"><legend class="class-visually-hidden">Grade scale</legend><h4>Grade scale</h4><p>Define the grade ranges and labels for this classroom.</p><div data-class-scales>
+                <?php foreach ($creationDraft['scale'] ?? [] as $i => $band): ?><div class="class-scale-row" data-class-scale-row><label><span>Minimum (%)</span><span class="class-percent"><input name="creation_config[scale][<?php echo (int) $i; ?>][min]" type="number" min="0" max="100" step="0.01" required value="<?php echo esc((string) $band['min']); ?>"><span aria-hidden="true">%</span></span></label><label><span>Label</span><input name="creation_config[scale][<?php echo (int) $i; ?>][label]" maxlength="50" required value="<?php echo esc($band['label']); ?>"></label><button type="button" class="class-remove-row" data-class-remove-scale aria-label="Remove scale range"><?php echo nav_icon('trash'); ?></button></div><?php endforeach; ?>
+                </div><button class="button button-secondary" type="button" data-class-add-scale><?php echo nav_icon('plus'); ?>Add scale range</button>
+            </fieldset>
+        </div>
         <p data-class-grade-error class="inline-error" role="alert" hidden></p>
     </section>
-    <section data-class-panel="3" class="stack-form">
-        <h3 tabindex="-1">Review your classroom</h3>
-        <div data-class-review></div>
-        <p>Your classroom and grade configuration will be saved together. You can share the join code after creation.</p>
-        <button class="button button-primary" type="submit">Create Classroom</button>
-    </section>
-    <div class="action-row" data-class-navigation hidden><button type="button" class="button button-secondary" data-class-back>Back</button><button type="button" class="button button-primary" data-class-next>Next</button></div>
+    <section data-class-panel="3"><h3 tabindex="-1" class="class-visually-hidden">Review your classroom</h3><div data-class-review></div><p class="class-information-note"><?php echo nav_icon('info'); ?><span>Your classroom and grade configuration will be saved together. You can always edit them later.</span></p></section>
+    <div class="class-creation-actions"><button type="button" class="button button-secondary" data-class-back data-class-navigation hidden><?php echo nav_icon('arrow-left'); ?>Back</button><button type="button" class="button button-primary" data-class-next data-class-navigation hidden>Next<?php echo nav_icon('arrow-right'); ?></button><button class="button button-primary" type="submit" data-class-submit>Create Classroom<?php echo nav_icon('arrow-right'); ?></button></div>
 </form>
 <script>window.classCreationTemplates = <?php echo json_encode(grading_templates(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>

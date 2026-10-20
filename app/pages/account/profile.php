@@ -32,31 +32,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-render_header('Profile Settings', 'profile-page');
+render_header('Profile Settings', 'profile-page', ['/QuizWeb/assets/css/profile.css']);
 ?>
 <section class="glass panel profile-settings">
-    <h1>Profile Settings</h1>
-    <p class="muted"><?php echo esc($user['name']); ?> &middot; <?php echo esc($user['email']); ?></p>
+    <header class="profile-page-heading"><span class="eyebrow"><?php echo esc(ucfirst($user['role'])); ?> portal</span><h1>Profile Settings</h1><p>Manage your personal information and account details.</p></header>
     <?php foreach ($errors as $error): ?><div class="inline-error" role="alert"><?php echo esc($error); ?></div><?php endforeach; ?>
     <form method="post" enctype="multipart/form-data" class="profile-photo-settings" data-profile-photo-form>
         <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['profile_csrf']); ?>">
-        <div data-profile-photo-preview><?php render_profile_avatar($user, 'profile-photo-preview'); ?></div>
+        <div class="profile-photo-portrait"><div data-profile-photo-preview><?php render_profile_avatar($user, 'profile-photo-preview'); ?></div><button class="profile-camera-button" type="button" data-profile-photo-choose aria-label="Change profile photo"><?php echo nav_icon('camera'); ?></button></div>
         <div class="profile-photo-controls">
             <h2>Profile photo</h2>
-            <label>Choose a photo<input type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp" data-profile-photo-input></label>
-            <p class="muted">JPG, PNG, or WebP. Maximum 2 MB. Visible to members of your classrooms.</p>
-            <div class="action-row">
-                <button class="button button-primary" type="submit" name="action" value="photo_upload">Upload photo</button>
-                <?php if (profile_photo_metadata($user)): ?><button class="button button-secondary" type="submit" name="action" value="photo_remove" formnovalidate>Remove photo</button><?php endif; ?>
+            <p>Choose a photo to personalize your account.</p>
+            <label class="profile-photo-file">Choose a photo<input type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp" data-profile-photo-input></label>
+            <div class="profile-photo-actions">
+                <button class="button button-primary" type="button" data-profile-photo-choose><?php echo nav_icon('upload'); ?>Upload photo</button>
+                <button class="button button-primary" type="submit" name="action" value="photo_upload" data-profile-photo-save hidden><?php echo nav_icon('save'); ?>Save photo</button>
+                <button class="button button-secondary" type="submit" name="action" value="photo_remove" formnovalidate <?php echo profile_photo_metadata($user) ? '' : 'disabled'; ?>><?php echo nav_icon('trash'); ?>Remove</button>
             </div>
+            <p class="profile-photo-guidance">JPG, PNG, or WebP. Maximum 2 MB. Visible to members of your classrooms.</p>
             <p data-profile-photo-status role="status"></p>
         </div>
     </form>
-    <form method="post" class="stack-form">
+    <form method="post" class="profile-details-form">
         <input type="hidden" name="action" value="details">
         <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['profile_csrf']); ?>">
-        <?php render_profile_fields($profile, array_keys(profile_labels()), $user['role']); ?>
-        <button class="button button-primary" type="submit">Save Changes</button>
+        <section class="profile-personal-panel" aria-labelledby="profile-personal-title">
+            <div class="profile-section-heading"><span class="profile-section-icon"><?php echo nav_icon('user'); ?></span><div><h2 id="profile-personal-title">Personal information</h2><p>Update your personal details. Keep your information accurate and up to date.</p></div></div>
+            <div class="profile-personal-grid"><?php render_profile_fields($profile, ['student_number', 'birthdate', 'gender', 'year_level', 'program'], $user['role'], true); ?></div>
+        </section>
+        <button class="button button-primary profile-save-button" type="submit"><?php echo nav_icon('save'); ?>Save Changes</button>
     </form>
 </section>
 <?php render_footer(); ?>
