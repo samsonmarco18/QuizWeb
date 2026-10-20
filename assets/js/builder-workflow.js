@@ -9,7 +9,7 @@
     const mode = () => form.elements.game_type.value;
     const cards = () => [...list.querySelectorAll('.question-card')];
     let step = 0, active = 0, submitting = false, leaving = false;
-    const snapshot = () => JSON.stringify([form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_period_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
+    const snapshot = () => JSON.stringify([form.elements.activity_type?.value, form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_period_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
     const original = window.quizBuilderUnsaved ? null : snapshot();
     const stepNames = ['Game', 'Details', 'Questions', 'Settings', 'Grading', 'Review'];
     const draftKey = `chalk-builder:${location.pathname}${location.search}`;
@@ -18,7 +18,7 @@
     function saveLocalDraft() {
         if (leaving) return;
         const fields = {};
-        ['title', 'description', 'due_at', 'mastery_threshold', 'grade_category_id', 'grade_period_id', 'grade_max_score', 'grade_attempt_policy', 'game_type'].forEach(name => { fields[name] = form.elements[name]?.value || ''; });
+        ['title', 'activity_type', 'description', 'due_at', 'mastery_threshold', 'grade_category_id', 'grade_period_id', 'grade_max_score', 'grade_attempt_policy', 'game_type'].forEach(name => { fields[name] = form.elements[name]?.value || ''; });
         try { localStorage.setItem(draftKey, JSON.stringify({version: 1, fields, questions: api.collect(), step})); } catch (_) { /* Private mode or full storage must not prevent saving. */ }
     }
     const node = (tag, text, cls) => {
@@ -151,6 +151,7 @@
         if (mode() === 'time_attack') settings.append(node('p', 'Each question allows 12 seconds. A timeout earns zero for that item.'));
         if (mode() === 'boss_battle') settings.append(node('p', 'Boss and shield start at 100. The run can end early when either reaches zero. Health never subtracts academic points.'));
         const review = document.getElementById('builder-review'); review.replaceChildren();
+        review.append(node('p', form.elements.activity_type?.value || 'Quiz'));
         review.append(node('h3', form.elements.title.value.trim() || 'Untitled activity'), node('p', `${window.quizBuilderModes[mode()]?.label} · ${questions.length} questions · ${questions.reduce((sum, q) => sum + q.points, 0)} points`), node('p', form.elements.due_at.value ? `Deadline: ${form.elements.due_at.value.replace('T', ' ')}` : 'No deadline'));
         review.append(action(form.elements.title.value.trim() ? '✓ Quiz information complete' : '! Quiz title is required', () => showStep(1)));
         const incomplete = questions.findIndex(q => problem(q));

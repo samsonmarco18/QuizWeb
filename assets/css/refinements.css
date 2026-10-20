@@ -625,3 +625,19 @@ body.ui-refined .flash { display: flex; align-items: center; justify-content: sp
 .flash-dismiss { flex-shrink: 0; border: 0; background: transparent; color: inherit; font-size: 1.5rem; cursor: pointer; width: 36px; height: 36px; }
 .password-match { color: var(--accent); font-size: .85rem; margin: 6px 0 0; }
 .submission-confirm #submission-confirm-message { white-space: pre-line; max-height: 50dvh; overflow: auto; text-align: left; }
+
+/* Keep unread counts at the launcher's outside corner. */
+.messenger-dock .messenger-launcher { position: relative; overflow: visible; }
+.messenger-dock .messenger-launcher-badge { inset: 0 0 auto auto; transform: translate(25%, -25%); z-index: 2; pointer-events: none; }
+.messenger-message.is-self .chat-message-receipt { grid-column: 1; grid-row: 2; order: 3; display: flex; justify-content: flex-end; align-items: center; gap: 5px; color: var(--chat-muted, var(--text-secondary)); font-size: 10px; padding-top: 2px; }
+.chat-reader-avatar { position: relative; display: inline-grid; place-items: center; flex: 0 0 20px; width: 20px; height: 20px; overflow: hidden; border-radius: 50%; border: 1px solid var(--chat-line, var(--border)); background: var(--chat-raised, var(--surface-soft)); color: var(--chat-accent, var(--accent)); font-size: 9px; }
+.messenger-compose[data-sending="1"] [data-chat-status]::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border: 1px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: chat-sending 650ms linear infinite; }
+.activity-card-symbol { display: grid; place-items: center; flex: 0 0 68px; width: 68px; height: 68px; border: 1px solid var(--border); border-radius: 16px; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.activity-card-symbol .nav-icon { width: 30px; height: 30px; }
+.classroom-activity-help { margin: 0 0 12px; font-size: 12px; }
+.classroom-activity-help a { color: var(--accent); }
+.classroom-manual-activity .quiz-card-topline { padding-left: 0; }
+.classroom-manual-activity .quiz-card-content { grid-template-columns: 68px minmax(0, 1fr); }
+.classroom-quiz-panel .game-type-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+@keyframes chat-sending { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .messenger-compose[data-sending="1"] [data-chat-status]::before { animation: none; } }

@@ -10,6 +10,9 @@ $fixtureClasses = [
     ['id' => 2, 'name' => 'Math', 'subject' => 'Math', 'teacher_id' => 5, 'student_ids' => [6], 'updated_at' => now_iso(), 'chat_messages' => []],
 ];
 // Render the production templates with isolated memory records.
+if (in_array('--read-receipts', $argv, true)) {
+    $fixtureClasses[0]['chat_messages'] = [['id' => 1, 'user_id' => 6, 'user_name' => 'Student', 'user_role' => 'student', 'body' => 'My laboratory report is ready.', 'created_at' => now_iso(), 'seen_by' => ['5' => now_iso()]]];
+}
 if (in_array('--image-attachments', $argv, true)) {
     $fixtureClasses[0]['chat_messages'] = [['id' => 9, 'user_id' => 6, 'user_name' => 'Student', 'user_role' => 'student', 'body' => '', 'created_at' => now_iso(), 'attachments' => [
         ['name' => 'Screenshot-private.png', 'stored_name' => str_repeat('b', 48), 'size' => 1024, 'image' => true, 'mime' => 'image/png'],
@@ -34,5 +37,9 @@ $end = strpos($source, '<?php render_footer(); ?>', $start);
 eval('?>' . substr($source, $start, $end - $start));
 $html = ob_get_clean();
 $threads = [];
-foreach ($fixtureClasses as $class) $threads[] = ['id' => $class['id'], 'members' => chat_public_members($class, $fixtureUser, $fixtureUsers), 'messages' => array_map(static fn($message) => chat_public_message($message, $class['id'], $fixtureUser['id']), $class['chat_messages'])];
+foreach ($fixtureClasses as $class) {
+    $members = chat_public_members($class, $fixtureUser, $fixtureUsers);
+    $membersById = array_column($members, null, 'id');
+    $threads[] = ['id' => $class['id'], 'members' => $members, 'messages' => array_map(static fn($message) => chat_public_message($message, $class['id'], $fixtureUser['id'], null, $membersById), $class['chat_messages'])];
+}
 echo json_encode(['html' => $html, 'threads' => $threads]);

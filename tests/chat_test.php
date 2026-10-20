@@ -29,6 +29,21 @@ check_chat(classroom_belongs_to_user($classroom, ['id' => 10, 'role' => 'student
 check_chat(!classroom_belongs_to_user($classroom, ['id' => 12, 'role' => 'student']), 'Nonmember must not have access.');
 check_chat(!classroom_belongs_to_user($classroom, ['id' => 6, 'role' => 'teacher']), 'Other teachers must not have access.');
 echo "Chat validation, permissions, voting, and privacy checks passed.\n";
+$receiptClass = ['teacher_id' => 5, 'student_ids' => [10, 11], 'chat_messages' => [
+    ['id' => 1, 'user_id' => 5, 'body' => 'First'], ['id' => 2, 'user_id' => 10, 'body' => 'Reply'], ['id' => 3, 'user_id' => 5, 'body' => 'Newer'],
+]];
+$receiptClass = chat_mark_seen($receiptClass, ['id' => 10, 'role' => 'student'], 2);
+check_chat(isset($receiptClass['chat_messages'][0]['seen_by']['10']), 'Persist a read receipt through the actual visible message.');
+check_chat(!isset($receiptClass['chat_messages'][1]['seen_by']['10']) && !isset($receiptClass['chat_messages'][2]['seen_by']['10']), 'Never mark own or newer unseen messages.');
+$roster = [10 => ['id' => 10, 'name' => 'Reader', 'avatar_url' => '/photo']];
+$receiptClass['chat_messages'][0]['seen_by']['99'] = now_iso();
+$publicReceipt = chat_public_message($receiptClass['chat_messages'][0], 1, 5, null, $roster);
+check_chat(count($publicReceipt['readers']) === 1 && $publicReceipt['readers'][0]['name'] === 'Reader' && !isset($publicReceipt['seen_by']), 'Expose safe current-member profiles only.');
+foreach ([['id' => 99, 'role' => 'student'], ['id' => 6, 'role' => 'teacher']] as $outsider) {
+    try { chat_mark_seen($receiptClass, $outsider, 1); throw new RuntimeException('Outsider receipt accepted.'); } catch (InvalidArgumentException $error) {}
+}
+try { chat_mark_seen($receiptClass, ['id' => 10, 'role' => 'student'], 999); throw new RuntimeException('Unknown message accepted.'); } catch (InvalidArgumentException $error) {}
+echo "Persistent read boundaries, membership, and reader-profile privacy passed.\n";
 check_chat(chat_message_excerpt(['body' => '', 'poll' => ['question' => 'Review?']]) === 'Review?', 'Polls need a conversation preview.');
 check_chat(chat_message_excerpt(['body' => '', 'attachments' => [['name' => 'Lesson.pdf']]]) === 'Lesson.pdf', 'Files need a conversation preview.');
 check_chat(chat_message_excerpt(['body' => '', 'attachments' => [['name' => 'PrivateScreenshot.png', 'image' => true]]]) === 'Shared an image', 'Image filenames should not appear in the conversation preview.');

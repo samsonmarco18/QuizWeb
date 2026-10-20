@@ -9,8 +9,9 @@ $classroom = find_classroom($classroomId);
 $announcementErrors = [];
 $chatErrors = [];
 $GLOBALS['quizweb_current_classroom_id'] = $classroomId;
-$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Quizzes', 'materials' => 'Materials', 'results' => 'Results', 'grades' => 'Grades'];
+$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Activities', 'materials' => 'Materials', 'results' => 'Results', 'grades' => 'Grades'];
 $requestedView = $_GET['tab'] ?? 'quizzes';
+if ($requestedView === 'activities') $requestedView = 'quizzes';
 $activeView = is_string($requestedView) && isset($classroomViews[$requestedView]) ? $requestedView : 'quizzes';
 
 if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
@@ -103,13 +104,23 @@ $announcements = classroom_announcements($classroom);
 $chatMessages = classroom_chat_messages($classroom);
 $chatMessageCount = count($chatMessages);
 $quizCards = classroom_quiz_cards($classroom, $user, $attemptsList);
+$activityBook = grading_load(db(), $classroomId);
+$activitySubmissions = [];
+if ($user['role'] === 'student') {
+    $query = db()->prepare('SELECT item_id FROM activity_submissions WHERE classroom_id = ? AND student_id = ?');
+    $query->execute([$classroomId, (int) $user['id']]);
+    $activitySubmissions = array_fill_keys($query->fetchAll(PDO::FETCH_COLUMN), true);
+}
+$gameCards = $quizCards;
+$quizCards = array_merge($quizCards, classroom_manual_activity_cards($classroom, $user, $activityBook, $activitySubmissions));
+$activityTypes = array_values(array_unique(array_merge(['Quiz', 'Laboratory', 'Assignment', 'Project', 'Exam'], array_column($quizCards, 'activity_type'))));
 $quizFilters = classroom_quiz_filters($_GET);
 $filteredQuizCards = classroom_filter_quizzes($quizCards, $quizFilters);
 $quizPage = page_records($filteredQuizCards, 'quiz_page', 6);
 $host = find_user_by_id((int) $classroom['teacher_id']) ?? ['name' => 'Classroom teacher', 'profile' => []];
 $roster = $user['role'] === 'teacher' ? classroom_students($classroom) : [];
-$completedQuizzes = count(array_filter($quizCards, static fn(array $card): bool => $card['completed']));
-$progressTotal = count($quizCards);
+$completedQuizzes = count(array_filter($gameCards, static fn(array $card): bool => $card['completed']));
+$progressTotal = count($gameCards);
 $progressDone = $completedQuizzes;
 if ($user['role'] === 'teacher') {
     $progressTotal = count($classroom['student_ids'] ?? []);
@@ -117,7 +128,7 @@ if ($user['role'] === 'teacher') {
     $progressDone = count(array_intersect($classroom['student_ids'] ?? [], $activeStudents));
 }
 $classProgress = percentage($progressDone, $progressTotal);
-$upcomingQuizzes = array_values(array_filter($quizCards, static fn(array $card): bool => $card['due'] !== null && $card['due'] >= time()));
+$upcomingQuizzes = array_values(array_filter($gameCards, static fn(array $card): bool => $card['due'] !== null && $card['due'] >= time()));
 usort($upcomingQuizzes, static fn(array $a, array $b): int => $a['due'] <=> $b['due']);
 $tabIcons = ['overview' => 'archive', 'quizzes' => 'Play Game Modes', 'materials' => 'document', 'results' => 'chart', 'grades' => 'star'];
 
@@ -130,7 +141,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
         <h1><a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=overview"><?php echo esc($classroom['name']); ?></a></h1>
         <p class="lead"><?php echo esc($classroom['description'] ?: 'Gamified classroom space for your quizzes and student activity.'); ?></p>
         <div class="feature-pills">
-            <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=quizzes" aria-label="View classroom quizzes"><?php echo nav_icon('document'); ?><?php echo esc(count($classroom['quizzes'] ?? [])); ?> quizzes</a>
+            <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=quizzes" aria-label="View classroom activities"><?php echo nav_icon('document'); ?><?php echo count($quizCards); ?> activities</a>
             <a href="<?php echo $user['role'] === 'teacher' ? '#class-roster' : '/QuizWeb/classroom.php?id=' . (int) $classroom['id'] . '&amp;tab=results#results'; ?>" aria-label="<?php echo $user['role'] === 'teacher' ? 'View class roster' : 'View class results'; ?>"><?php echo nav_icon('Join Class'); ?><?php echo esc(count($classroom['student_ids'] ?? [])); ?> students</a>
             <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=overview"><?php echo nav_icon('Focus Practice'); ?><?php echo esc($user['role'] === 'teacher' ? 'Teaching hub' : 'Learning hub'); ?></a>
         </div>
@@ -145,7 +156,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
             </div>
             <?php if ($user['role'] === 'teacher'): ?>
                 <a class="button button-secondary" href="/QuizWeb/classroom_settings.php?classroom_id=<?php echo (int) $classroom['id']; ?>">Class Settings</a>
-                <a class="button button-primary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>">Create Quiz Game</a>
+                <a class="button button-primary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>">Create Activity</a>
             <?php endif; ?>
         </div>
     </div>
@@ -442,24 +453,25 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
         <input type="hidden" name="tab" value="quizzes">
         <input type="hidden" name="quiz_filter" value="<?php echo esc($quizFilters['filter']); ?>" data-current-quiz-filter>
         <div class="section-heading">
-            <div><span class="eyebrow"><?php echo esc($user['role'] === 'teacher' ? 'Quiz management' : 'Available games'); ?></span><h2><?php echo esc($user['role'] === 'teacher' ? 'Classroom quizzes' : 'Play your assigned quiz modes'); ?></h2></div>
+            <div><span class="eyebrow"><?php echo esc($user['role'] === 'teacher' ? 'Activity management' : 'Available activities'); ?></span><h2><?php echo esc($user['role'] === 'teacher' ? 'Classroom activities' : 'Your classroom activities'); ?></h2></div>
             <div class="quiz-search-tools">
-                <label class="classroom-quiz-search"><?php echo nav_icon('search'); ?><input type="search" name="q" value="<?php echo esc($quizFilters['search']); ?>" maxlength="200" placeholder="Search quizzes..." aria-label="Search classroom quizzes"><button type="submit" aria-label="Search quizzes"><?php echo nav_icon('arrow-right'); ?></button></label>
-                <details class="quiz-sort-menu"><summary class="classroom-icon-button" aria-label="Sort quizzes" title="Sort quizzes"><?php echo nav_icon('filter'); ?></summary><div><label>Sort quizzes<select name="quiz_sort"><option value="assigned" <?php echo $quizFilters['sort'] === 'assigned' ? 'selected' : ''; ?>>Assigned order</option><option value="title" <?php echo $quizFilters['sort'] === 'title' ? 'selected' : ''; ?>>Title A–Z</option><option value="due" <?php echo $quizFilters['sort'] === 'due' ? 'selected' : ''; ?>>Due date</option></select></label><button class="button button-secondary" type="submit">Apply</button></div></details>
+                <label class="classroom-quiz-search"><?php echo nav_icon('search'); ?><input type="search" name="q" value="<?php echo esc($quizFilters['search']); ?>" maxlength="200" placeholder="Search activities..." aria-label="Search classroom activities"><button type="submit" aria-label="Search activities"><?php echo nav_icon('arrow-right'); ?></button></label>
+                <details class="quiz-sort-menu"><summary class="classroom-icon-button" aria-label="Sort activities" title="Sort activities"><?php echo nav_icon('filter'); ?></summary><div><label>Sort activities<select name="quiz_sort"><option value="assigned" <?php echo $quizFilters['sort'] === 'assigned' ? 'selected' : ''; ?>>Assigned order</option><option value="title" <?php echo $quizFilters['sort'] === 'title' ? 'selected' : ''; ?>>Title A–Z</option><option value="due" <?php echo $quizFilters['sort'] === 'due' ? 'selected' : ''; ?>>Due date</option></select></label><button class="button button-secondary" type="submit">Apply</button></div></details>
             </div>
         </div>
-        <div class="classroom-quiz-filters" aria-label="Filter quizzes">
-            <?php $quickFilters = ['all' => 'All'] + ($user['role'] === 'student' ? ['todo' => 'To Do', 'completed' => 'Completed'] : []) + ['standard' => 'Standard Quiz', 'time_attack' => 'Time Attack', 'flip_match' => 'Flip Match', 'crossword' => 'Crossword']; ?>
+        <div class="classroom-quiz-filters" aria-label="Filter activities">
+            <?php $quickFilters = ['all' => 'All'] + ($user['role'] === 'student' ? ['todo' => 'To Do', 'completed' => 'Completed'] : []) + array_combine(array_map(static fn($type) => 'activity:' . $type, $activityTypes), $activityTypes); ?>
             <?php foreach ($quickFilters as $filter => $label): ?><button class="quiz-filter<?php echo $quizFilters['filter'] === $filter ? ' is-active' : ''; ?>" type="submit" name="quiz_filter" value="<?php echo esc($filter); ?>" data-quiz-filter="<?php echo esc($filter); ?>" aria-pressed="<?php echo $quizFilters['filter'] === $filter ? 'true' : 'false'; ?>"><?php echo esc($label); ?></button><?php endforeach; ?>
-            <details class="quiz-more-filters"><summary class="quiz-filter<?php echo isset($modes[$quizFilters['filter']]) && !isset($quickFilters[$quizFilters['filter']]) ? ' is-active' : ''; ?>">More <?php echo nav_icon('chevron'); ?></summary><div><?php foreach ($modes as $type => $mode): if (isset($quickFilters[$type])) continue; ?><button type="submit" name="quiz_filter" value="<?php echo esc($type); ?>" data-quiz-filter="<?php echo esc($type); ?>" aria-pressed="<?php echo $quizFilters['filter'] === $type ? 'true' : 'false'; ?>"><?php echo esc($mode['label']); ?></button><?php endforeach; ?></div></details>
+            <details class="quiz-more-filters"><summary class="quiz-filter<?php echo isset($modes[$quizFilters['filter']]) && !isset($quickFilters[$quizFilters['filter']]) ? ' is-active' : ''; ?>">Game modes <?php echo nav_icon('chevron'); ?></summary><div><?php foreach ($modes as $type => $mode): if (isset($quickFilters[$type])) continue; ?><button type="submit" name="quiz_filter" value="<?php echo esc($type); ?>" data-quiz-filter="<?php echo esc($type); ?>" aria-pressed="<?php echo $quizFilters['filter'] === $type ? 'true' : 'false'; ?>"><?php echo esc($mode['label']); ?></button><?php endforeach; ?></div></details>
         </div>
     </form>
-    <p class="classroom-filter-status" data-quiz-filter-status role="status"><?php echo count($filteredQuizCards); ?> of <?php echo count($quizCards); ?> quizzes</p>
+    <?php if ($user['role'] === 'teacher'): ?><p class="classroom-activity-help"><a href="/QuizWeb/gradebook.php?classroom_id=<?php echo $classroomId; ?>&amp;view=items">Add a laboratory, assignment, or other teacher-graded activity</a></p><?php endif; ?>
+    <p class="classroom-filter-status" data-quiz-filter-status role="status"><?php echo count($filteredQuizCards); ?> of <?php echo count($quizCards); ?> activities</p>
     <div class="quiz-grid" data-quiz-list>
-        <?php foreach ($quizPage['items'] as $card): $quiz = $card['quiz']; $best = $card['best']; $cardGame = score_game_type((string) $quiz['game_type']); $playUrl = '/QuizWeb/play.php?classroom_id=' . $classroomId . '&quiz_id=' . (int) $quiz['id']; $editUrl = '/QuizWeb/quiz_builder.php?classroom_id=' . $classroomId . '&quiz_id=' . (int) $quiz['id']; ?>
+        <?php foreach ($quizPage['items'] as $card): if (!empty($card['manual'])) { require dirname(__DIR__, 3) . '/includes/classroom_activity_card.php'; continue; } $quiz = $card['quiz']; $best = $card['best']; $cardGame = score_game_type((string) $quiz['game_type']); $playUrl = '/QuizWeb/play.php?classroom_id=' . $classroomId . '&quiz_id=' . (int) $quiz['id']; $editUrl = '/QuizWeb/quiz_builder.php?classroom_id=' . $classroomId . '&quiz_id=' . (int) $quiz['id']; ?>
             <article class="quiz-card assigned-game-card game-score-type mode-<?php echo esc($quiz['game_type']); ?>" data-game-type="<?php echo esc($cardGame['type']); ?>">
                 <div class="quiz-card-topline">
-                    <span class="game-type-badge"><?php echo esc($cardGame['label']); ?></span>
+                    <span class="game-type-badge"><?php echo esc($card['activity_type']); ?></span>
                     <?php if ($user['role'] === 'student' && $card['completed']): ?><span class="quiz-status is-completed"><?php echo nav_icon('check'); ?>Completed</span>
                     <?php elseif (in_array($card['due_status'], ['soon', 'past'], true)): ?><span class="quiz-status is-due"><?php echo nav_icon('calendar'); ?><?php echo $card['due_status'] === 'past' ? 'Past due' : 'Due soon'; ?></span>
                     <?php else: ?><span class="quiz-status"><?php echo $user['role'] === 'teacher' ? 'Published' : 'New'; ?></span><?php endif; ?>
@@ -469,24 +481,24 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
                     <div class="quiz-card-copy">
                         <h3 class="quiz-card-title"><?php echo esc($quiz['title']); ?></h3>
                         <p class="quiz-card-description"><?php echo esc($quiz['description'] ?: ($modes[$quiz['game_type']]['description'] ?? 'Custom quiz game ready to play.')); ?></p>
-                        <div class="card-meta"><span><?php echo nav_icon('document'); ?><?php echo $card['questions']; ?> <?php echo $quiz['game_type'] === 'crossword' ? 'words' : ($quiz['game_type'] === 'flip_match' ? 'pairs' : 'questions'); ?></span><span><?php echo nav_icon('star'); ?><?php echo $card['points']; ?> pts</span><span title="Estimated play time"><?php echo nav_icon('clock'); ?>~<?php echo $card['minutes']; ?> min</span></div>
+                        <div class="card-meta"><span><?php echo esc($cardGame['label']); ?></span><span><?php echo nav_icon('document'); ?><?php echo $card['questions']; ?> <?php echo $quiz['game_type'] === 'crossword' ? 'words' : ($quiz['game_type'] === 'flip_match' ? 'pairs' : 'questions'); ?></span><span><?php echo nav_icon('star'); ?><?php echo $card['points']; ?> pts</span><span title="Estimated play time"><?php echo nav_icon('clock'); ?>~<?php echo $card['minutes']; ?> min</span></div>
                     </div>
                 </div>
                 <div class="quiz-card-footer">
                     <?php if ($user['role'] === 'student'): ?>
                         <?php if ($best): ?><div class="quiz-best-score"><span>Your Best Score</span><div><strong><?php echo (int) $best['score']; ?> / <?php echo (int) $best['max_score']; ?></strong><progress max="100" value="<?php echo $card['percent']; ?>" aria-label="Best score for <?php echo esc($quiz['title']); ?>"></progress><b><?php echo $card['percent']; ?>%</b></div></div>
-                        <?php else: ?><div class="quiz-unplayed"><strong>Not attempted yet</strong><small>Start the quiz to earn points!</small></div><?php endif; ?>
+                        <?php else: ?><div class="quiz-unplayed"><strong>Not attempted yet</strong><small>Complete this activity to earn points!</small></div><?php endif; ?>
                     <?php endif; ?>
                     <?php if ($card['due'] !== null): ?><div class="quiz-due-date<?php echo in_array($card['due_status'], ['soon', 'past'], true) ? ' is-due' : ''; ?>"><?php echo nav_icon('calendar'); ?><span>Due <?php echo esc(date('M j, Y', $card['due'])); ?></span><strong><?php echo $card['due_status'] === 'past' ? 'Submissions still open' : ($card['days_left'] === 0 ? 'Due today' : $card['days_left'] . ' day' . ($card['days_left'] === 1 ? '' : 's') . ' left'); ?></strong></div><?php endif; ?>
                     <div class="quiz-card-actions">
-                        <a class="button button-primary" href="<?php echo esc($playUrl); ?>"><?php echo nav_icon('play'); ?><?php echo $user['role'] === 'teacher' ? 'Preview' : ($best ? 'Play Again' : 'Start Quiz'); ?></a>
-                        <?php if ($user['role'] === 'teacher'): ?><a class="button button-secondary" href="<?php echo esc($editUrl); ?>"><?php echo nav_icon('document'); ?>Edit Quiz</a><a class="button button-secondary" href="/QuizWeb/participants.php?classroom_id=<?php echo $classroomId; ?>&amp;quiz_id=<?php echo (int) $quiz['id']; ?>"><?php echo nav_icon('Join Class'); ?>View Participants</a><?php elseif ($best): ?><a class="button button-secondary" href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>"><?php echo nav_icon('chart'); ?>View Results</a><?php endif; ?>
-                        <details class="quiz-card-menu"><summary class="classroom-icon-button" aria-label="More options for <?php echo esc($quiz['title']); ?>"><?php echo nav_icon('more'); ?></summary><nav aria-label="Quiz actions"><a href="<?php echo esc($playUrl); ?>">Open activity</a><?php if ($user['role'] === 'teacher'): ?><a href="<?php echo esc($editUrl); ?>">Edit activity</a><?php elseif ($best): ?><a href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>">Review best attempt</a><?php endif; ?><a href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=results">Class results</a></nav></details>
+                        <a class="button button-primary" href="<?php echo esc($playUrl); ?>"><?php echo nav_icon('play'); ?><?php echo $user['role'] === 'teacher' ? 'Preview' : ($best ? 'Play Again' : 'Start Activity'); ?></a>
+                        <?php if ($user['role'] === 'teacher'): ?><a class="button button-secondary" href="<?php echo esc($editUrl); ?>"><?php echo nav_icon('document'); ?>Edit Activity</a><a class="button button-secondary" href="/QuizWeb/participants.php?classroom_id=<?php echo $classroomId; ?>&amp;quiz_id=<?php echo (int) $quiz['id']; ?>"><?php echo nav_icon('Join Class'); ?>View Participants</a><?php elseif ($best): ?><a class="button button-secondary" href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>"><?php echo nav_icon('chart'); ?>View Results</a><?php endif; ?>
+                        <details class="quiz-card-menu"><summary class="classroom-icon-button" aria-label="More options for <?php echo esc($quiz['title']); ?>"><?php echo nav_icon('more'); ?></summary><nav aria-label="Activity actions"><a href="<?php echo esc($playUrl); ?>">Open activity</a><?php if ($user['role'] === 'teacher'): ?><a href="<?php echo esc($editUrl); ?>">Edit activity</a><?php elseif ($best): ?><a href="/QuizWeb/results.php?id=<?php echo (int) $best['id']; ?>">Review best attempt</a><?php endif; ?><a href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=results">Class results</a></nav></details>
                     </div>
                 </div>
             </article>
         <?php endforeach; ?>
-        <?php if (!$quizPage['items']): ?><div class="classroom-quizzes-empty"><?php echo nav_icon('search'); ?><h3><?php echo $quizCards ? 'No matching quizzes' : 'No quizzes yet'; ?></h3><p><?php echo $quizCards ? 'Try another search or game filter.' : ($user['role'] === 'teacher' ? 'Create your first game for this classroom.' : 'Your teacher has not published any quiz games yet.'); ?></p><?php if ($quizCards): ?><a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=quizzes">Show all quizzes</a><?php elseif ($user['role'] === 'teacher'): ?><a class="button button-primary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo $classroomId; ?>">Create Quiz Game</a><?php endif; ?></div><?php endif; ?>
+        <?php if (!$quizPage['items']): ?><div class="classroom-quizzes-empty"><?php echo nav_icon('search'); ?><h3><?php echo $quizCards ? 'No matching activities' : 'No activities yet'; ?></h3><p><?php echo $quizCards ? 'Try another search or game filter.' : ($user['role'] === 'teacher' ? 'Create a game activity or add a teacher-graded activity in the gradebook.' : 'Your teacher has not published any activities yet.'); ?></p><?php if ($quizCards): ?><a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=quizzes">Show all activities</a><?php elseif ($user['role'] === 'teacher'): ?><a class="button button-primary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo $classroomId; ?>">Create Activity</a><?php endif; ?></div><?php endif; ?>
     </div>
     <div data-quiz-pagination><?php render_pagination($quizPage); ?></div>
 </section>

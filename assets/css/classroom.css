@@ -215,6 +215,7 @@ body.ui-refined.classroom-page.classroom-redesign .classroom-aside-heading h2 { 
     .classroom-aside { grid-template-columns: minmax(0, 1fr); }
     body.ui-refined.classroom-page.classroom-redesign .panel { padding: 16px; }
     body.ui-refined.classroom-page.classroom-redesign .classroom-quiz-controls .section-heading { flex-direction: column; align-items: stretch; }
+    body.ui-refined.classroom-page.classroom-redesign .classroom-quiz-controls .section-heading > div { flex: 0 0 auto; width: 100%; }
     .quiz-search-tools { flex-basis: auto; width: 100%; }
     .classroom-quiz-filters { gap: 6px; }
     .quiz-filter { padding: 7px 12px; font-size: 10px; }

@@ -54,10 +54,31 @@ function chat_vote(array $message, int $userId, int $option): array
     return $message;
 }
 
-function chat_public_message(array $message, int $classroomId, int $userId, ?string $avatarUrl = null): array
+function chat_mark_seen(array $classroom, array $viewer, int $throughId): array
+{
+    if (!classroom_belongs_to_user($classroom, $viewer)) throw new InvalidArgumentException('Classroom access denied.');
+    if (!in_array($throughId, array_map(static fn($m) => (int) $m['id'], $classroom['chat_messages'] ?? []), true)) throw new InvalidArgumentException('Message not found.');
+    foreach ($classroom['chat_messages'] as &$message) {
+        if ((int) $message['id'] <= $throughId && (int) $message['user_id'] !== (int) $viewer['id']) {
+            $message['seen_by'][(string) $viewer['id']] ??= now_iso();
+        }
+    }
+    unset($message);
+    return $classroom;
+}
+
+function chat_public_message(array $message, int $classroomId, int $userId, ?string $avatarUrl = null, array $membersById = []): array
 {
     unset($message['request_id']);
     $message['avatar_url'] = $avatarUrl;
+    $readers = [];
+    foreach ($message['seen_by'] ?? [] as $id => $at) {
+        if ((int) $id === (int) $message['user_id'] || !isset($membersById[(int) $id])) continue;
+        $member = $membersById[(int) $id];
+        $readers[] = ['id' => $member['id'], 'name' => $member['name'], 'avatar_url' => $member['avatar_url'], 'at' => $at];
+    }
+    $message['readers'] = $readers;
+    unset($message['seen_by']);
     foreach ($message['attachments'] ?? [] as $index => $attachment) {
         $message['attachments'][$index] = [
             'name' => $attachment['name'], 'size' => $attachment['size'], 'image' => $attachment['image'],

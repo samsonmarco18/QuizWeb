@@ -12,6 +12,10 @@
     form.noValidate = true;
     function updateRole() {
         const student = form.elements.namedItem('role').value === 'student';
+        const programLabel = form.querySelector('[data-program-label]');
+        if (programLabel) programLabel.textContent = student ? 'Program / Course' : 'Department';
+        const program = form.elements.namedItem('program');
+        if (program) program.placeholder = student ? 'e.g. BS Information Technology' : 'e.g. Department of Information Technology';
         form.querySelectorAll('[data-student-required]').forEach(field => { field.required = student; });
         for (const name of ['student_number', 'year_level']) { const input = form.elements.namedItem(name); if (input) { input.disabled = !student; input.closest('label').hidden = !student; } }
         form.querySelectorAll('[data-optional-label]').forEach(label => { label.hidden = student; });
@@ -19,7 +23,7 @@
     function review() {
         const container = form.querySelector('[data-signup-review]');
         container.replaceChildren();
-        const labels = { name: 'Full Name', email: 'Email Address', role: 'Role', student_number: 'Student Number', birthdate: 'Birthdate', gender: 'Gender', program: 'Program / Course', year_level: 'Year Level' };
+        const labels = { name: 'Full Name', email: 'Email Address', role: 'Role', student_number: 'Student Number', birthdate: 'Birthdate', gender: 'Gender', program: form.elements.namedItem('role').value === 'teacher' ? 'Department' : 'Program / Course', year_level: 'Year Level' };
         Object.entries(labels).forEach(([name, label]) => {
             if (form.elements.namedItem(name).disabled) return;
             const term = document.createElement('dt');

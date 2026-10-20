@@ -590,6 +590,7 @@
         }
 
         function markThreadSeen(thread) {
+            if (document.hidden || !messengerDock.classList.contains('is-open') || !thread?.classList.contains('is-active')) return;
             const chatId = threadChatId(thread);
             const latestMs = threadLatestMs(thread);
 
@@ -605,6 +606,15 @@
             }
 
             updateMessengerBadges();
+            const messageId = Number(thread.dataset.latestMessageId || 0);
+            if (messageId && Number(thread.dataset.receiptThrough || 0) < messageId && !thread.receiptPending) {
+                thread.receiptPending = true;
+                const data = new FormData();
+                data.set('action', 'seen'); data.set('classroom_id', chatId); data.set('message_id', messageId);
+                chatRequest(data).then(() => { thread.dataset.receiptThrough = String(messageId); })
+                    .catch(() => { /* Retry on the next visible refresh without interrupting chat. */ })
+                    .finally(() => { thread.receiptPending = false; });
+            }
         }
 
         function scrollThreadToBottom(thread) {
@@ -799,6 +809,21 @@
                 bubble.append(poll);
             }
             row.append(bubble);
+            if (self) {
+                const receipt = chatElement('div', 'chat-message-receipt');
+                const readers = message.readers || [];
+                receipt.append(chatElement('span', '', readers.length ? 'Seen by' : 'Sent'));
+                readers.slice(0, 5).forEach(reader => {
+                    const avatar = chatAvatar(reader.name, reader.avatar_url, 'chat-reader-avatar');
+                    avatar.title = `Seen by ${reader.name}`;
+                    avatar.setAttribute('aria-label', `Seen by ${reader.name}`);
+                    avatar.removeAttribute('aria-hidden');
+                    receipt.append(avatar);
+                });
+                if (readers.length > 5) receipt.append(chatElement('span', '', `+${readers.length - 5}`));
+                receipt.title = readers.map(reader => reader.name).join(', ');
+                row.append(receipt);
+            }
             return row;
         }
 
@@ -808,7 +833,11 @@
                 if (!thread) return;
                 applyChatMembers(record, thread);
                 const signature = JSON.stringify(record.messages);
-                if (thread.chatSignature === signature) return;
+                if (thread.chatSignature === signature) {
+                    const box = thread.querySelector('.messenger-thread-messages');
+                    if (box.scrollHeight - box.scrollTop - box.clientHeight < 70) markThreadSeen(thread);
+                    return;
+                }
                 thread.chatSignature = signature;
                 const scroller = thread.querySelector('.messenger-thread-messages');
                 const atBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 70;
@@ -828,6 +857,7 @@
                 const latest = record.messages.at(-1);
                 thread.dataset.latestAt = latest?.created_at || '';
                 thread.dataset.latestUserId = latest?.user_id || '0';
+                thread.dataset.latestMessageId = latest?.id || '0';
                 const group = messengerGroupButtons.find((item) => item.dataset.chatId === String(record.id));
                 if (group && latest) {
                     const attachment = latest.attachments?.[0];

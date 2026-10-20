@@ -22,6 +22,13 @@ $attemptsList = [
     ['id' => 14, 'student_id' => 7, 'classroom_id' => 1, 'quiz_id' => 2, 'score' => 40, 'max_score' => 40],
 ];
 $quizCards = classroom_quiz_cards($classroom, $user, $attemptsList);
+if (!empty($request['activities'])) {
+    $book = grading_empty_book();
+    $book['config']['categories'] = [['id' => 'lab', 'name' => 'Laboratory', 'weight' => 100]];
+    $book['items']['manual-1'] = ['id' => 'manual-1', 'source' => 'manual', 'name' => 'Laboratory report', 'category_id' => 'lab', 'max_score' => 50, 'accept_responses' => true, 'instructions' => 'Write up your observations and submit your response.'];
+    $quizCards = array_merge(classroom_manual_activity_cards($classroom, $user, $book), $quizCards);
+}
+$activityTypes = array_values(array_unique(array_merge(['Quiz', 'Laboratory', 'Assignment', 'Project', 'Exam'], array_column($quizCards, 'activity_type'))));
 $quizFilters = classroom_quiz_filters($_GET);
 $filteredQuizCards = classroom_filter_quizzes($quizCards, $quizFilters);
 $quizPage = page_records($filteredQuizCards, 'quiz_page', 6);
@@ -31,7 +38,7 @@ $progressDone = $user['role'] === 'teacher' ? 2 : count(array_filter($quizCards,
 $progressTotal = $user['role'] === 'teacher' ? 2 : count($quizCards);
 $classProgress = percentage($progressDone, $progressTotal);
 $upcomingQuizzes = array_values(array_filter($quizCards, static fn(array $card): bool => $card['due'] !== null));
-$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Quizzes', 'materials' => 'Materials', 'results' => 'Results', 'grades' => 'Grades'];
+$classroomViews = ['overview' => 'Overview', 'quizzes' => 'Activities', 'materials' => 'Materials', 'results' => 'Results', 'grades' => 'Grades'];
 $tabIcons = ['overview' => 'archive', 'quizzes' => 'Play Game Modes', 'materials' => 'document', 'results' => 'chart', 'grades' => 'star'];
 $activeView = $request['view'] ?? 'quizzes';
 $announcements = [];
@@ -42,6 +49,7 @@ $classLearningProfile = ['overall_accuracy' => 75, 'analyzed_attempts' => 3, 'we
 $studentClassProfile = ['overall_accuracy' => 70, 'questions_seen' => 4, 'focus_items' => [], 'trend_message' => 'Keep practising.'];
 $studentClassPracticeQuestions = [];
 $source = file_get_contents(__DIR__ . '/../app/pages/classrooms/classroom.php');
+$source = str_replace("require dirname(__DIR__, 3) . '/includes/classroom_activity_card.php'", "require __DIR__ . '/../includes/classroom_activity_card.php'", $source);
 // Private reminders are database-backed and outside this offline layout fixture.
 $reminderStart = strpos($source, "<?php if (\$user['role'] === 'student'): \$reminderQuery");
 $reminderEnd = strpos($source, '<?php endif; ?>', $reminderStart) + strlen('<?php endif; ?>');

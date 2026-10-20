@@ -3,6 +3,7 @@
 require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/profile.php';
 require_once __DIR__ . '/chat.php';
+require_once __DIR__ . '/notifications.php';
 
 function versioned_asset_url(string $url): string
 {
@@ -113,6 +114,7 @@ function nav_icon(string $name): string
         'more' => '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
         'play' => '<path d="m8 4 12 8-12 8V4Z"/>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
+        'bell' => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
 }
@@ -158,6 +160,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/visual-polish.css')); ?>">
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/game-experience.css')); ?>">
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/app-motion.css')); ?>">
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/notifications.css')); ?>">
         <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc(versioned_asset_url($style)); ?>"><?php endforeach; ?>
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
@@ -185,6 +188,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
                     <?php foreach (nav_links($user) as [$href, $label]): ?>
                             <a class="<?php echo esc(nav_link_class($href)); ?>" href="<?php echo esc($href); ?>" aria-label="<?php echo esc($label); ?>" <?php echo str_contains(nav_link_class($href), 'is-active') ? 'aria-current="page"' : ''; ?>><?php echo nav_icon($label); ?><span class="nav-label" aria-hidden="true"><?php echo esc($label); ?></span></a>
                     <?php endforeach; ?>
+                    <?php if ($user) render_navbar_notifications($user, navbar_notifications($user, user_classrooms($user))); ?>
                 </nav>
                 <?php if ($user): ?>
                     <div class="account-menu">
@@ -353,7 +357,7 @@ function render_messenger_dock(): void
                                     ? (int) $classroom['id'] === $defaultClassroomId
                                     : $index === 0;
                                 ?>
-                                <article class="messenger-thread <?php echo $isActive ? 'is-active' : ''; ?>" data-messenger-thread data-chat-id="<?php echo esc((string) $classroom['id']); ?>" data-latest-at="<?php echo esc((string) ($latestMessage['created_at'] ?? '')); ?>" data-latest-user-id="<?php echo esc((string) ($latestMessage['user_id'] ?? 0)); ?>" id="messenger-thread-<?php echo esc((string) $classroom['id']); ?>">
+                                <article class="messenger-thread <?php echo $isActive ? 'is-active' : ''; ?>" data-latest-message-id="<?php echo (int) ($latestMessage['id'] ?? 0); ?>" data-messenger-thread data-chat-id="<?php echo esc((string) $classroom['id']); ?>" data-latest-at="<?php echo esc((string) ($latestMessage['created_at'] ?? '')); ?>" data-latest-user-id="<?php echo esc((string) ($latestMessage['user_id'] ?? 0)); ?>" id="messenger-thread-<?php echo esc((string) $classroom['id']); ?>">
                                     <div class="messenger-thread-top">
                                         <span class="messenger-group-avatar" aria-hidden="true"><?php echo esc(strtoupper(substr(trim((string) $classroom['name']), 0, 1)) ?: 'C'); ?></span>
                                         <div>
@@ -409,6 +413,9 @@ function render_messenger_dock(): void
                                                             <?php endif; ?>
                                                         <?php endforeach; ?>
                                                     </div>
+                                                    <?php if ($isSelf): $readers = chat_public_message($message, (int) $classroom['id'], (int) $user['id'], null, $membersById)['readers']; ?>
+                                                        <div class="chat-message-receipt"><span><?php echo $readers ? 'Seen by' : 'Sent'; ?></span><?php foreach (array_slice($readers, 0, 5) as $reader): ?><span class="chat-reader-avatar profile-photo-avatar" title="<?php echo esc('Seen by ' . $reader['name']); ?>" aria-label="<?php echo esc('Seen by ' . $reader['name']); ?>"><?php echo esc(strtoupper(function_exists('mb_substr') ? mb_substr($reader['name'], 0, 1) : substr($reader['name'], 0, 1))); ?><?php if ($reader['avatar_url']): ?><img class="profile-avatar-image" src="<?php echo esc($reader['avatar_url']); ?>" alt=""><?php endif; ?></span><?php endforeach; ?><?php if (count($readers) > 5): ?><span title="<?php echo esc(implode(', ', array_column($readers, 'name'))); ?>">+<?php echo count($readers) - 5; ?></span><?php endif; ?></div>
+                                                    <?php endif; ?>
                                                 </div>
                                             <?php endforeach; ?>
                                         <?php else: ?>
@@ -469,6 +476,7 @@ function render_footer(array $scripts = []): void
         <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/app-motion.js')); ?>"></script>
         <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/submission-confirm.js')); ?>"></script>
         <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/site.js')); ?>"></script>
+        <script src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/notifications.js')); ?>"></script>
         <?php foreach ($scripts as $script): ?>
             <script src="<?php echo esc(versioned_asset_url($script)); ?>"></script>
         <?php endforeach; ?>

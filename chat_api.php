@@ -28,7 +28,9 @@ try {
             $pdo->rollBack();
             chat_reply(['error' => 'Classroom access denied.'], 403);
         }
-        if (($_POST['action'] ?? '') === 'vote') {
+        if (($_POST['action'] ?? '') === 'seen') {
+            $classroom = chat_mark_seen($classroom, $user, (int) ($_POST['message_id'] ?? 0));
+        } elseif (($_POST['action'] ?? '') === 'vote') {
             $found = false;
             foreach ($classroom['chat_messages'] as &$message) {
                 if ((int) $message['id'] === (int) ($_POST['message_id'] ?? 0)) {
@@ -68,7 +70,7 @@ try {
         $members = chat_public_members($classroom, $user, $allUsers);
         $membersById = array_column($members, null, 'id');
         $threads[] = ['id' => (int) $classroom['id'], 'members' => $members,
-            'messages' => array_map(static fn($m) => chat_public_message($m, (int) $classroom['id'], (int) $user['id'], $membersById[(int) ($m['user_id'] ?? 0)]['avatar_url'] ?? null), classroom_chat_messages($classroom))];
+            'messages' => array_map(static fn($m) => chat_public_message($m, (int) $classroom['id'], (int) $user['id'], $membersById[(int) ($m['user_id'] ?? 0)]['avatar_url'] ?? null, $membersById), classroom_chat_messages($classroom))];
     }
     chat_reply(['threads' => $threads]);
 } catch (Throwable $error) {

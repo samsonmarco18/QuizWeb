@@ -81,7 +81,7 @@
   function carry() { try { sessionStorage.removeItem('chalk-loading-until'); } catch (_) {} }
   window.chalkLoading = {begin, reset, context, carry};
   // AI generation has inline progress so teachers can keep editing their quiz.
-  const background = (url, method) => method === 'GET' && /chat_api\.php/.test(url) || /quiz_progress\.php|quiz_integrity\.php|ai_quiz_generate\.php/.test(url);
+  const background = (url, method) => /chat_api\.php|quiz_progress\.php|quiz_integrity\.php|ai_quiz_generate\.php/.test(url);
   if (window.fetch) {
     const original = window.fetch;
     window.fetch = async function(input, options) {

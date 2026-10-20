@@ -48,6 +48,11 @@ const assert = require('node:assert/strict');
   resolve({ok:true}); await saving; await wait(150); assert(loading(), 'Fast save should finish its loading animation'); await wait(850); assert(!loading(), 'Successful save must clear feedback');
   const failed = w.fetch('/save.php',{method:'POST'}); const caught = failed.catch(()=>{});
   await wait(200); reject(new Error('network')); await caught; await wait(1000); assert(!loading(), 'Failed save must clear feedback');
+  for (const action of ['send', 'seen', 'vote']) {
+    const chat = w.fetch('/QuizWeb/chat_api.php', {method: 'POST', body: new w.FormData()});
+    await wait(220); assert(!loading(), `Chat ${action} must use inline feedback without the page loader`);
+    resolve({ok: true}); await chat;
+  }
   const heartbeat = w.fetch('/quiz_progress.php',{method:'POST'});
   await wait(200); assert(!loading(), 'Background tracking must not flash a loader'); resolve({ok:true}); await heartbeat;
   const generation = w.fetch('/QuizWeb/ai_quiz_generate.php',{method:'POST'});

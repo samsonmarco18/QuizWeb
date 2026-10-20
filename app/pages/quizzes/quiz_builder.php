@@ -33,6 +33,7 @@ $masteryLevels = mastery_levels();
 $requestedGameType = is_string($_GET['game_type'] ?? null) ? $_GET['game_type'] : '';
 $selectedGameType = is_string($_POST['game_type'] ?? null) ? $_POST['game_type'] : ($editingQuiz['game_type'] ?? $requestedGameType);
 $titleValue = is_string($_POST['title'] ?? null) ? $_POST['title'] : ($editingQuiz['title'] ?? '');
+$activityType = is_string($_POST['activity_type'] ?? null) ? trim($_POST['activity_type']) : ($editingQuiz['activity_type'] ?? 'Quiz');
 $descriptionValue = is_string($_POST['description'] ?? null) ? $_POST['description'] : ($editingQuiz['description'] ?? '');
 $isChoosingGameType = !$editingQuiz && $_SERVER['REQUEST_METHOD'] !== 'POST' && !isset($modes[$selectedGameType]);
 
@@ -40,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['quiz_builder_csrf'], $_POST['csrf'])) {
         $errors[] = 'Your form expired. Reload the editor and try again.';
     }
+    if ($activityType === '' || strlen($activityType) > 80) $errors[] = 'Enter an activity type (up to 80 characters).';
     $title = is_string($_POST['title'] ?? null) ? trim($_POST['title']) : '';
     $description = is_string($_POST['description'] ?? null) ? trim($_POST['description']) : '';
     $dueAtInput = is_string($_POST['due_at'] ?? null) ? trim($_POST['due_at']) : '';
@@ -97,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quiz = [
             'id' => $editingQuiz['id'] ?? next_id($classroom['quizzes'] ?? []),
             'title' => $title,
+            'activity_type' => $activityType,
             'description' => $description,
             'due_at' => $dueAt,
             'game_type' => $gameType,
@@ -182,7 +185,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
 <section class="dashboard-hero glass">
     <div>
         <span class="eyebrow"><?php echo esc($classroom['name']); ?></span>
-        <h1><?php echo esc($editingQuiz ? 'Edit Quiz Game' : 'Create a New Quiz Game'); ?></h1>
+        <h1><?php echo esc($editingQuiz ? 'Edit Activity' : 'Create a New Activity'); ?></h1>
         <p class="lead">Teachers can fully modify the quiz title, questions, answers, points, and the game mode students will play.</p>
         <div class="feature-pills">
             <span>Custom prompts</span>
@@ -225,8 +228,10 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             <div id="builder-game-cards" class="quiz-grid"></div>
         </div>
         <div data-builder-step="1" hidden>
+            <label><span>Activity type</span><input name="activity_type" list="activity-types" maxlength="80" required value="<?php echo esc($activityType); ?>" placeholder="e.g. Laboratory"><small>Choose a type or enter your own.</small></label>
+            <datalist id="activity-types"><option value="Quiz"><option value="Laboratory"><option value="Assignment"><option value="Project"><option value="Exam"><option value="Practice"></datalist>
             <label>
-                <span>Quiz Title</span>
+                <span>Activity Title</span>
                 <input type="text" name="title" maxlength="255" required value="<?php echo esc($titleValue); ?>" placeholder="Photosynthesis Showdown">
             </label>
         <label>

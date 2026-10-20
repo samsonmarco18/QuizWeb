@@ -25,6 +25,11 @@ function setup(options = {}) {
         close() { dom.window.close(); }};
 }
 (async () => {
+    const activities = setup({activities: true});
+    assert(activities.d.querySelector('.classroom-manual-activity'), 'Teacher-graded work appears alongside game activities');
+    assert.match(activities.d.querySelector('.classroom-manual-activity a').href, /item_id=manual-1/);
+    assert(activities.d.querySelector('[data-quiz-filter="activity:Laboratory"]'));
+    activities.close();
     const a = setup();
     assert.match(a.d.querySelector('.classroom-banner h1 a').getAttribute('href'), /tab=overview/);
     const shortcuts = [...a.d.querySelectorAll('.classroom-banner .feature-pills a')];
@@ -93,7 +98,7 @@ function setup(options = {}) {
     assert(teacher.d.querySelector('a[href*="quiz_builder.php"]')); assert(teacher.d.querySelector('.classroom-roster-panel'));
     assert.equal(teacher.d.querySelectorAll('.quiz-best-score').length, 0); assert(!teacher.d.querySelector('[data-quiz-filter="completed"]'));
     assert.match(teacher.d.querySelector('.classroom-progress-content').textContent, /Students active/); teacher.close();
-    const empty = setup({empty: true}); assert.match(empty.d.querySelector('.classroom-quizzes-empty').textContent, /No quizzes yet/); assert.match(empty.d.querySelector('.classroom-progress-ring').textContent, /0%/); empty.close();
+    const empty = setup({empty: true}); assert.match(empty.d.querySelector('.classroom-quizzes-empty').textContent, /No activities yet/); assert.match(empty.d.querySelector('.classroom-progress-ring').textContent, /0%/); empty.close();
     for (const role of ['student', 'teacher']) for (const view of ['overview', 'materials']) {
         const html = render({role, view}); assert(!/Warning:|Fatal error:/.test(html), 'Other classroom tabs still render');
         const d = new JSDOM(html).window.document; assert(d.querySelector('.classroom-aside')); assert.equal(d.querySelector('[aria-current="page"]').textContent.trim(), view === 'overview' ? 'Overview' : 'Materials');
