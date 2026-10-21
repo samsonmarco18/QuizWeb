@@ -199,12 +199,12 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
     <form method="post" id="quiz-builder-form" class="stack-form" novalidate>
         <noscript><p class="inline-error">Enable JavaScript to edit questions and preview this activity.</p></noscript>
         <nav class="builder-steps" aria-label="Quiz builder steps">
-            <button type="button" data-step="0">1. Game</button>
-            <button type="button" data-step="1">2. Details</button>
-            <button type="button" data-step="2">3. Questions</button>
-            <button type="button" data-step="3">4. Settings</button>
-            <button type="button" data-step="4">5. Grading</button>
-            <button type="button" data-step="5">6. Review</button>
+            <button type="button" data-step="0" data-step-label="Game"><span class="builder-step-number" aria-hidden="true">1</span><span>Game</span></button>
+            <button type="button" data-step="1" data-step-label="Details"><span class="builder-step-number" aria-hidden="true">2</span><span>Details</span></button>
+            <button type="button" data-step="2" data-step-label="Questions"><span class="builder-step-number" aria-hidden="true">3</span><span>Questions</span></button>
+            <button type="button" data-step="3" data-step-label="Settings"><span class="builder-step-number" aria-hidden="true">4</span><span>Settings</span></button>
+            <button type="button" data-step="4" data-step-label="Grading"><span class="builder-step-number" aria-hidden="true">5</span><span>Grading</span></button>
+            <button type="button" data-step="5" data-step-label="Review"><span class="builder-step-number" aria-hidden="true">6</span><span>Review</span></button>
         </nav>
         <p id="builder-step-summary" class="builder-step-summary" aria-live="polite"></p>
         <div id="builder-recovery" hidden><p>A local draft is available on this browser.</p><button type="button" class="button button-secondary" id="restore-builder-draft">Restore local draft</button><button type="button" class="button button-ghost" id="discard-builder-draft">Discard local draft</button></div>

@@ -6,6 +6,14 @@ body.ui-refined :is(.game-controls,.builder-toolbar,.preview-devices) { display:
 body.ui-refined :is(.game-controls,.builder-toolbar,.preview-devices) .button { white-space: normal; min-height: 44px; }
 body.ui-refined .builder-steps { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 4px; }
 body.ui-refined .builder-steps button { min-width: 0; white-space: normal; }
+body.ui-refined.builder-page #quiz-builder-form > .builder-steps { position: sticky; top: var(--step-sticky-top, var(--header-height, 72px)); z-index: 12; align-self: start; width: 100%; margin: 0; padding: 8px 0; background: var(--surface); }
+body.ui-refined.builder-page #quiz-builder-form > .builder-steps button { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 8px; }
+body.ui-refined.builder-page #quiz-builder-form > .builder-steps button > span:last-child { min-width: 0; overflow-wrap: normal; word-break: normal; }
+.builder-step-number { display: inline-grid; place-items: center; flex: 0 0 24px; height: 24px; border-radius: 50%; color: var(--text-secondary); background: var(--surface-hover); font-size: 12px; font-weight: 700; }
+body.ui-refined.builder-page #quiz-builder-form .builder-steps .is-complete { border-color: var(--accent); }
+.builder-steps .is-complete .builder-step-number { background: var(--accent); color: var(--accent-ink); }
+body.ui-refined.builder-page .builder-header { position: static; }
+@media (max-width: 1600px) { body.ui-refined.builder-page #quiz-builder-form > .builder-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 body.ui-refined .builder-step-summary { font-weight: 700; margin: 8px 0; }
 body.ui-refined .builder-toolbar { position: static; padding: 16px 0 0; }
 body.ui-refined .builder-panel .remove-question { color: var(--danger); background: var(--surface-soft); border: 1px solid var(--border); }

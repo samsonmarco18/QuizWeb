@@ -7,11 +7,12 @@
     const next = form.querySelector('[data-class-next]');
     const gradeError = form.querySelector('[data-class-grade-error]');
     const submit = form.querySelector('[data-class-submit]');
+    const completedSteps = new Set();
     let current = 0;
     const field = name => form.elements.namedItem(name);
-    function validate(index) {
+    function validate(index, report = true) {
         for (const input of panels[index].querySelectorAll('input, select, textarea')) {
-            if (!input.checkValidity()) { input.reportValidity(); return false; }
+            if (!input.checkValidity()) { if (report) input.reportValidity(); return false; }
         }
         if (index !== 2) return true;
         let error = '';
@@ -27,9 +28,18 @@
         const minimums = [...form.querySelectorAll('input[name^="creation_config[scale]"][name$="[min]"]')].map(input => Number(input.value));
         if (!minimums.includes(0) || new Set(minimums).size !== minimums.length) error = 'Grade scale minimums must be unique and start at 0.';
         if (!unique('input[name^="creation_config[scale]"][name$="[label]"]', v => v.trim().toLowerCase())) error = 'Grade scale labels must be unique.';
-        gradeError.textContent = error;
-        gradeError.hidden = !error;
+        if (report) { gradeError.textContent = error; gradeError.hidden = !error; }
         return !error;
+    }
+    function updateProgress() {
+        completedSteps.forEach(index => { if (index < 3 && !validate(index, false)) completedSteps.delete(index); });
+        steps.forEach((button, index) => {
+            const complete = completedSteps.has(index);
+            button.classList.toggle('is-complete', complete);
+            button.querySelector('.class-step-number').textContent = complete ? '\u2713' : String(index + 1);
+            button.setAttribute('aria-label', `Step ${index + 1}: ${button.dataset.classLabel}, ${complete ? 'completed' : index === current ? 'current' : 'not completed'}`);
+            button.title = complete ? 'Completed' : '';
+        });
     }
     function review() {
         const container = form.querySelector('[data-class-review]'); container.replaceChildren();
@@ -95,13 +105,15 @@
         const subtitle = document.querySelector('[data-class-subtitle]');
         if (subtitle) subtitle.textContent = ['Set up your classroom details to get started.', 'Set up the academic details for your classroom.', 'Configure how grades will be computed for this classroom.', 'Review all details before creating your classroom.'][index];
         if (index === 3) review();
+        updateProgress();
         if (focus) panels[index].querySelector('h3').focus();
     }
     function go(index) {
         if (index > current) {
             for (let i = 0; i < index; i++) {
                 show(i, false);
-                if (!validate(i)) return;
+                if (!validate(i)) { updateProgress(); return; }
+                completedSteps.add(i);
             }
         }
         show(index);
@@ -139,6 +151,7 @@
         form.querySelector('[data-class-add-scale]').disabled = scales.length >= 10;
         form.querySelectorAll('[data-class-remove-category]').forEach(button => { button.disabled = categories.length <= 1; });
         form.querySelectorAll('[data-class-remove-scale]').forEach(button => { button.disabled = scales.length <= 1; });
+        updateProgress();
     }
     field('grading_template').addEventListener('change', event => {
         const config = window.classCreationTemplates[event.target.value]?.config;
@@ -186,12 +199,15 @@
     const description = field('description');
     const updateDescription = () => { form.querySelector('[data-class-description-count]').textContent = `${description.value.length}/500`; };
     description.addEventListener('input', updateDescription);
+    form.addEventListener('input', updateProgress);
+    form.addEventListener('change', updateProgress);
     updateDescription(); updateTotals();
     form.addEventListener('submit', event => {
         if (current !== 3) { event.preventDefault(); go(current + 1); return; }
         for (let i = 0; i < 3; i++) {
             show(i, false);
-            if (!validate(i)) { event.preventDefault(); return; }
+            if (!validate(i)) { event.preventDefault(); updateProgress(); return; }
+            completedSteps.add(i);
         }
         show(3, false);
     });

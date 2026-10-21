@@ -12,6 +12,34 @@
     const snapshot = () => JSON.stringify([form.elements.activity_type?.value, form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_period_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
     const original = window.quizBuilderUnsaved ? null : snapshot();
     const stepNames = ['Game', 'Details', 'Questions', 'Settings', 'Grading', 'Review'];
+    const visitedSteps = new Set();
+    function updateStepCompletion(questions) {
+        const validFields = index => [...form.querySelectorAll(`[data-builder-step="${index}"] input, [data-builder-step="${index}"] select, [data-builder-step="${index}"] textarea`)]
+            .filter(input => input.name && !input.disabled).every(input => input.checkValidity());
+        const category = form.elements.grade_category_id?.value;
+        const period = form.elements.grade_period_id;
+        const maximum = form.elements.grade_max_score;
+        const maxValue = Number(maximum?.value);
+        const gradingReady = !category || ((!period || Boolean(period.value))
+            && ['highest', 'latest', 'first', 'average'].includes(form.elements.grade_attempt_policy?.value)
+            && (!maximum?.value || (Number.isFinite(maxValue) && maxValue >= .01 && maxValue <= 100000 && Math.abs(maxValue * 100 - Math.round(maxValue * 100)) <= .00001)));
+        const ready = [
+            Boolean(window.quizBuilderModes[mode()]),
+            Boolean(form.elements.title.value.trim()) && (!form.elements.activity_type || Boolean(form.elements.activity_type.value.trim())) && validFields(1),
+            questions.length > 0 && questions.length <= 100 && questions.every(q => !problem(q)),
+            validFields(3) && configurationProblems(questions).filter(issue => !issue.startsWith('Gradebook maximum')).length === 0,
+            gradingReady,
+        ];
+        form.querySelectorAll('[data-step]').forEach(button => {
+            const index = Number(button.dataset.step);
+            const complete = index < 5 && visitedSteps.has(index) && ready[index];
+            button.classList.toggle('is-complete', Boolean(complete));
+            const number = button.querySelector('.builder-step-number');
+            if (number) number.textContent = complete ? '\u2713' : String(index + 1);
+            button.setAttribute('aria-label', `Step ${index + 1}: ${stepNames[index]}, ${complete ? 'completed' : index === step ? 'current' : 'not completed'}`);
+            button.title = complete ? 'Completed' : '';
+        });
+    }
     const draftKey = `chalk-builder:${location.pathname}${location.search}`;
     let recoveredDraft = null, draftTimer;
     try { recoveredDraft = JSON.parse(localStorage.getItem(draftKey)); } catch (_) { /* Storage is optional. */ }
@@ -49,6 +77,7 @@
         return '';
     }
     function showStep(value, focus = true) {
+        if (Math.max(0, Math.min(5, value)) !== step) visitedSteps.add(step);
         step = Math.max(0, Math.min(5, value));
         form.querySelectorAll('[data-builder-step]').forEach(el => { el.hidden = Number(el.dataset.builderStep) !== step; });
         form.querySelectorAll('[data-step]').forEach(el => {
@@ -126,6 +155,7 @@
     }
     function refresh() {
         const questions = api.collect();
+        updateStepCompletion(questions);
         active = Math.max(0, Math.min(active, questions.length - 1));
         cards().forEach((card, index) => { card.hidden = index !== active; });
         navigator.replaceChildren();

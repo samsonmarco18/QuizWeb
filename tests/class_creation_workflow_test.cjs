@@ -24,6 +24,9 @@ assert.equal(active(), 0);
 next(); assert.equal(active(), 0, 'Required class details block progression');
 field('name').value='Science'; field('subject').value='Biology'; next();
 assert.equal(active(), 1);
+assert(d.querySelector('[data-class-step="0"]').classList.contains('is-complete'));
+assert.equal(d.querySelector('[data-class-step="0"] .class-step-number').textContent, '\u2713');
+assert.match(d.querySelector('[data-class-step="0"]').getAttribute('aria-label'), /completed/);
 next(); assert.equal(active(), 1, 'Required academic fields block progression');
 for (const [key,value] of Object.entries({subject_code:'BIO101',section:'A',academic_year:'2026-2027',semester:'First Semester'})) field(key).value=value;
 next(); assert.equal(active(), 2);
@@ -79,6 +82,14 @@ field('description').value = 'A class for Grade 10 students focusing on Earth an
 field('description').dispatchEvent(new w.Event('input', {bubbles:true}));
 assert.equal(d.querySelector('[data-class-description-count]').textContent, `${field('description').value.length}/500`);
 next(); assert.equal(active(), 3);
+assert.equal(d.querySelectorAll('[data-class-step].is-complete').length, 3, 'Validated steps have completion checks');
+d.querySelector('[data-class-step="0"]').click();
+field('name').value = ''; field('name').dispatchEvent(new w.Event('input', {bubbles:true}));
+assert(!d.querySelector('[data-class-step="0"]').classList.contains('is-complete'), 'Invalid edits clear completion');
+assert.equal(d.querySelector('[data-class-step="0"] .class-step-number').textContent, '1');
+field('name').value = 'Science'; next();
+d.querySelector('[data-class-step="3"]').click();
+assert.equal(active(), 3);
 if (process.env.CLASS_CREATION_PREVIEW) {
  [...form.querySelectorAll('input')].forEach(input => input.setAttribute('value', input.value));
  [...form.querySelectorAll('select')].forEach(select => [...select.options].forEach(option => option.toggleAttribute('selected', option.selected)));

@@ -13,6 +13,10 @@ body.ui-refined .class-creation-heading h1 { margin: 4px 0 2px; font-size: 22px;
 #class-creation > [data-class-panel] { flex: 1; overflow: visible; }
 #class-creation .class-details-grid { align-content: start; }
 body.ui-refined #class-creation .builder-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0 0 6px; padding: 0; border: 0; background: none; overflow: visible; }
+body.ui-refined #class-creation .class-creation-steps { position: sticky; top: var(--step-sticky-top, var(--header-height, 72px)); z-index: 12; flex: 0 0 auto; width: 100%; padding: 8px 0; background: var(--surface); }
+#class-creation .builder-steps .is-complete { border-color: var(--accent); }
+#class-creation .is-complete .class-step-number { background: var(--accent); color: var(--accent-ink); }
+#class-creation [data-class-panel] h3 { scroll-margin-top: calc(var(--step-sticky-top, 72px) + 130px); }
 body.ui-refined #class-creation .builder-steps button { position: relative; display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; min-height: 48px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); color: var(--text-primary); font: inherit; font-size: 12px; font-weight: 600; line-height: 1.3; white-space: normal; text-align: left; }
 #class-creation .builder-steps button + button::before { content: ''; position: absolute; top: 50%; right: calc(100% + 1px); width: 14px; height: 1px; background: var(--border); pointer-events: none; }
 .class-step-number { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, var(--text-secondary) 85%, var(--surface)); color: var(--bg-primary); font-size: 13px; font-weight: 700; }

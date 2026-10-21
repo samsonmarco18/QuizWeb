@@ -11,6 +11,13 @@
     const sidebarToggle = document.querySelector(".sidebar-toggle");
     const classroomSidebar = document.getElementById("classroom-sidebar");
     const themeStorageKey = "quizweb-theme";
+    const stickyStepHeader = document.querySelector('.site-header');
+    if (stickyStepHeader && (body.classList.contains('class-creation-page') || body.classList.contains('builder-page'))) {
+        const updateStepOffset = () => body.style.setProperty('--step-sticky-top', `${stickyStepHeader.getBoundingClientRect().height}px`);
+        updateStepOffset();
+        if (window.ResizeObserver) new ResizeObserver(updateStepOffset).observe(stickyStepHeader);
+        else window.addEventListener('resize', updateStepOffset);
+    }
 
     document.addEventListener('error', (event) => {
         if (event.target instanceof HTMLImageElement && event.target.classList.contains('profile-avatar-image')) event.target.remove();
