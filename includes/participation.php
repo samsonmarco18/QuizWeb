@@ -8,8 +8,12 @@ function participation_rows(array $classroom, array $quiz, array $students, arra
         $due = !empty($quiz['due_at']) ? strtotime($quiz['due_at']) : false;
         $status = $active ? 'Taking Quiz' : ($history ? 'Completed' : ($due !== false && $due < $now ? 'Overdue / Missing' : 'Not Taken'));
         $latest = $history[0] ?? null;
+        $best = $latest;
+        foreach ($history as $attempt) {
+            if ((int) $attempt['score'] > (int) $best['score']) $best = $attempt;
+        }
         $rows[] = ['student' => $student, 'status' => $status, 'completed' => (bool) $history, 'active' => $active, 'attempts' => $history,
-            'count' => count($history), 'score' => $latest['score'] ?? null, 'max_score' => $latest['max_score'] ?? null,
+            'count' => count($history), 'score' => $best['score'] ?? null, 'max_score' => $best['max_score'] ?? null,
             'submitted_at' => $latest['played_at'] ?? null, 'late' => $latest && $due !== false && strtotime($latest['played_at']) > $due];
     }
     return $rows;

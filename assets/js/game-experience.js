@@ -83,7 +83,7 @@
             const panel = root.querySelector('[data-answer-feedback]'); if (!panel) return;
             panel.replaceChildren(); panel.hidden = false;
             const headline = document.createElement('strong');
-            headline.textContent = timedOut ? "Time’s Up · 0 points" : correct ? `Correct! +${question.points} points` : 'Not quite · 0 points';
+            headline.textContent = timedOut ? "Time’s Up · 0 points" : correct ? 'Correct!' : 'Not quite · 0 points';
             panel.append(headline);
             if (!correct) { const answer = document.createElement('p'); answer.textContent = `Correct answer: ${question.options?.[question.correct_index] || ''}`; panel.append(answer); }
             if (question.explanation) { const why = document.createElement('p'); why.textContent = `Why? ${question.explanation}`; panel.append(why); }

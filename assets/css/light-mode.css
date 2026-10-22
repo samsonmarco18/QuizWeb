@@ -1,0 +1,90 @@
+/* Light-only finishing layer, loaded after page and game styles. */
+body.ui-refined:not(.theme-dark),
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) {
+    --bg-primary: #f3f6f8;
+    --bg-secondary: #fafcfd;
+    --surface: #ffffff;
+    --surface-soft: #f4f7f9;
+    --surface-hover: #eaf3f1;
+    --border: #d4dfe5;
+    --text-primary: #223740;
+    --text-secondary: #536975;
+    --accent: #087b6a;
+    --accent-hover: #066354;
+    --accent-ink: #ffffff;
+    --accent-2: #087b6a;
+    --accent-3: #765612;
+    --success: #216a43;
+    --warning: #805b12;
+    --danger: #b13249;
+    --text: var(--text-primary);
+    --muted: var(--text-secondary);
+    --panel: var(--surface);
+    --panel-strong: var(--surface);
+    --line: var(--border);
+    --bg: var(--bg-primary);
+    --shadow: 0 12px 32px #233c4810;
+    --polish-shadow: 0 4px 18px #233c4809;
+    --scene-teal: #087b6a06;
+    --scene-blue: #537dba04;
+    --scene-gold: transparent;
+    --app-shadow: 0 4px 18px #233c4809;
+    color-scheme: light;
+    color: var(--text-primary);
+}
+body.ui-refined:not(.theme-dark):not(.auth-page) { background: var(--bg-primary); }
+body.ui-refined:not(.theme-dark) .site-header { background: #ffffffed; border-color: var(--border); box-shadow: 0 1px 8px #233c4808; }
+body.ui-refined:not(.theme-dark) .classroom-sidebar { background: var(--bg-secondary); }
+body.ui-refined:not(.theme-dark) :is(.glass, .panel, .question-stage, .finish-card, .results-shell) { border-color: var(--border); color: var(--text-primary); }
+body.ui-refined:not(.theme-dark) :is(.button-primary, .profile-save-button, .profile-photo-actions .button-primary) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 3px 8px #087b6a18; }
+body.ui-refined:not(.theme-dark) :is(.button-primary, .profile-save-button, .profile-photo-actions .button-primary):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+body.ui-refined:not(.theme-dark) .button-secondary { background: var(--surface); color: var(--accent); border-color: #c5d7d5; box-shadow: 0 2px 4px #233c4806; }
+body.ui-refined:not(.theme-dark) .button-secondary:hover { background: var(--surface-hover); border-color: var(--accent); }
+body.ui-refined:not(.theme-dark) :is(input, select, textarea) { background-color: var(--surface); border-color: #c8d5dd; color: var(--text-primary); caret-color: var(--accent); }
+body.ui-refined:not(.theme-dark) :is(input, textarea)::placeholder { color: #637984; opacity: 1; }
+body.ui-refined:not(.theme-dark) :is(input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.ui-refined:not(.theme-dark) :is(.academic-table thead, .academic-stat-grid article, .finish-metric, .hud-pill, .game-intro-info span) { background: var(--surface-soft); border-color: var(--border); }
+body.ui-refined:not(.theme-dark) .academic-table tbody tr:nth-child(odd) { background: #f8fafb; }
+body.ui-refined:not(.theme-dark) .academic-table tbody tr:hover { background: #edf5f3; }
+body.ui-refined:not(.theme-dark) :is(.flash-success, .answer-button.is-correct, .review-card.is-correct, .match-card.is-matched) { background: #e8f5ed; border-color: #77ae8c; color: #205d3a; }
+body.ui-refined:not(.theme-dark) :is(.flash-error, .inline-error, .answer-button.is-wrong) { background: #fceef0; border-color: #d18b98; color: #9e2940; }
+body.ui-refined:not(.theme-dark) .messenger-dock { --chat-bg: #ffffff; --chat-side: #f4f7f9; --chat-raised: #eaf1f4; --chat-line: #cfdae1; --chat-text: #223740; --chat-muted: #536975; --chat-accent: #087b6a; }
+
+/* Quiz choices remain distinct from the canvas in every game mode. */
+body.ui-refined.game-page:not(.theme-dark) :is(.game-shell, .mode-stage, .question-stage, .preview-play-test) { background: var(--surface); }
+body.ui-refined:not(.theme-dark) :is(.answer-button, .match-card, .preview-choices button) { background: #ffffff; border: 1px solid #bbcdd6; color: var(--text-primary); box-shadow: 0 2px 6px #233c4808; }
+body.ui-refined:not(.theme-dark) :is(.answer-button, .match-card, .preview-choices button):hover:not(:disabled):not(.is-correct):not(.is-wrong):not(.is-matched) { background: #edf7f4; border-color: var(--accent); }
+body.ui-refined:not(.theme-dark) :is(.answer-index, .match-card.is-revealed) { background: #e3f1ed; color: #075f51; }
+body.ui-refined:not(.theme-dark) .answer-button.is-correct { background: #e8f5ed; border-color: #77ae8c; color: #205d3a; }
+body.ui-refined:not(.theme-dark) .answer-button.is-wrong { background: #fceef0; border-color: #d18b98; color: #9e2940; }
+body.ui-refined:not(.theme-dark) .match-card.is-matched { background: #e8f5ed; border-color: #77ae8c; color: #205d3a; }
+body.ui-refined:not(.theme-dark) :is(.answer-button, .match-card):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+body.ui-refined:not(.theme-dark) .answer-feedback { background: #f1f6f8; border-color: #cad9df; color: var(--text-primary); }
+body.ui-refined:not(.theme-dark) .game-progress { background: #dce6eb; }
+body.ui-refined:not(.theme-dark) .game-progress-bar { background: var(--accent); }
+body.ui-refined:not(.theme-dark) .feedback-burst.is-correct { background: #e8f5ed; color: #205d3a; border-color: #77ae8c; }
+body.ui-refined:not(.theme-dark) .feedback-burst.is-wrong { background: #fceef0; color: #9e2940; border-color: #d18b98; }
+body.ui-refined.game-page:not(.theme-dark):fullscreen { background: var(--bg-primary); }
+
+/* Crossword's illustrated dark canvas has explicit light equivalents. */
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) :is(.game-shell, .preview-play-test) { background: var(--bg-primary); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) :is(.game-shell, .preview-play-test)::after { opacity: .04; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) :is(.game-exit, .hud-pill, .crossword-clues, .crossword-clue-tabs, .clue-button, .crossword-progress) { background: var(--surface); color: var(--text-primary); border-color: var(--border); box-shadow: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) :is(.game-title .eyebrow, .crossword-score .nav-icon) { color: var(--warning); fill: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .game-title .eyebrow::before { background: var(--warning); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-cell { background: #ffffff; border-color: #a6bcc5; color: var(--text-primary); box-shadow: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-cell-input { background: transparent; color: var(--text-primary); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-cell.active-word { background: #e0f1eb; border-color: #68a493; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-cell:focus-within { background: #c9e9df; border-color: var(--accent); color: #164a3f; outline: 2px solid var(--accent); box-shadow: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) :is(.crossword-clue-tabs [aria-pressed="true"], .clue-button[aria-pressed="true"]) { background: #e0f1eb; color: #075f51; border-color: var(--accent); box-shadow: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-clue-length { background: var(--surface-soft); border-color: var(--border); color: var(--text-secondary); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-help summary { color: var(--text-secondary); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-footer { background: var(--surface); border-color: var(--border); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-progress-track .game-progress { background: #dce6eb; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-progress-track .game-progress-bar { background: var(--accent); }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-cell-input.is-correct { background: #e8f5ed; color: #205d3a; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-cell-input.is-wrong { background: #fceef0; color: #9e2940; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-progress-dots span { background: #ffffff; border-color: #a6bcc5; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-progress-dots span.is-filled { background: var(--accent); border-color: var(--accent); box-shadow: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) .crossword-submit { background: var(--accent); border-color: var(--accent); color: #ffffff; box-shadow: none; }
+body.ui-refined.game-page.mode-crossword:not(.theme-dark) :is(.clue-button, .crossword-clue-tabs .button, .crossword-submit, .game-exit):focus-visible { outline-color: var(--accent); }

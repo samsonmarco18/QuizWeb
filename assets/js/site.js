@@ -922,6 +922,28 @@
                 }
                 files.push(...incoming); status.textContent = ''; displayFiles();
             });
+            const pollOptions = form.querySelector('[data-poll-options]');
+            const pollAdd = form.querySelector('[data-poll-add]');
+            const pollRemove = form.querySelector('[data-poll-remove]');
+            const updatePollOptions = () => {
+                const count = pollOptions?.children.length || 0;
+                if (pollAdd) pollAdd.hidden = count >= 6;
+                if (pollRemove) pollRemove.hidden = count <= 2;
+            };
+            pollAdd?.addEventListener('click', () => {
+                if (pollOptions.children.length >= 6) return;
+                const number = pollOptions.children.length + 1;
+                const label = document.createElement('label');
+                label.textContent = `Option ${number}`;
+                const input = document.createElement('input');
+                input.dataset.pollOption = ''; input.maxLength = 120; input.placeholder = `Enter option ${number}`;
+                label.append(input); pollOptions.append(label); updatePollOptions(); input.focus();
+            });
+            pollRemove?.addEventListener('click', () => {
+                if (pollOptions.children.length <= 2) return;
+                pollOptions.lastElementChild.remove(); updatePollOptions();
+                pollOptions.lastElementChild.querySelector('input').focus();
+            });
             form.querySelectorAll('[data-chat-toggle]').forEach((button) => button.addEventListener('click', () => {
                 const extra = form.querySelector(`[data-chat-extra="${button.dataset.chatToggle}"]`);
                 extra.hidden = !extra.hidden; button.setAttribute('aria-expanded', String(!extra.hidden));
@@ -939,6 +961,7 @@
                 event.preventDefault();
                 if (form.dataset.sending === '1') return;
                 const data = new FormData(form);
+                data.set('poll_options', [...form.querySelectorAll('[data-poll-option]')].map(input => input.value.trim()).filter(Boolean).join('\n'));
                 requestId ||= Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
                 data.set('request_id', requestId);
                 data.set('action', 'send'); data.set('classroom_id', thread.dataset.chatId);
@@ -950,6 +973,10 @@
                 try {
                     await chatRequest(data);
                     form.reset(); files = []; requestId = null; displayFiles();
+                    if (pollOptions) {
+                        while (pollOptions.children.length > 2) pollOptions.lastElementChild.remove();
+                        updatePollOptions();
+                    }
                     form.querySelectorAll('[data-chat-extra]').forEach((extra) => extra.hidden = true);
                     form.querySelectorAll('[data-chat-toggle]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
                     status.textContent = 'Sent'; scrollThreadToBottom(thread); markThreadSeen(thread);

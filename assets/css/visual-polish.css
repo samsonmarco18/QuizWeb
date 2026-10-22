@@ -1,4 +1,89 @@
 /* Expressive surfaces and motion, layered over the shared application theme. */
+.sidebar-class-row { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.sidebar-class-row > .student-class-link { flex: 1; min-width: 0; }
+.sidebar-class-row > .student-class-link > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-class-menu { position: relative; flex: 0 0 28px; }
+.sidebar-class-menu > summary { display: grid; place-items: center; width: 28px; height: 32px; border: 1px solid transparent; border-radius: 8px; color: var(--text-secondary); cursor: pointer; list-style: none; }
+.sidebar-class-menu > summary::-webkit-details-marker { display: none; }
+.sidebar-class-menu > summary .nav-icon { width: 18px; height: 18px; }
+.sidebar-class-menu[open] > summary, .sidebar-class-menu > summary:hover { background: var(--surface-hover); color: var(--accent); border-color: var(--border); }
+.sidebar-class-menu > div { position: absolute; top: calc(100% + 5px); right: 0; z-index: 40; width: 150px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.sidebar-class-menu > div a { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 6px; font-size: 12px; color: var(--text-primary); }
+.sidebar-class-menu > div a:hover { background: var(--surface-hover); }
+.sidebar-class-menu > div .class-delete-link { color: var(--danger); }
+.sidebar-class-menu a .nav-icon { width: 16px; height: 16px; }
+.class-action-confirm { width: min(100%, 640px); margin: 24px auto; }
+.class-action-confirm h1 { font-size: 24px; line-height: 1.3; }
+.class-action-warning { padding: 16px; margin: 20px 0; background: color-mix(in srgb, var(--warning) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border)); border-radius: 12px; }
+.class-action-warning p { margin: 8px 0 0; line-height: 1.7; color: var(--text-secondary); }
+.class-delete-phrase { display: block; padding: 12px; margin: 10px 0; border: 1px dashed var(--danger); border-radius: 8px; overflow-wrap: anywhere; font-family: monospace; color: var(--danger); }
+.class-action-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.class-action-buttons .button-danger { background: var(--danger); color: var(--surface); border-color: var(--danger); }
+.class-action-buttons button:disabled { opacity: .45; cursor: not-allowed; }
+.chat-poll-options { display: grid; gap: 10px; margin-top: 12px; }
+.chat-poll-options label { display: grid; gap: 5px; }
+.chat-poll-option-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.chat-poll-option-actions button { padding: 7px 10px; border: 1px solid var(--chat-line); border-radius: 8px; background: var(--chat-raised); color: var(--chat-text); font: inherit; font-size: 11px; cursor: pointer; }
+.chat-poll-option-actions small { color: var(--chat-muted); font-size: 10px; }
+.chat-poll-option-actions [hidden] { display: none; }
+.material-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+body.ui-refined .material-actions .button { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 8px 12px; font-size: 12px; }
+.material-actions .nav-icon { width: 16px; height: 16px; flex-basis: 16px; }
+body.ui-refined .account-toggle {
+    min-height: 52px;
+    max-width: 240px;
+    gap: 10px;
+    padding: 5px 12px 5px 6px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+    color: var(--text-primary);
+    text-align: left;
+    transition: background 160ms ease, border-color 160ms ease;
+}
+body.ui-refined .account-toggle:is(:hover, [aria-expanded="true"]) {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+.account-toggle-copy { display: grid; min-width: 0; gap: 3px; }
+.account-toggle-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 1.3; }
+.account-toggle-copy small { color: var(--text-secondary); font-size: 10px; font-weight: 500; line-height: 1.3; }
+body.ui-refined .account-toggle > .account-avatar { border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); }
+body.ui-refined .account-toggle > .nav-icon { margin-left: 4px; color: var(--text-secondary); transition: transform 160ms ease; }
+body.ui-refined .account-toggle[aria-expanded="true"] > .nav-icon { transform: rotate(180deg); }
+body.ui-refined .account-dropdown {
+    z-index: 65;
+    right: 0;
+    width: min(264px, calc(100vw - 24px));
+    padding: 8px;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px #0002;
+}
+body.ui-refined .account-summary { margin: 0 4px 6px; padding: 10px 4px 16px; border-bottom: 1px solid var(--border); }
+body.ui-refined .account-item { gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px; font-size: 12px; }
+body.ui-refined .account-item .nav-icon { width: 18px; height: 18px; flex-basis: 18px; color: var(--text-secondary); }
+body.ui-refined .messenger-close {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--chat-raised, var(--surface));
+    color: var(--chat-text, var(--text-primary));
+    box-shadow: none;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+body.ui-refined .messenger-close .nav-icon { width: 18px; height: 18px; }
+body.ui-refined .messenger-close:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border-color: var(--accent); color: var(--accent); }
+body.ui-refined :is(.account-toggle, .messenger-close):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 480px) {
+    body.ui-refined .account-toggle { max-width: 190px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.ui-refined :is(.account-toggle, .account-toggle > .nav-icon, .messenger-close) { transition: none; }
+}
 body.ui-refined {
     --scene-teal: rgba(20, 124, 104, .12);
     --scene-blue: rgba(98, 139, 207, .10);

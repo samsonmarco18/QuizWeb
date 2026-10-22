@@ -4,7 +4,7 @@ function navbar_notifications(array $user, array $classrooms): array
 {
     $items = [];
     foreach ($classrooms as $classroom) {
-        if (!classroom_belongs_to_user($classroom, $user)) continue;
+        if (!classroom_belongs_to_user($classroom, $user) || classroom_is_archived($user, (int) $classroom['id'])) continue;
         $classId = (int) $classroom['id'];
         foreach (['announcements' => 'Announcement', 'quizzes' => 'New activity'] as $collection => $label) {
             foreach ($classroom[$collection] ?? [] as $record) {

@@ -171,6 +171,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/app-motion.css')); ?>">
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/notifications.css')); ?>">
         <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc(versioned_asset_url($style)); ?>"><?php endforeach; ?>
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/light-mode.css')); ?>">
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>
@@ -203,7 +204,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
                     <div class="account-menu">
                         <button class="account-toggle" type="button" aria-expanded="false" aria-controls="account-dropdown">
                             <?php render_profile_avatar($user); ?>
-                            <strong><?php echo esc($user['name']); ?></strong>
+                            <span class="account-toggle-copy"><strong><?php echo esc($user['name']); ?></strong><small><?php echo esc(ucfirst($user['role'])); ?></small></span>
                             <?php echo nav_icon('chevron'); ?>
                         </button>
                         <div class="account-dropdown" id="account-dropdown" hidden>
@@ -245,9 +246,12 @@ function render_header(string $title, string $pageClass = '', array $styles = []
                         <a class="classroom-sidebar-link<?php echo current_path() === '/QuizWeb/classes.php' ? ' is-active' : ''; ?>" href="/QuizWeb/classes.php" <?php echo current_path() === '/QuizWeb/classes.php' ? 'aria-current="page"' : ''; ?>><?php echo nav_icon('Dashboard'); ?><span>All Classes</span></a>
                         <?php foreach ($sidebarClassrooms as $sidebarIndex => $sidebarClassroom): ?>
                             <?php $isCurrentClassroom = current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']; ?>
+                            <div class="sidebar-class-row">
                             <a class="classroom-sidebar-link student-class-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
                                 <i class="student-class-dot dot-<?php echo esc((string) (($sidebarIndex % 3) + 1)); ?>" aria-hidden="true"></i><span><?php echo esc($sidebarClassroom['name']); ?></span>
                             </a>
+                            <?php render_classroom_menu($sidebarClassroom); ?>
+                            </div>
                         <?php endforeach; ?>
                         <?php if (!$sidebarClassrooms): ?><p class="sidebar-empty">Join a class to see it here.</p><?php endif; ?>
                     </nav>
@@ -457,7 +461,14 @@ function render_messenger_dock(): void
                                         <input type="file" data-chat-files multiple hidden>
                                         <div class="chat-selected-files" data-chat-selected hidden></div>
                                         <div class="chat-extra" data-chat-extra="link" hidden><label>Link URL<input type="url" name="link" placeholder="https://example.com"></label></div>
-                                        <div class="chat-extra" data-chat-extra="poll" hidden><label>Poll question<input name="poll_question" maxlength="240" placeholder="What should we review next?"></label><label>Options (one per line)<textarea name="poll_options" rows="3" placeholder="Option one&#10;Option two"></textarea></label></div>
+                                        <div class="chat-extra" data-chat-extra="poll" hidden>
+                                            <label>Poll question<input name="poll_question" maxlength="240" placeholder="What should we review next?"></label>
+                                            <div class="chat-poll-options" data-poll-options>
+                                                <label>Option 1<input data-poll-option maxlength="120" placeholder="Enter first option"></label>
+                                                <label>Option 2<input data-poll-option maxlength="120" placeholder="Enter second option"></label>
+                                            </div>
+                                            <div class="chat-poll-option-actions"><button type="button" data-poll-add>Add option</button><button type="button" data-poll-remove hidden>Remove last option</button><small>2–6 different options</small></div>
+                                        </div>
                                         <div class="chat-emoji-picker" data-chat-extra="emoji" hidden>
                                             <?php foreach (['😀', '😊', '👍', '❤️', '🎉', '👏', '🤔', '✅'] as $emoji): ?><button type="button" data-chat-emoji="<?php echo esc($emoji); ?>" aria-label="Insert <?php echo esc($emoji); ?>"><?php echo $emoji; ?></button><?php endforeach; ?>
                                         </div>

@@ -5,6 +5,7 @@ require_once __DIR__ . '/admin.php';
 require_once __DIR__ . '/grading.php';
 require_once __DIR__ . '/uploads.php';
 require_once __DIR__ . '/academics.php';
+require_once __DIR__ . '/classroom_lifecycle.php';
 
 session_start();
 
@@ -1338,12 +1339,15 @@ function teacher_classrooms(int $teacherId, ?PDO $pdo = null): array
     return array_map('hydrate_classroom', $query->fetchAll());
 }
 
-function student_classrooms(int $studentId): array
+function student_classrooms(int $studentId, bool $includeArchived = false): array
 {
     $predicate = DB_DRIVER === 'mysql' ? 'JSON_CONTAINS(student_ids, ?)' : 'student_ids @> CAST(? AS jsonb)';
     $query = db()->prepare('SELECT * FROM classrooms WHERE ' . $predicate . ' ORDER BY id ASC');
     $query->execute([json_encode([$studentId])]);
-    return array_map('hydrate_classroom', $query->fetchAll());
+    $classes = array_map('hydrate_classroom', $query->fetchAll());
+    if ($includeArchived) return $classes;
+    $student = find_user_by_id($studentId) ?? [];
+    return array_values(array_filter($classes, fn($class) => !classroom_is_archived($student, (int) $class['id'])));
 }
 
 function user_classrooms(array $user): array

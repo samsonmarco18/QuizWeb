@@ -2,6 +2,7 @@
 
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/classroom_ui.php';
+require_once dirname(__DIR__, 3) . '/includes/materials.php';
 
 $user = require_login();
 $classroomId = (int) ($_GET['id'] ?? 0);
@@ -20,6 +21,7 @@ if (!$classroom || !classroom_belongs_to_user($classroom, $user)) {
 }
 if ($activeView === 'grades') redirect('/QuizWeb/' . ($user['role'] === 'teacher' ? 'gradebook.php' : 'grades.php') . '?classroom_id=' . $classroomId);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') require_form_csrf();
+handle_material_action($user, [$classroom]);
 
 if ($user['role'] === 'teacher' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'post_announcement') {
     $activeView = 'materials';
@@ -142,7 +144,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
         <p class="lead"><?php echo esc($classroom['description'] ?: 'Gamified classroom space for your quizzes and student activity.'); ?></p>
         <div class="feature-pills">
             <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=quizzes" aria-label="View classroom activities"><?php echo nav_icon('document'); ?><?php echo count($quizCards); ?> activities</a>
-            <a href="<?php echo $user['role'] === 'teacher' ? '#class-roster' : '/QuizWeb/classroom.php?id=' . (int) $classroom['id'] . '&amp;tab=results#results'; ?>" aria-label="<?php echo $user['role'] === 'teacher' ? 'View class roster' : 'View class results'; ?>"><?php echo nav_icon('Join Class'); ?><?php echo esc(count($classroom['student_ids'] ?? [])); ?> students</a>
+            <a href="/QuizWeb/class_list.php?classroom_id=<?php echo (int) $classroom['id']; ?>" aria-label="View class list"><?php echo nav_icon('Join Class'); ?><?php echo esc(count($classroom['student_ids'] ?? [])); ?> students</a>
             <a href="/QuizWeb/classroom.php?id=<?php echo (int) $classroom['id']; ?>&amp;tab=overview"><?php echo nav_icon('Focus Practice'); ?><?php echo esc($user['role'] === 'teacher' ? 'Teaching hub' : 'Learning hub'); ?></a>
         </div>
     </div>
@@ -317,8 +319,9 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
     <?php endif; ?>
 
     <div class="newsfeed-list">
-        <?php if ($announcements): ?>
-            <?php foreach ($announcements as $announcement): ?>
+        <?php $visibleAnnouncements = array_filter($announcements, fn($item) => empty(material_state($user, $classroomId, (string) $item['id'])['archived'])); ?>
+        <?php if ($visibleAnnouncements): ?>
+            <?php foreach ($visibleAnnouncements as $announcement): ?>
                 <article class="announcement-card">
                     <div class="announcement-meta">
                         <div>
@@ -328,6 +331,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
                         <time datetime="<?php echo esc($announcement['created_at']); ?>"><?php echo esc(format_date($announcement['created_at'])); ?></time>
                     </div>
 
+                    <?php render_material_actions($user, $classroom, $announcement); ?>
                     <?php if (!empty($announcement['body'])): ?>
                         <p class="announcement-body"><?php echo nl2br(esc($announcement['body'])); ?></p>
                     <?php endif; ?>
@@ -358,7 +362,7 @@ render_header($classroom['name'], 'classroom-page classroom-redesign', ['/QuizWe
                 </article>
             <?php endforeach; ?>
         <?php else: ?>
-            <p class="muted"><?php echo esc($user['role'] === 'teacher' ? 'No announcements yet. Post the first update for your class.' : 'No announcements have been posted in this classroom yet.'); ?></p>
+            <p class="muted"><?php echo esc($user['role'] === 'teacher' ? 'No announcements yet. Post the first update for your class.' : 'No materials to show. Archived posts can be restored from Archive.'); ?></p>
         <?php endif; ?>
     </div>
 </section>
