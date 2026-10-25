@@ -172,6 +172,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/notifications.css')); ?>">
         <?php foreach ($styles as $style): ?><link rel="stylesheet" href="<?php echo esc(versioned_asset_url($style)); ?>"><?php endforeach; ?>
         <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/light-mode.css')); ?>">
+        <link rel="stylesheet" href="<?php echo esc(versioned_asset_url('/QuizWeb/assets/css/mobile.css')); ?>">
     </head>
     <body class="ui-refined <?php echo esc($pageClass . ($user && $showHeader && !str_contains($pageClass, 'game-page') ? ' has-classroom-sidebar' : '')); ?>">
         <script>try { document.body.classList.toggle('theme-dark', localStorage.getItem('quizweb-theme') === 'dark'); } catch (error) {}</script>
