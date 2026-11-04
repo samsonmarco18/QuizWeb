@@ -4442,6 +4442,8 @@ body:not(.theme-dark) .messenger-dock { --chat-bg: var(--surface); --chat-side: 
 .messenger-group-item:nth-of-type(3n) .messenger-group-avatar { background: #14896d; }
 .messenger-dock .messenger-thread-stage, .messenger-dock .messenger-thread { min-height: 0; background: var(--chat-bg); }
 .messenger-thread-top { align-items: center; gap: 10px; min-height: 66px; padding: 12px 42px 12px 14px; border-color: var(--chat-line); }
+.messenger-thread-back { display: none; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 9px; background: var(--chat-raised); color: var(--chat-text); cursor: pointer; }
+.messenger-thread-back .nav-icon { width: 18px; height: 18px; }
 .messenger-thread-top > div { flex: 1; min-width: 0; }
 .messenger-thread-top h3 { font-size: 12px; overflow-wrap: anywhere; }
 .messenger-thread-top .eyebrow { margin: 0; font-size: 9px; letter-spacing: .03em; color: var(--chat-muted); }
@@ -4478,13 +4480,15 @@ body.student-dashboard:not(.theme-dark) .account-avatar { color: #08796a; }
 body:not(.theme-dark) .button-primary { color: #fff; }
 @media (max-width: 600px) {
     .messenger-panel { right: 8px; left: 8px; bottom: 80px; width: auto; height: min(580px, calc(100dvh - 96px)); }
-    .messenger-shell-body { grid-template-columns: 1fr; grid-template-rows: 170px minmax(0, 1fr); }
-    .messenger-group-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; padding: 10px; border-right: 0; border-bottom: 1px solid var(--chat-line); gap: 6px; }
+    .messenger-shell-body { display: block; }
+    .messenger-group-list { display: flex; height: 100%; padding: 16px 10px 10px; border: 0; gap: 8px; }
     .messenger-shell-header, .messenger-search, .messenger-filters, .messenger-search-empty { grid-column: 1 / -1; }
-    .messenger-shell-header { padding: 0 30px 0 0; }
-    .messenger-shell-header p { display: none; }
-    .messenger-thread-top { min-height: 52px; padding: 8px 12px; }
-    .messenger-group-item time { display: none; }
+    .messenger-shell-header { padding: 0 30px 8px 0; }
+    .messenger-thread-stage { display: none; height: 100%; }
+    .messenger-dock.is-mobile-thread-open .messenger-group-list { display: none; }
+    .messenger-dock.is-mobile-thread-open .messenger-thread-stage { display: block; }
+    .messenger-thread-top { min-height: 58px; padding: 8px 38px 8px 8px; }
+    .messenger-thread-back { display: grid; }
 }
 
 /* Registration password feedback and aligned account fields. */

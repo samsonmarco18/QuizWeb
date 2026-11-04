@@ -438,8 +438,10 @@
         const currentUserId = Number(messengerDock.dataset.currentUserId || 0);
         const messengerSeenStorageKey = `quizweb-messenger-seen-${currentUserId}`;
         const messengerOpenStorageKey = `quizweb-messenger-open-${currentUserId}`;
+        const mobileMessengerQuery = window.matchMedia('(max-width: 760px)');
         let imagePreview = null;
         let imagePreviewTrigger = null;
+        let lastSelectedGroup = null;
 
         function restoreImagePreviewFocus() {
             const replacement = [...messengerDock.querySelectorAll('[data-chat-image-open]')].find(button => button.dataset.imageUrl === imagePreviewTrigger?.dataset.imageUrl);
@@ -654,6 +656,19 @@
             scrollThreadToBottom(targetThread);
         }
 
+        function showMobileConversation(button) {
+            if (!mobileMessengerQuery.matches) return;
+            lastSelectedGroup = button;
+            messengerDock.classList.add('is-mobile-thread-open');
+            messengerPanel?.querySelector('.messenger-thread.is-active [data-messenger-back]')?.focus();
+        }
+
+        function showMobileConversationList() {
+            messengerThreads.forEach((thread) => setMembersOpen(thread, false));
+            messengerDock.classList.remove('is-mobile-thread-open');
+            lastSelectedGroup?.focus();
+        }
+
         function openMessenger() {
             messengerPanel.hidden = false;
             messengerDock.classList.add("is-open");
@@ -670,6 +685,7 @@
             closeImagePreview();
             messengerThreads.forEach((thread) => setMembersOpen(thread, false));
             messengerDock.classList.remove("is-open");
+            messengerDock.classList.remove('is-mobile-thread-open');
             messengerPanel?.setAttribute("aria-hidden", "true");
             messengerPanel.hidden = true;
             messengerLauncher?.setAttribute("aria-expanded", "false");
@@ -703,7 +719,16 @@
                 openMessenger();
                 const targetThread = messengerThreads.find((thread) => thread.id === targetThreadId);
                 markThreadSeen(targetThread);
+                showMobileConversation(button);
             });
+        });
+
+        messengerDock.querySelectorAll('[data-messenger-back]').forEach((button) => {
+            button.addEventListener('click', showMobileConversationList);
+        });
+
+        mobileMessengerQuery.addEventListener?.('change', (event) => {
+            if (!event.matches) messengerDock.classList.remove('is-mobile-thread-open');
         });
 
         function chatElement(tag, className, text) {

@@ -375,6 +375,7 @@ function render_messenger_dock(): void
                                 ?>
                                 <article class="messenger-thread <?php echo $isActive ? 'is-active' : ''; ?>" data-latest-message-id="<?php echo (int) ($latestMessage['id'] ?? 0); ?>" data-messenger-thread data-chat-id="<?php echo esc((string) $classroom['id']); ?>" data-latest-at="<?php echo esc((string) ($latestMessage['created_at'] ?? '')); ?>" data-latest-user-id="<?php echo esc((string) ($latestMessage['user_id'] ?? 0)); ?>" id="messenger-thread-<?php echo esc((string) $classroom['id']); ?>">
                                     <div class="messenger-thread-top">
+                                        <button class="messenger-thread-back" type="button" data-messenger-back aria-label="Back to conversations"><?php echo nav_icon('arrow-left'); ?></button>
                                         <span class="messenger-group-avatar" aria-hidden="true"><?php echo esc(strtoupper(substr(trim((string) $classroom['name']), 0, 1)) ?: 'C'); ?></span>
                                         <div>
                                             <span class="eyebrow"><?php echo esc($classroom['subject'] ?: 'Classroom'); ?></span>
