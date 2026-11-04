@@ -29,10 +29,13 @@ CREATE TABLE IF NOT EXISTS classrooms (
     quizzes JSON NOT NULL,
     announcements JSON NOT NULL,
     chat_messages JSON NOT NULL,
+    lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at VARCHAR(40) NOT NULL,
     updated_at VARCHAR(40) NOT NULL,
     INDEX idx_classrooms_teacher_id (teacher_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+ALTER TABLE classrooms ADD COLUMN IF NOT EXISTS lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'active';
 
 -- ATTEMPTS: scores, submitted answers, and historical quiz snapshots
 CREATE TABLE IF NOT EXISTS attempts (
@@ -61,6 +64,26 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     action VARCHAR(80) NOT NULL,
     occurred_at VARCHAR(40) NOT NULL,
     INDEX idx_audit_logs_action (action, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS oauth_identities (
+    provider VARCHAR(30) NOT NULL,
+    provider_subject VARCHAR(255) NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (provider, provider_subject),
+    UNIQUE KEY uq_oauth_provider_user (provider, user_id),
+    CONSTRAINT fk_oauth_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS oauth_identities (
+    provider VARCHAR(30) NOT NULL,
+    provider_subject VARCHAR(255) NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (provider, provider_subject),
+    UNIQUE KEY uq_oauth_provider_user (provider, user_id),
+    CONSTRAINT fk_oauth_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 -- GRADEBOOKS: classroom grading configuration and published results

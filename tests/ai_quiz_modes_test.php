@@ -55,14 +55,7 @@ foreach ($sets as $mode => $set) {
     $validated = ai_quiz_validate(json_encode(['questions' => $questions]), $options);
     mode_check(count($validated['questions']) === 100 && !prepare_activity_questions($mode, $validated['questions'])['errors'], '100-item ' . $mode . ' draft imports and passes save validation');
 }
-mode_check(ai_quiz_options(['count' => 2, 'game_type' => 'flip_match', 'difficulty' => 'easy', 'language' => 'Filipino'])['count'] === 2, 'Two pairs supported for single difficulty');
-$twoPairs = array_slice($sets['flip_match']['questions'], 0, 2);
-foreach ($twoPairs as &$pair) $pair['level'] = 'easy';
-unset($pair);
-$twoPairOptions = ai_quiz_options(['count' => 2, 'game_type' => 'flip_match', 'difficulty' => 'easy', 'language' => 'Filipino']);
-mode_check(count(ai_quiz_validate(json_encode(['questions' => $twoPairs]), $twoPairOptions)['questions']) === 2, 'Two matching pairs pass full generation validation');
-foreach ([['count' => 101, 'difficulty' => 'easy'], ['count' => 2, 'difficulty' => 'mixed']] as $invalid) mode_reject(fn() => ai_quiz_options($invalid + ['game_type' => 'flip_match', 'language' => 'English']), 'Matching count rules must be enforced');
-foreach (['crossword', 'flip_match', 'fill_blank', 'emoji_quiz'] as $mode) {
+foreach (['crossword', 'fill_blank'] as $mode) {
     $set = $sets[$mode]; $bad = $set['questions'];
     $bad[0]['answer'] = str_repeat('a', 251);
     mode_reject(fn() => ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']), $mode . ' oversized answer rejected');
@@ -71,20 +64,17 @@ foreach (['crossword', 'flip_match', 'fill_blank', 'emoji_quiz'] as $mode) {
         mode_reject(fn() => ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']), 'Malformed alternatives rejected');
     }
 }
-foreach (['crossword', 'flip_match'] as $mode) {
+foreach (['crossword'] as $mode) {
     $set = $sets[$mode]; $bad = $set['questions']; $bad[1]['answer'] = strtolower($bad[0]['answer']);
     mode_reject(fn() => ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']), 'Duplicate answers rejected');
 }
 $set = $sets['crossword']; $bad = $set['questions'];
 foreach (['ABC', 'DEF', 'GHI'] as $i => $answer) $bad[$i]['answer'] = $answer;
 mode_reject(fn() => ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']), 'Disconnected grid rejected');
-foreach (['fill_blank' => 'A sentence without a blank.', 'emoji_quiz' => 'A clue without any emoji.'] as $mode => $prompt) {
+foreach (['fill_blank' => 'A sentence without a blank.'] as $mode => $prompt) {
     $set = $sets[$mode]; $bad = $set['questions']; $bad[0]['prompt'] = $prompt;
     mode_reject(fn() => ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']), $mode . ' required prompt format enforced');
 }
 $set = $sets['fill_blank']; $bad = $set['questions']; $bad[0]['prompt'] = '_____ has two _____.';
 mode_reject(fn() => ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']), 'A fill-in-the-blank item has exactly one blank');
-$set = $sets['flip_match']; $bad = $set['questions']; $bad[0]['prompt_image'] = 'https://untrusted.test/image'; $bad[0]['case_sensitive'] = true;
-$clean = ai_quiz_validate(json_encode(['questions' => $bad]), $set['options']);
-mode_check($clean['questions'][0]['prompt_image'] === '' && !$clean['questions'][0]['case_sensitive'], 'Model-supplied images and grading settings are ignored');
-echo "AI activity checks passed for all 11 modes: schemas, generated answer formats, builder validation, connected crossword grids, matching limits and malformed output rejection.\n";
+echo "AI activity checks passed for the four supported modes: schemas, answer formats, builder validation, connected crossword grids, and malformed output rejection.\n";

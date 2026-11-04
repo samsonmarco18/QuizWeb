@@ -225,6 +225,7 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
         'quizzes' => db_json_encode(array_values($classroom['quizzes'] ?? [])),
         'announcements' => db_json_encode(array_values($classroom['announcements'] ?? [])),
         'chat_messages' => db_json_encode(array_values($classroom['chat_messages'] ?? [])),
+        'lifecycle_state' => in_array($classroom['lifecycle_state'] ?? 'active', ['active', 'archived', 'deleted'], true) ? ($classroom['lifecycle_state'] ?? 'active') : 'active',
         'created_at' => $classroom['created_at'],
         'updated_at' => $classroom['updated_at'],
     ]);
@@ -303,6 +304,7 @@ function hydrate_classroom(array $row): array
         'quizzes' => db_json_decode($row['quizzes'] ?? '[]'),
         'announcements' => db_json_decode($row['announcements'] ?? '[]'),
         'chat_messages' => db_json_decode($row['chat_messages'] ?? '[]'),
+        'lifecycle_state' => in_array($row['lifecycle_state'] ?? 'active', ['active', 'archived', 'deleted'], true) ? $row['lifecycle_state'] : 'active',
         'created_at' => $row['created_at'],
         'updated_at' => $row['updated_at'],
     ];
@@ -843,7 +845,7 @@ function logout_user(): void
 
 function game_modes(): array
 {
-    return [
+    $modes = [
         'standard' => ['label' => 'Standard Quiz', 'icon' => 'Q', 'description' => 'A clear multiple-choice assessment, one question at a time.'],
         'fill_blank' => ['label' => 'Fill in the Blank', 'icon' => 'Aa', 'description' => 'Complete missing words using teacher-defined accepted answers.'],
         'emoji_quiz' => ['label' => 'Emoji Quiz', 'icon' => '☺', 'description' => 'Decode an emoji clue and type the concept it represents.'],
@@ -884,6 +886,7 @@ function game_modes(): array
             'description' => 'Climb from Easy to Master and unlock each level only after proving mastery.',
         ],
     ];
+    return array_intersect_key($modes, array_flip(['standard', 'fill_blank', 'crossword', 'master_ladder']));
 }
 
 function mastery_levels(): array
@@ -1332,17 +1335,19 @@ function generate_join_code(): string
     return $code;
 }
 
-function teacher_classrooms(int $teacherId, ?PDO $pdo = null): array
+function teacher_classrooms(int $teacherId, ?PDO $pdo = null, string $state = 'active'): array
 {
-    $query = ($pdo ?? db())->prepare('SELECT * FROM classrooms WHERE teacher_id = ? ORDER BY id ASC');
-    $query->execute([$teacherId]);
+    if (!in_array($state, ['active', 'archived', 'deleted', 'all'], true)) $state = 'active';
+    $sql = 'SELECT * FROM classrooms WHERE teacher_id = ?' . ($state === 'all' ? '' : ' AND lifecycle_state = ?') . ' ORDER BY id ASC';
+    $query = ($pdo ?? db())->prepare($sql);
+    $query->execute($state === 'all' ? [$teacherId] : [$teacherId, $state]);
     return array_map('hydrate_classroom', $query->fetchAll());
 }
 
 function student_classrooms(int $studentId, bool $includeArchived = false): array
 {
     $predicate = DB_DRIVER === 'mysql' ? 'JSON_CONTAINS(student_ids, ?)' : 'student_ids @> CAST(? AS jsonb)';
-    $query = db()->prepare('SELECT * FROM classrooms WHERE ' . $predicate . ' ORDER BY id ASC');
+    $query = db()->prepare("SELECT * FROM classrooms WHERE {$predicate} AND lifecycle_state = 'active' ORDER BY id ASC");
     $query->execute([json_encode([$studentId])]);
     $classes = array_map('hydrate_classroom', $query->fetchAll());
     if ($includeArchived) return $classes;
@@ -1414,6 +1419,7 @@ function create_classroom_chat_message(array $classroom, array $user, string $bo
 
 function classroom_belongs_to_user(array $classroom, array $user): bool
 {
+    if (($classroom['lifecycle_state'] ?? 'active') !== 'active') return false;
     if ($user['role'] === 'teacher') {
         return (int) $classroom['teacher_id'] === (int) $user['id'];
     }

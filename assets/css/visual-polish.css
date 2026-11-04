@@ -3,6 +3,8 @@
 .sidebar-class-row > .student-class-link { flex: 1; min-width: 0; }
 .sidebar-class-row > .student-class-link > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-class-menu { position: relative; flex: 0 0 28px; }
+.classroom-card { position: relative; }
+.classroom-card > .directory-card-menu { position: absolute; top: 10px; right: 10px; z-index: 4; }
 .sidebar-class-menu > summary { display: grid; place-items: center; width: 28px; height: 32px; border: 1px solid transparent; border-radius: 8px; color: var(--text-secondary); cursor: pointer; list-style: none; }
 .sidebar-class-menu > summary::-webkit-details-marker { display: none; }
 .sidebar-class-menu > summary .nav-icon { width: 18px; height: 18px; }

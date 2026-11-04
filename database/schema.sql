@@ -54,6 +54,7 @@ CREATE INDEX IF NOT EXISTS idx_attempts_quiz_id ON attempts (quiz_id);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(20) NOT NULL DEFAULT 'active';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE classrooms ADD COLUMN IF NOT EXISTS chat_messages JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE classrooms ADD COLUMN IF NOT EXISTS lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'active';
 
 -- AUDIT LOGS: account and operational events
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -64,6 +65,24 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     occurred_at VARCHAR(40) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, id);
+
+CREATE TABLE IF NOT EXISTS oauth_identities (
+    provider VARCHAR(30) NOT NULL,
+    provider_subject VARCHAR(255) NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (provider, provider_subject),
+    UNIQUE (provider, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS oauth_identities (
+    provider VARCHAR(30) NOT NULL,
+    provider_subject VARCHAR(255) NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (provider, provider_subject),
+    UNIQUE (provider, user_id)
+);
 
 -- GRADEBOOKS: classroom grading configuration and published results
 CREATE TABLE IF NOT EXISTS gradebooks (

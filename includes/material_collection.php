@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/materials.php';
-$materialClassrooms = student_classrooms((int) $user['id'], true);
+$materialClassrooms = $user['role'] === 'teacher' ? teacher_classrooms((int) $user['id'], null, 'all') : student_classrooms((int) $user['id'], true);
 handle_material_action($user, $materialClassrooms);
 $resources = [];
 foreach ($materialClassrooms as $classroom) {
@@ -16,10 +16,11 @@ render_header($title, 'student-page ' . $collection . '-page');
 <header class="page-heading"><div><span class="eyebrow">Learning resources</span><h1><?php echo esc($title); ?></h1><p><?php echo $collection === 'archive' ? 'Materials you archived. Restore them to your classroom feed anytime.' : 'Materials you saved across your classrooms.'; ?></p></div></header>
 <?php if ($collection === 'archive'): ?>
 <section class="glass panel"><h2>Archived classes</h2><div class="resource-list">
-    <?php $archivedClasses = array_filter($materialClassrooms, fn($class) => classroom_is_archived($user, (int) $class['id'])); ?>
+    <?php $archivedClasses = array_filter($materialClassrooms, fn($class) => $user['role'] === 'teacher' ? ($class['lifecycle_state'] ?? 'active') === 'archived' : classroom_is_archived($user, (int) $class['id'])); ?>
     <?php foreach ($archivedClasses as $archivedClass): ?><article class="resource-row"><?php echo nav_icon('archive'); ?><div><strong><?php echo esc($archivedClass['name']); ?></strong><span>Notifications paused</span></div><a class="button button-secondary" href="/QuizWeb/classroom_action.php?classroom_id=<?php echo (int) $archivedClass['id']; ?>&amp;operation=restore">Restore</a></article><?php endforeach; ?>
     <?php if (!$archivedClasses): ?><p class="muted">No archived classes.</p><?php endif; ?>
 </div></section>
+<?php if ($user['role'] === 'teacher'): ?><section class="glass panel"><h2>Deleted classrooms</h2><div class="resource-list"><?php $deletedClasses = array_filter($materialClassrooms, fn($class) => ($class['lifecycle_state'] ?? 'active') === 'deleted'); ?><?php foreach ($deletedClasses as $deletedClass): ?><article class="resource-row"><?php echo nav_icon('trash'); ?><div><strong><?php echo esc($deletedClass['name']); ?></strong><span>Soft deleted · all records retained</span></div><a class="button button-secondary" href="/QuizWeb/classroom_action.php?classroom_id=<?php echo (int) $deletedClass['id']; ?>&amp;operation=restore">Restore</a></article><?php endforeach; ?><?php if (!$deletedClasses): ?><p class="muted">No deleted classrooms.</p><?php endif; ?></div></section><?php endif; ?>
 <h2>Archived materials</h2>
 <?php endif; ?>
 <section class="glass panel compact-panel">

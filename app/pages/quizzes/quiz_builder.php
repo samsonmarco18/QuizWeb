@@ -30,10 +30,15 @@ $GLOBALS['quizweb_current_classroom_id'] = $classroomId;
 $_SESSION['quiz_builder_csrf'] ??= bin2hex(random_bytes(32));
 $modes = game_modes();
 $masteryLevels = mastery_levels();
+$editingModeRemoved = $editingQuiz && !isset($modes[$editingQuiz['game_type'] ?? '']);
+if ($editingModeRemoved) {
+    flash_set('warning', 'That legacy game type is no longer available. Its saved data and past results were preserved.');
+    redirect('/QuizWeb/classroom.php?id=' . $classroomId . '&tab=quizzes');
+}
 $requestedGameType = is_string($_GET['game_type'] ?? null) ? $_GET['game_type'] : '';
 $selectedGameType = is_string($_POST['game_type'] ?? null) ? $_POST['game_type'] : ($editingQuiz['game_type'] ?? $requestedGameType);
 $titleValue = is_string($_POST['title'] ?? null) ? $_POST['title'] : ($editingQuiz['title'] ?? '');
-$activityType = is_string($_POST['activity_type'] ?? null) ? trim($_POST['activity_type']) : ($editingQuiz['activity_type'] ?? 'Quiz');
+$activityType = is_string($editingQuiz['activity_type'] ?? null) && trim($editingQuiz['activity_type']) !== '' ? trim($editingQuiz['activity_type']) : 'Quiz';
 $descriptionValue = is_string($_POST['description'] ?? null) ? $_POST['description'] : ($editingQuiz['description'] ?? '');
 $isChoosingGameType = !$editingQuiz && $_SERVER['REQUEST_METHOD'] !== 'POST' && !isset($modes[$selectedGameType]);
 
@@ -41,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['quiz_builder_csrf'], $_POST['csrf'])) {
         $errors[] = 'Your form expired. Reload the editor and try again.';
     }
-    if ($activityType === '' || strlen($activityType) > 80) $errors[] = 'Enter an activity type (up to 80 characters).';
     $title = is_string($_POST['title'] ?? null) ? trim($_POST['title']) : '';
     $description = is_string($_POST['description'] ?? null) ? trim($_POST['description']) : '';
     $dueAtInput = is_string($_POST['due_at'] ?? null) ? trim($_POST['due_at']) : '';
@@ -148,7 +152,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
 
 <section class="glass panel">
     <div class="section-heading"><div><span class="eyebrow">Activity templates</span><h2>Choose how students learn</h2><p>Build your content, preview the activity, then save it to this class.</p></div></div>
-    <?php $templateKeys = ['standard', 'crossword', 'flip_match', 'fill_blank', 'emoji_quiz', 'master_ladder']; ?>
+    <?php $templateKeys = ['standard', 'crossword', 'fill_blank', 'master_ladder']; ?>
     <div class="quiz-grid">
         <?php foreach ($templateKeys as $key): $mode = $modes[$key]; ?>
             <article class="quiz-card mode-<?php echo esc($key); ?>">
@@ -168,11 +172,6 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             </article>
         <?php endforeach; ?>
     </div>
-    <details class="additional-modes"><summary>More game styles</summary><div class="quiz-grid">
-        <?php foreach (array_diff(array_keys($modes), $templateKeys) as $key): $mode = $modes[$key]; ?>
-            <article class="quiz-card"><h3><?php echo esc($mode['label']); ?></h3><p><?php echo esc($mode['description']); ?></p><a class="button button-secondary" href="/QuizWeb/quiz_builder.php?classroom_id=<?php echo (int) $classroom['id']; ?>&amp;game_type=<?php echo esc($key); ?>">Choose <?php echo esc($mode['label']); ?></a></article>
-        <?php endforeach; ?>
-    </div></details>
     <div class="action-row">
         <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
     </div>
@@ -186,7 +185,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
     <div>
         <span class="eyebrow"><?php echo esc($classroom['name']); ?></span>
         <h1><?php echo esc($editingQuiz ? 'Edit Activity' : 'Create a New Activity'); ?></h1>
-        <p class="lead">Teachers can fully modify the quiz title, questions, answers, points, and the game mode students will play.</p>
+        <p class="lead">Build the details, questions, answers, and scoring for the game mode you selected.</p>
         <div class="feature-pills">
             <span>Custom prompts</span>
             <span>Editable scoring</span>
@@ -199,37 +198,22 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
     <form method="post" id="quiz-builder-form" class="stack-form" novalidate>
         <noscript><p class="inline-error">Enable JavaScript to edit questions and preview this activity.</p></noscript>
         <nav class="builder-steps" aria-label="Quiz builder steps">
-            <button type="button" data-step="0" data-step-label="Game"><span class="builder-step-number" aria-hidden="true">1</span><span>Game</span></button>
-            <button type="button" data-step="1" data-step-label="Details"><span class="builder-step-number" aria-hidden="true">2</span><span>Details</span></button>
-            <button type="button" data-step="2" data-step-label="Questions"><span class="builder-step-number" aria-hidden="true">3</span><span>Questions</span></button>
-            <button type="button" data-step="3" data-step-label="Settings"><span class="builder-step-number" aria-hidden="true">4</span><span>Settings</span></button>
-            <button type="button" data-step="4" data-step-label="Grading"><span class="builder-step-number" aria-hidden="true">5</span><span>Grading</span></button>
-            <button type="button" data-step="5" data-step-label="Review"><span class="builder-step-number" aria-hidden="true">6</span><span>Review</span></button>
+            <button type="button" data-step="0" data-step-label="Details"><span class="builder-step-number" aria-hidden="true">1</span><span>Details</span></button>
+            <button type="button" data-step="1" data-step-label="Questions"><span class="builder-step-number" aria-hidden="true">2</span><span>Questions</span></button>
+            <button type="button" data-step="2" data-step-label="Settings"><span class="builder-step-number" aria-hidden="true">3</span><span>Settings</span></button>
+            <button type="button" data-step="3" data-step-label="Grading"><span class="builder-step-number" aria-hidden="true">4</span><span>Grading</span></button>
+            <button type="button" data-step="4" data-step-label="Review"><span class="builder-step-number" aria-hidden="true">5</span><span>Review</span></button>
         </nav>
         <p id="builder-step-summary" class="builder-step-summary" aria-live="polite"></p>
         <div id="builder-recovery" hidden><p>A local draft is available on this browser.</p><button type="button" class="button button-secondary" id="restore-builder-draft">Restore local draft</button><button type="button" class="button button-ghost" id="discard-builder-draft">Discard local draft</button></div>
         <p id="builder-status" role="status" aria-live="polite"></p>
         <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['quiz_builder_csrf']); ?>">
+        <input type="hidden" name="game_type" value="<?php echo esc($selectedGameType); ?>">
         <?php foreach ($errors as $error): ?>
             <div class="inline-error"><?php echo esc($error); ?></div>
         <?php endforeach; ?>
+        <?php $selectedMode = $selectedGameType; ?>
         <div data-builder-step="0">
-            <label>
-                <span>Game Mode / Change Mode</span>
-                <select name="game_type">
-                    <?php $selectedMode = $selectedGameType; ?>
-                    <?php foreach ($modes as $key => $mode): ?>
-                        <option value="<?php echo esc($key); ?>" <?php echo $selectedMode === $key ? 'selected' : ''; ?>>
-                            <?php echo esc($mode['label']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <div id="builder-game-cards" class="quiz-grid"></div>
-        </div>
-        <div data-builder-step="1" hidden>
-            <label><span>Activity type</span><input name="activity_type" list="activity-types" maxlength="80" required value="<?php echo esc($activityType); ?>" placeholder="e.g. Laboratory"><small>Choose a type or enter your own.</small></label>
-            <datalist id="activity-types"><option value="Quiz"><option value="Laboratory"><option value="Assignment"><option value="Project"><option value="Exam"><option value="Practice"></datalist>
             <label>
                 <span>Activity Title</span>
                 <input type="text" name="title" maxlength="255" required value="<?php echo esc($titleValue); ?>" placeholder="Photosynthesis Showdown">
@@ -244,7 +228,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             <input type="datetime-local" name="due_at" value="<?php echo esc($deadlineValue); ?>">
         </label>
         </div>
-        <div data-builder-step="2" hidden>
+        <div data-builder-step="1" hidden>
         <div class="builder-mode-note" data-builder-mode-note>
             <strong><?php echo esc(($selectedMode ?? '') === 'crossword' ? 'Crossword checklist' : 'Quiz checklist'); ?></strong>
             <span><?php echo esc(($selectedMode ?? '') === 'crossword'
@@ -270,7 +254,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             </div><div id="question-list" class="question-list"></div></div>
         </div>
         </div>
-        <section data-builder-step="3" hidden>
+        <section data-builder-step="2" hidden>
             <h2>Activity settings</h2>
             <p>Points and difficulty are set per question. The selected game mode controls timing and gameplay rules.</p>
             <div id="builder-settings"></div>
@@ -278,7 +262,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             <label id="mastery-target-setting" hidden><span>Mastery target (%)</span><input type="number" name="mastery_threshold" min="50" max="100" value="<?php echo (int) ($_POST['mastery_threshold'] ?? $defaultMasteryThreshold); ?>"><small>Accuracy needed to unlock the next difficulty level.</small></label>
             <p>Deadlines are reminders; they do not close submissions. Students may retry. Configure the deadline in Details.</p>
         </section>
-        <section data-builder-step="4" hidden>
+        <section data-builder-step="3" hidden>
             <h2>Academic grading</h2>
             <fieldset class="grading-quiz-settings"><legend>Grading</legend>
                 <label><span>Grade category</span><select name="grade_category_id"><option value="">Not graded / Practice activity</option><?php foreach ($gradebook['config']['categories'] ?? [] as $category): ?><option value="<?php echo esc($category['id']); ?>" <?php echo $gradeCategory === $category['id'] ? 'selected' : ''; ?>><?php echo esc($category['name']); ?></option><?php endforeach; ?></select></label>
@@ -289,7 +273,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
                 <label><span>Attempt grade</span><select name="grade_attempt_policy"><?php foreach (['highest' => 'Highest attempt', 'latest' => 'Latest attempt', 'first' => 'First attempt', 'average' => 'Average of attempt percentages'] as $policy => $label): ?><option value="<?php echo esc($policy); ?>" <?php echo $gradePolicy === $policy ? 'selected' : ''; ?>><?php echo esc($label); ?></option><?php endforeach; ?></select></label></div>
             </fieldset>
         </section>
-        <section data-builder-step="5" hidden>
+        <section data-builder-step="4" hidden>
             <h2>Preview &amp; Review</h2>
             <div id="builder-review"></div>
             <button type="button" class="button button-secondary" id="play-test">Play test</button>
@@ -397,7 +381,7 @@ window.quizBuilderSeed = <?php echo json_encode(
     !empty($_POST['questions_payload']) ? json_decode($_POST['questions_payload'], true) : ($editingQuiz['questions'] ?? []),
     JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 ); ?>;
-window.quizBuilderMode = <?php echo json_encode($selectedMode ?? 'time_attack'); ?>;
+window.quizBuilderMode = <?php echo json_encode($selectedMode ?? 'standard'); ?>;
 window.quizBuilderModes = <?php echo json_encode($modes, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
 window.quizBuilderThreshold = <?php echo $defaultMasteryThreshold; ?>;
 window.quizBuilderUnsaved = <?php echo $_SERVER['REQUEST_METHOD'] === 'POST' ? 'true' : 'false'; ?>;

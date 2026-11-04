@@ -17,7 +17,7 @@ query_check(array_column(classroom_attempts(20, $pdo), 'id') === [5, 3, 2, 6, 1]
 query_check(latest_attempt_for_quiz(10, 20, 30, $pdo)['id'] === 2, 'Latest attempt must match student, classroom and quiz, preserving stable ties');
 query_check(latest_attempt_for_quiz(999, 20, 30, $pdo) === null && student_attempts(999, $pdo) === [], 'Empty history behavior');
 query_check(student_attempts(10, $pdo)[0]['answers'] === [1, 2], 'History must hydrate answer JSON');
-$pdo->exec('CREATE TABLE classrooms (id INTEGER PRIMARY KEY, teacher_id INTEGER, name TEXT, subject TEXT, code TEXT, student_ids TEXT, quizzes TEXT, created_at TEXT, updated_at TEXT)');
+$pdo->exec('CREATE TABLE classrooms (id INTEGER PRIMARY KEY, teacher_id INTEGER, name TEXT, subject TEXT, code TEXT, student_ids TEXT, quizzes TEXT, lifecycle_state TEXT, created_at TEXT, updated_at TEXT)');
 $pdo->exec("INSERT INTO classrooms VALUES (2, 10, 'Two', 'Science', 'TWO', '[11]', '[]', '', ''), (1, 10, 'One', 'Science', 'ONE', '[11]', '[]', '', ''), (3, 12, 'Other', 'Science', 'OTHER', '[]', '[]', '', '')");
 query_check(array_column(teacher_classrooms(10, $pdo), 'id') === [1, 2], 'Teacher classrooms must filter by owner and preserve ordering');
 query_check(teacher_classrooms(999, $pdo) === [], 'Unknown teacher has no classrooms');

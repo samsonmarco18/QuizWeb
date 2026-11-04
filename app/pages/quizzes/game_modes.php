@@ -2,7 +2,7 @@
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 $user = require_role('student');
 $available = [];
-foreach (student_classrooms((int) $user['id']) as $classroom) foreach ($classroom['quizzes'] ?? [] as $quiz) $available[] = ['classroom' => $classroom, 'quiz' => $quiz];
+foreach (student_classrooms((int) $user['id']) as $classroom) foreach ($classroom['quizzes'] ?? [] as $quiz) if (isset(game_modes()[$quiz['game_type'] ?? ''])) $available[] = ['classroom' => $classroom, 'quiz' => $quiz];
 $modes = game_modes();
 $activityPage = page_records($available);
 render_header('Game Modes', 'student-page modes-page');

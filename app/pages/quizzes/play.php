@@ -20,6 +20,10 @@ if (!$quiz) {
 }
 
 $modes = game_modes();
+if (!isset($modes[$quiz['game_type'] ?? ''])) {
+    flash_set('warning', 'This legacy game type is no longer available. Past results remain preserved.');
+    redirect('/QuizWeb/classroom.php?id=' . $classroomId . '&tab=quizzes');
+}
 $isPreview = $user['role'] === 'teacher';
 if (!$isPreview && !empty($quiz['grade_category_id']) && !empty(grading_load(db(), $classroomId)['locked'])) {
     flash_set('danger', 'This subject’s grades are finalized. Graded quiz attempts are locked.');

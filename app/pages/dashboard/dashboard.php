@@ -366,6 +366,7 @@ if ($user['role'] === 'teacher') {
         <div class="classroom-grid">
             <?php foreach (array_slice($myClassrooms, 0, 4) as $classroom): ?>
                 <article class="classroom-card glass">
+                    <div class="directory-card-menu"><?php render_classroom_menu($classroom, 'teacher'); ?></div>
                     <?php if ($user['role'] === 'student'): ?>
                         <div class="dashboard-class-summary">
                             <span class="dashboard-class-icon" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span>

@@ -238,7 +238,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <aside class="classroom-sidebar" id="classroom-sidebar" aria-label="Classrooms">
             <?php $sidebarClassrooms = $user['role'] === 'admin' ? [] : user_classrooms($user); ?>
             <?php if ($user['role'] === 'admin'): ?>
-                <h2>Administration</h2><nav aria-label="System navigation"><?php foreach (['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit'] as $key => $label): ?><a class="classroom-sidebar-link<?php echo ($_GET['tab'] ?? 'overview') === $key ? ' is-active' : ''; ?>" href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>"><?php echo esc($label); ?></a><?php endforeach; ?></nav>
+                <h2>Administration</h2><nav aria-label="System navigation"><?php foreach (['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'ai' => 'AI settings', 'google_auth' => 'Google sign-in', 'mailer' => 'Mailer', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit', 'releases' => 'Grade releases'] as $key => $label): ?><a class="classroom-sidebar-link<?php echo ($_GET['tab'] ?? 'overview') === $key ? ' is-active' : ''; ?>" href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>"><?php echo esc($label); ?></a><?php endforeach; ?></nav>
             <?php elseif (($user['role'] ?? '') === 'student'): ?>
                 <h2>Classrooms</h2>
                 <details class="student-classes-dropdown" open>
@@ -270,9 +270,9 @@ function render_header(string $title, string $pageClass = '', array $styles = []
             <nav aria-label="Your classrooms">
                 <?php foreach ($sidebarClassrooms as $sidebarClassroom): ?>
                     <?php $isCurrentClassroom = (current_path() === '/QuizWeb/classroom.php' && (int) ($_GET['id'] ?? 0) === (int) $sidebarClassroom['id']) || (current_path() === '/QuizWeb/quiz_builder.php' && (int) ($_GET['classroom_id'] ?? 0) === (int) $sidebarClassroom['id']); ?>
-                    <a class="classroom-sidebar-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
+                    <div class="sidebar-class-row"><a class="classroom-sidebar-link<?php echo $isCurrentClassroom ? ' is-active' : ''; ?>" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $sidebarClassroom['id']); ?>" <?php echo $isCurrentClassroom ? 'aria-current="page"' : ''; ?>>
                         <?php echo nav_icon('Join Class'); ?><span><?php echo esc($sidebarClassroom['name']); ?></span>
-                    </a>
+                    </a><?php if ($user['role'] === 'teacher'): render_classroom_menu($sidebarClassroom, 'teacher'); endif; ?></div>
                 <?php endforeach; ?>
                 <?php if (!$sidebarClassrooms): ?><p class="sidebar-empty"><?php echo $user['role'] === 'teacher' ? 'Your classrooms will appear here.' : 'Join a class to see it here.'; ?></p><?php endif; ?>
             </nav>

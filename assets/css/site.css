@@ -2291,6 +2291,9 @@ textarea:focus {
     color: #102b18;
     font-weight: 700;
 }
+.auth-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.google-signin-button { width: 100%; justify-content: center; }
 
 .split-fields {
     display: grid;

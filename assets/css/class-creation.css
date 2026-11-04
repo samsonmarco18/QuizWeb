@@ -70,6 +70,8 @@ body.ui-refined #class-creation .class-template { padding: 10px 12px; gap: 4px; 
 #class-creation .class-template small { line-height: 1.35; }
 #class-creation .class-config-card > p { margin: 0 0 12px; }
 .class-card-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.directory-card { position: relative; }
+.directory-card-menu { position: absolute; top: 12px; right: 12px; z-index: 4; }
 .class-card-title p { margin: 0; }
 body.ui-refined #class-creation .button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; white-space: nowrap; }
 #class-creation [data-class-categories], #class-creation [data-class-periods], #class-creation [data-class-scales] { display: grid; gap: 7px; }

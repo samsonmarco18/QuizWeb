@@ -11,7 +11,8 @@
     let step = 0, active = 0, submitting = false, leaving = false;
     const snapshot = () => JSON.stringify([form.elements.activity_type?.value, form.elements.title.value, form.elements.description.value, form.elements.due_at.value, form.elements.mastery_threshold.value, form.elements.grade_category_id?.value, form.elements.grade_period_id?.value, form.elements.grade_max_score?.value, form.elements.grade_attempt_policy?.value, mode(), api.collect()]);
     const original = window.quizBuilderUnsaved ? null : snapshot();
-    const stepNames = ['Game', 'Details', 'Questions', 'Settings', 'Grading', 'Review'];
+    const stepNames = ['Details', 'Questions', 'Settings', 'Grading', 'Review'];
+    const lastStep = stepNames.length - 1;
     const visitedSteps = new Set();
     function updateStepCompletion(questions) {
         const validFields = index => [...form.querySelectorAll(`[data-builder-step="${index}"] input, [data-builder-step="${index}"] select, [data-builder-step="${index}"] textarea`)]
@@ -24,15 +25,14 @@
             && ['highest', 'latest', 'first', 'average'].includes(form.elements.grade_attempt_policy?.value)
             && (!maximum?.value || (Number.isFinite(maxValue) && maxValue >= .01 && maxValue <= 100000 && Math.abs(maxValue * 100 - Math.round(maxValue * 100)) <= .00001)));
         const ready = [
-            Boolean(window.quizBuilderModes[mode()]),
-            Boolean(form.elements.title.value.trim()) && (!form.elements.activity_type || Boolean(form.elements.activity_type.value.trim())) && validFields(1),
+            Boolean(window.quizBuilderModes[mode()]) && Boolean(form.elements.title.value.trim()) && (!form.elements.activity_type || Boolean(form.elements.activity_type.value.trim())) && validFields(0),
             questions.length > 0 && questions.length <= 100 && questions.every(q => !problem(q)),
-            validFields(3) && configurationProblems(questions).filter(issue => !issue.startsWith('Gradebook maximum')).length === 0,
+            validFields(2) && configurationProblems(questions).filter(issue => !issue.startsWith('Gradebook maximum')).length === 0,
             gradingReady,
         ];
         form.querySelectorAll('[data-step]').forEach(button => {
             const index = Number(button.dataset.step);
-            const complete = index < 5 && visitedSteps.has(index) && ready[index];
+            const complete = index < lastStep && visitedSteps.has(index) && ready[index];
             button.classList.toggle('is-complete', Boolean(complete));
             const number = button.querySelector('.builder-step-number');
             if (number) number.textContent = complete ? '\u2713' : String(index + 1);
@@ -47,7 +47,7 @@
         if (leaving) return;
         const fields = {};
         ['title', 'activity_type', 'description', 'due_at', 'mastery_threshold', 'grade_category_id', 'grade_period_id', 'grade_max_score', 'grade_attempt_policy', 'game_type'].forEach(name => { fields[name] = form.elements[name]?.value || ''; });
-        try { localStorage.setItem(draftKey, JSON.stringify({version: 1, fields, questions: api.collect(), step})); } catch (_) { /* Private mode or full storage must not prevent saving. */ }
+        try { localStorage.setItem(draftKey, JSON.stringify({version: 2, fields, questions: api.collect(), step})); } catch (_) { /* Private mode or full storage must not prevent saving. */ }
     }
     const node = (tag, text, cls) => {
         const el = document.createElement(tag);
@@ -77,17 +77,17 @@
         return '';
     }
     function showStep(value, focus = true) {
-        if (Math.max(0, Math.min(5, value)) !== step) visitedSteps.add(step);
-        step = Math.max(0, Math.min(5, value));
+        if (Math.max(0, Math.min(lastStep, value)) !== step) visitedSteps.add(step);
+        step = Math.max(0, Math.min(lastStep, value));
         form.querySelectorAll('[data-builder-step]').forEach(el => { el.hidden = Number(el.dataset.builderStep) !== step; });
         form.querySelectorAll('[data-step]').forEach(el => {
             const selected = Number(el.dataset.step) === step;
             el.setAttribute('aria-current', selected ? 'step' : 'false');
         });
         document.getElementById('builder-previous').disabled = step === 0;
-        document.getElementById('builder-next').hidden = step === 5;
-        document.getElementById('builder-save').hidden = step !== 5;
-        document.getElementById('builder-step-summary').textContent = `Step ${step + 1} of 6 · ${stepNames[step]}`;
+        document.getElementById('builder-next').hidden = step === lastStep;
+        document.getElementById('builder-save').hidden = step !== lastStep;
+        document.getElementById('builder-step-summary').textContent = `Step ${step + 1} of ${stepNames.length} · ${stepNames[step]}`;
         refresh();
         if (focus) form.querySelector(`[data-step="${step}"]`).focus();
     }
@@ -117,7 +117,7 @@
     function selectQuestion(index) {
         active = Math.max(0, Math.min(index, cards().length - 1));
         refresh();
-        if (step === 2) cards()[active]?.querySelector('[data-field="prompt"]')?.focus();
+        if (step === 1) cards()[active]?.querySelector('[data-field="prompt"]')?.focus();
     }
     function renderLive(q) {
         live.replaceChildren();
@@ -183,19 +183,13 @@
         const review = document.getElementById('builder-review'); review.replaceChildren();
         review.append(node('p', form.elements.activity_type?.value || 'Quiz'));
         review.append(node('h3', form.elements.title.value.trim() || 'Untitled activity'), node('p', `${window.quizBuilderModes[mode()]?.label} · ${questions.length} questions · ${questions.reduce((sum, q) => sum + q.points, 0)} points`), node('p', form.elements.due_at.value ? `Deadline: ${form.elements.due_at.value.replace('T', ' ')}` : 'No deadline'));
-        review.append(action(form.elements.title.value.trim() ? '✓ Quiz information complete' : '! Quiz title is required', () => showStep(1)));
+        review.append(action(form.elements.title.value.trim() ? '✓ Quiz information complete' : '! Quiz title is required', () => showStep(0)));
         const incomplete = questions.findIndex(q => problem(q));
-        review.append(action(!questions.length ? '! Add a question' : incomplete < 0 ? '✓ Questions and answers complete' : `! Q${incomplete + 1}: ${problem(questions[incomplete])}`, () => { showStep(2); selectQuestion(Math.max(0, incomplete)); }));
+        review.append(action(!questions.length ? '! Add a question' : incomplete < 0 ? '✓ Questions and answers complete' : `! Q${incomplete + 1}: ${problem(questions[incomplete])}`, () => { showStep(1); selectQuestion(Math.max(0, incomplete)); }));
         const issues = configurationProblems(questions);
-        review.append(action(issues.length ? `! ${issues.join(' ')}` : '✓ Settings valid', () => showStep(3)));
+        review.append(action(issues.length ? `! ${issues.join(' ')}` : '✓ Settings valid', () => showStep(2)));
         review.append(node('p', categorySelect?.value ? `Grade category: ${categorySelect.selectedOptions[0].textContent} · Gradebook maximum: ${form.elements.grade_max_score.value || questions.reduce((sum, q) => sum + q.points, 0)} · Attempt policy: ${form.elements.grade_attempt_policy.selectedOptions[0].textContent}` : 'Practice activity — excluded from classroom grades.'));
         review.append(node('p', 'Preview validates game content without recording an attempt. Saving makes the activity available in this classroom. Grades are published separately.'));
-        form.querySelectorAll('[data-select-game]').forEach(button => {
-            const selected = button.dataset.selectGame === mode();
-            button.setAttribute('aria-pressed', String(selected));
-            button.textContent = selected ? 'Selected' : 'Select';
-            button.closest('article').classList.toggle('is-selected', selected);
-        });
         cards().forEach((card, index) => {
             let error = card.querySelector('.question-error');
             if (!error) { error = node('p', '', 'question-error'); error.setAttribute('role', 'status'); card.append(error); }
@@ -223,15 +217,16 @@
     form.addEventListener('change', refresh);
     form.addEventListener('activity:changed', refresh);
     ['input', 'change', 'activity:changed'].forEach(type => form.addEventListener(type, () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveLocalDraft, 300); }));
-    document.getElementById('builder-recovery').hidden = !recoveredDraft || recoveredDraft.version !== 1;
+    document.getElementById('builder-recovery').hidden = !recoveredDraft || ![1, 2].includes(recoveredDraft.version);
     document.getElementById('restore-builder-draft').addEventListener('click', () => {
         if (!recoveredDraft || !Array.isArray(recoveredDraft.questions) || recoveredDraft.questions.length > 100) return;
-        Object.entries(recoveredDraft.fields).forEach(([name, value]) => { if (form.elements[name] && typeof value === 'string') form.elements[name].value = value; });
+        Object.entries(recoveredDraft.fields).forEach(([name, value]) => { if (name !== 'game_type' && form.elements[name] && typeof value === 'string') form.elements[name].value = value; });
         list.replaceChildren();
         if (api.addMany) api.addMany(recoveredDraft.questions);
         else recoveredDraft.questions.forEach(q => api.add(q));
         form.elements.game_type.dispatchEvent(new Event('change', {bubbles: true}));
-        document.getElementById('builder-recovery').hidden = true; showStep(recoveredDraft.step || 0);
+        const restoredStep = recoveredDraft.version === 1 ? Math.max(0, Number(recoveredDraft.step || 0) - 1) : Number(recoveredDraft.step || 0);
+        document.getElementById('builder-recovery').hidden = true; showStep(restoredStep);
         status.textContent = 'Local draft restored. Preview and save when ready.';
     });
     document.getElementById('discard-builder-draft').addEventListener('click', () => {
@@ -262,14 +257,14 @@
         if (api.imagesPending?.()) { status.textContent = 'Wait for the image upload to finish, then save again.'; return; }
         const questions = api.collect();
         if (!form.elements.title.value.trim() || form.elements.title.value.length > 255) {
-            showStep(1); status.textContent = 'Quiz title is required (up to 255 characters).'; form.elements.title.focus(); return;
+            showStep(0); status.textContent = 'Quiz title is required (up to 255 characters).'; form.elements.title.focus(); return;
         }
         const invalid = questions.findIndex(q => problem(q));
         if (!questions.length || invalid >= 0) {
-            showStep(2); selectQuestion(Math.max(0, invalid)); status.textContent = questions.length ? `Q${invalid + 1}: ${problem(questions[invalid])}.` : 'Add a question.'; return;
+            showStep(1); selectQuestion(Math.max(0, invalid)); status.textContent = questions.length ? `Q${invalid + 1}: ${problem(questions[invalid])}.` : 'Add a question.'; return;
         }
         if (configurationProblems(questions).length) {
-            showStep(5); status.textContent = configurationProblems(questions).join(' '); return;
+            showStep(lastStep); status.textContent = configurationProblems(questions).join(' '); return;
         }
         if (window.chalkConfirm && !await window.chalkConfirm('Save quiz?', 'Save this quiz and its questions to the classroom?', 'Save Quiz')) return;
         if (submitting) return;
@@ -288,9 +283,9 @@
                 submitting = false; buttons.forEach(button => { button.disabled = false; }); return;
             }
             if (!response.ok || result.errors?.length) {
-                showStep(5); status.textContent = (result.errors || ['Could not validate this activity.']).join(' ');
+                showStep(lastStep); status.textContent = (result.errors || ['Could not validate this activity.']).join(' ');
                 const match = status.textContent.match(/(?:Question|Item|word) (\d+)/i);
-                if (match) { showStep(2); selectQuestion(Number(match[1]) - 1); }
+                if (match) { showStep(1); selectQuestion(Number(match[1]) - 1); }
                 submitting = false; buttons.forEach(button => { button.disabled = false; }); return;
             }
             status.textContent = 'Saving activity…'; clearTimeout(draftTimer); saveLocalDraft(); leaving = true; window.chalkLoading?.carry(); window.chalkLoading?.begin('Saving...', 0, 'quiz'); HTMLFormElement.prototype.submit.call(form);
@@ -302,18 +297,5 @@
     const wide = window.matchMedia('(min-width: 1101px)').matches;
     document.getElementById('builder-live-preview').classList.toggle('preview-open', wide);
     document.getElementById('toggle-live-preview').setAttribute('aria-expanded', String(wide));
-    const picker = document.getElementById('builder-game-cards');
-    const primary = ['standard', 'crossword', 'flip_match', 'fill_blank', 'emoji_quiz', 'master_ladder'];
-    const more = node('details', undefined, 'additional-modes'); more.append(node('summary', 'More Game Styles'));
-    const moreGrid = node('div', undefined, 'quiz-grid'); more.append(moreGrid);
-    Object.entries(window.quizBuilderModes).forEach(([key, game]) => {
-        const card = node('article', undefined, 'quiz-card');
-        card.append(node('span', game.icon || 'Q', 'mode-badge'), node('h3', game.label), node('p', game.description));
-        const mechanics = node('details'); mechanics.append(node('summary', 'Preview Mechanics'), node('p', window.chalkMechanics?.[key] || game.description));
-        const select = action('Select', () => { form.elements.game_type.value = key; form.elements.game_type.dispatchEvent(new Event('change', {bubbles: true})); });
-        select.dataset.selectGame = key; card.append(mechanics, select);
-        (primary.includes(key) ? picker : moreGrid).append(card);
-    });
-    picker.append(more);
-    showStep(window.quizBuilderUnsaved ? 5 : 0, false);
+    showStep(window.quizBuilderUnsaved ? lastStep : 0, false);
 })();

@@ -33,6 +33,7 @@ render_header($creatingClass ? 'Create a classroom' : 'My Classes', 'classes-pag
 <section class="class-directory" aria-label="Your classrooms">
     <?php foreach ($classPage['items'] as $classroom): ?>
         <article class="glass panel directory-card">
+            <?php if ($user['role'] === 'teacher'): ?><div class="directory-card-menu"><?php render_classroom_menu($classroom, 'teacher'); ?></div><?php endif; ?>
             <span class="directory-icon" aria-hidden="true"><?php echo nav_icon('Focus Practice'); ?></span>
             <div><span class="eyebrow"><?php echo esc($classroom['subject']); ?></span><h2><?php echo esc($classroom['name']); ?></h2><p><?php echo esc(classroom_teacher_name($classroom)); ?></p></div>
             <div class="card-meta"><span><?php echo count($classroom['quizzes'] ?? []); ?> quizzes</span><span><?php echo count($classroom['student_ids'] ?? []); ?> students</span></div>

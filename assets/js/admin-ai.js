@@ -1,4 +1,11 @@
 (() => {
+    const provider = document.querySelector('[data-mailer-provider]');
+    const syncMailerFields = () => document.querySelectorAll('[data-mailer-fields]').forEach(group => { group.hidden = group.dataset.mailerFields !== provider?.value; });
+    provider?.addEventListener('change', syncMailerFields);
+    syncMailerFields();
+    document.querySelectorAll('form[data-confirm]').forEach(form => form.addEventListener('submit', event => {
+        if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+    }));
     document.querySelectorAll('[data-ai-settings-form]').forEach(form => {
         let pending = false;
         let approved = false;

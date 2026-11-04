@@ -17,6 +17,7 @@ function classroom_quiz_cards(array $classroom, array $user, array $attempts, ?i
     }
     $cards = [];
     foreach ($classroom['quizzes'] ?? [] as $quiz) {
+        if (!isset(game_modes()[(string) ($quiz['game_type'] ?? '')])) continue;
         $attempt = $best[(int) $quiz['id']] ?? null;
         $due = !empty($quiz['due_at']) && is_string($quiz['due_at']) ? strtotime($quiz['due_at']) : false;
         $type = (string) ($quiz['game_type'] ?? 'standard');

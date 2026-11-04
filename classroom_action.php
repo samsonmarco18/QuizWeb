@@ -1,10 +1,11 @@
 <?php
 require_once __DIR__ . '/includes/layout.php';
-$user = require_role('student');
+$user = require_login();
 $classroomId = (int) ($_GET['classroom_id'] ?? 0);
 $operation = is_string($_GET['operation'] ?? null) ? $_GET['operation'] : '';
 $classroom = find_classroom($classroomId);
-if (!$classroom || !classroom_belongs_to_user($classroom, $user) || !in_array($operation, ['archive', 'restore', 'delete'], true)) {
+$ownsTeacherClass = $classroom && $user['role'] === 'teacher' && (int) $classroom['teacher_id'] === (int) $user['id'];
+if (!$classroom || (!$ownsTeacherClass && !classroom_belongs_to_user($classroom, $user)) || !in_array($operation, ['archive', 'restore', 'delete'], true)) {
     http_response_code(403); exit('Classroom action unavailable.');
 }
 $error = '';
@@ -12,9 +13,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_form_csrf();
     try {
         $confirmation = is_string($_POST['confirmation'] ?? null) ? $_POST['confirmation'] : '';
-        change_student_classroom(db(), $user, $classroomId, $operation, $confirmation);
-        flash_set('success', ['archive' => 'Class archived. Its notifications are paused.', 'restore' => 'Class restored. Notifications are enabled again.', 'delete' => 'Class removed from your account. You are no longer enrolled.'][$operation]);
-        redirect('/QuizWeb/' . ($operation === 'archive' ? 'archive.php' : 'classes.php'));
+        if ($user['role'] === 'teacher') change_teacher_classroom_state(db(), $user, $classroomId, $operation, $confirmation);
+        else change_student_classroom(db(), $user, $classroomId, $operation, $confirmation);
+        flash_set('success', $user['role'] === 'teacher'
+            ? ['archive' => 'Class archived.', 'restore' => 'Class restored.', 'delete' => 'Class moved to Deleted. All records remain recoverable.'][$operation]
+            : ['archive' => 'Class archived. Its notifications are paused.', 'restore' => 'Class restored. Notifications are enabled again.', 'delete' => 'Class removed from your account. You are no longer enrolled.'][$operation]);
+        redirect('/QuizWeb/' . (in_array($operation, ['archive', 'delete'], true) ? 'archive.php' : 'classes.php'));
     } catch (Throwable $exception) {
         $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'Could not update this class. Please try again.';
     }
@@ -26,7 +30,7 @@ render_header(ucfirst($operation) . ' classroom', 'classroom-confirm-page');
     <span class="eyebrow"><?php echo esc($classroom['name']); ?></span>
     <h1><?php echo $deleting ? 'Delete this class from your account?' : ucfirst($operation) . ' this class?'; ?></h1>
     <?php if ($deleting): ?>
-        <div class="class-action-warning" role="note"><strong>Warning: you will lose access to this classroom.</strong><p>You will be removed from the class list and stop receiving its notifications. You will no longer be able to open its activities, materials, or classroom results. Your teacher's class and submitted records will remain. To return, you will need to join the class again.</p></div>
+        <div class="class-action-warning" role="note"><strong><?php echo $user['role'] === 'teacher' ? 'This is a soft delete.' : 'Warning: you will lose access to this classroom.'; ?></strong><p><?php echo $user['role'] === 'teacher' ? 'The classroom will move to Deleted and become unavailable to students. Students, activities, messages, attempts, and grades will remain stored and the classroom can be restored.' : "You will be removed from the class list and stop receiving its notifications. You will no longer be able to open its activities, materials, or classroom results. Your teacher's class and submitted records will remain. To return, you will need to join the class again."; ?></p></div>
         <p>To confirm, type <strong class="class-delete-phrase"><?php echo esc(classroom_delete_phrase($classroom)); ?></strong> exactly below.</p>
     <?php elseif ($operation === 'archive'): ?>
         <div class="class-action-warning" role="note"><strong>You will no longer receive notifications from this class while it is archived.</strong><p>The class will move out of My Classes into Archive. Your enrollment and work will be kept. Restore it from Archive to receive notifications again.</p></div>

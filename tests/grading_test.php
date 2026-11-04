@@ -68,7 +68,7 @@ grading_apply_action($book, $class, $teacher, 'unpublish', ['confirm' => 'yes'],
 // Real SQL persistence, optimistic concurrency, and all-or-nothing auditing.
 class GradeTestPDO extends PDO { public function prepare(string $query, array $options = []): PDOStatement|false { return parent::prepare(str_replace(' FOR UPDATE', '', $query), $options); } }
 $pdo = new GradeTestPDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-$pdo->exec('CREATE TABLE classrooms (id INTEGER PRIMARY KEY, teacher_id INTEGER, name TEXT, subject TEXT, description TEXT, code TEXT, student_ids TEXT, quizzes TEXT, announcements TEXT, chat_messages TEXT, created_at TEXT, updated_at TEXT)');
+$pdo->exec('CREATE TABLE classrooms (id INTEGER PRIMARY KEY, teacher_id INTEGER, name TEXT, subject TEXT, description TEXT, code TEXT, student_ids TEXT, quizzes TEXT, announcements TEXT, chat_messages TEXT, lifecycle_state TEXT, created_at TEXT, updated_at TEXT)');
 $pdo->exec('CREATE TABLE attempts (id INTEGER PRIMARY KEY, student_id INTEGER, classroom_id INTEGER, quiz_id INTEGER, quiz_title TEXT, game_type TEXT, answers TEXT, score INTEGER, max_score INTEGER, elapsed_seconds INTEGER, played_at TEXT)');
 $pdo->exec('CREATE TABLE gradebooks (classroom_id INTEGER PRIMARY KEY, data TEXT, updated_at TEXT)');
 $pdo->exec('CREATE TABLE grade_changes (id INTEGER PRIMARY KEY, classroom_id INTEGER, student_id INTEGER, item_id TEXT, actor_id INTEGER, action TEXT, previous_value TEXT, new_value TEXT, created_at TEXT)');

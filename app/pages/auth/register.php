@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/profile.php';
+require_once dirname(__DIR__, 3) . '/includes/google_oauth.php';
 if (is_logged_in()) redirect('/QuizWeb/dashboard.php');
 $_SESSION['signup_csrf'] ??= bin2hex(random_bytes(32));
 $errors = [];
@@ -69,6 +70,7 @@ render_header('Register', 'auth-page signup-page');
         <?php if ($errors): ?><div class="inline-error" role="alert"><ul><?php foreach ($errors as $error): ?><li><?php echo esc($error); ?></li><?php endforeach; ?></ul></div><?php endif; ?>
         <section data-signup-step="0" class="signup-step">
             <h1 tabindex="-1">Create your account</h1>
+            <?php if (google_oauth_config()['enabled']): ?><a class="button button-secondary google-signin-button" href="/QuizWeb/google_auth.php" rel="nofollow">Continue with Google</a><div class="auth-divider"><span>or register with email</span></div><?php endif; ?>
             <div class="signup-field-grid">
                 <label><span>First Name</span><input name="first_name" autocomplete="given-name" maxlength="50" required value="<?php echo esc($nameParts['first_name']); ?>" placeholder="Enter your first name"></label>
                 <label><span>Surname</span><input name="surname" autocomplete="family-name" maxlength="50" required value="<?php echo esc($nameParts['surname']); ?>" placeholder="Enter your surname"></label>

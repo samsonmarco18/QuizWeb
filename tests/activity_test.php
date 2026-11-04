@@ -5,7 +5,10 @@ function check_activity(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 }
 $item = ['prompt' => '_____ styles a web page.', 'answer' => 'CSS', 'accepted_answers' => ['Cascading Style Sheets'], 'options' => [], 'points' => 10, 'level' => 'easy', 'explanation' => 'CSS defines presentation.'];
-foreach (['fill_blank', 'emoji_quiz', 'flip_match', 'standard'] as $mode) check_activity(isset(game_modes()[$mode]), 'Mode must be discoverable: ' . $mode);
+$reused = reusable_quiz_copy(['id' => 9, 'title' => 'Reusable quiz', 'questions' => [$item], 'game_type' => 'fill_blank', 'grade_category_id' => 'quiz', 'grade_period_id' => 'prelim', 'grade_max_score' => 50, 'created_at' => 'old', 'updated_at' => 'old']);
+check_activity(!isset($reused['id']) && $reused['title'] === 'Reusable quiz' && $reused['questions'] === [$item], 'Reuse preserves activity content but allocates a new destination ID.');
+check_activity($reused['grade_category_id'] === '' && $reused['grade_period_id'] === '' && $reused['grade_max_score'] === null, 'Reuse resets classroom-specific grading assignments.');
+check_activity(array_keys(game_modes()) === ['standard', 'fill_blank', 'crossword', 'master_ladder'], 'Only the four supported game modes are discoverable.');
 foreach (['fill_blank', 'emoji_quiz'] as $mode) {
     $prepared = prepare_activity_questions($mode, [$item]);
     check_activity(!$prepared['errors'], $mode . ' must validate.');

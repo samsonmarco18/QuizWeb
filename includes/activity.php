@@ -139,6 +139,19 @@ function persist_builder_quiz(PDO $pdo, int $classroomId, int $teacherId, array 
     }
 }
 
+function reusable_quiz_copy(array $sourceQuiz): array
+{
+    $copy = $sourceQuiz;
+    unset($copy['id']);
+    $copy['grade_category_id'] = '';
+    $copy['grade_period_id'] = '';
+    $copy['grade_correction_reason'] = '';
+    $copy['grade_max_score'] = null;
+    $copy['created_at'] = now_iso();
+    $copy['updated_at'] = $copy['created_at'];
+    return $copy;
+}
+
 function activity_answer_is_correct(array $question, $answer): bool
 {
     if (!is_string($answer) || trim($answer) === '') return false;

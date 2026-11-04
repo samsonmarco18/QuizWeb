@@ -10,7 +10,7 @@ function assert_version(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 }
 $pdo = new QuizVersionPDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-$pdo->exec('CREATE TABLE classrooms (id INTEGER PRIMARY KEY, teacher_id INTEGER, name TEXT, subject TEXT, description TEXT, code TEXT, student_ids TEXT, quizzes TEXT, announcements TEXT, chat_messages TEXT, created_at TEXT, updated_at TEXT)');
+$pdo->exec('CREATE TABLE classrooms (id INTEGER PRIMARY KEY, teacher_id INTEGER, name TEXT, subject TEXT, description TEXT, code TEXT, student_ids TEXT, quizzes TEXT, announcements TEXT, chat_messages TEXT, lifecycle_state TEXT, created_at TEXT, updated_at TEXT)');
 $pdo->exec('CREATE TABLE attempts (id INTEGER PRIMARY KEY, classroom_id INTEGER, quiz_id INTEGER, answers TEXT)');
 $pdo->exec('CREATE TABLE gradebooks (classroom_id INTEGER PRIMARY KEY, data TEXT, updated_at TEXT)');
 $old = ['id' => 1, 'title' => 'Original quiz', 'game_type' => 'standard', 'questions' => [
