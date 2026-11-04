@@ -70,7 +70,7 @@ Activity availability and grade publication are separate events. Saving an activ
 ### Registration
 
 1. Choose Student or Teacher. Public registration does not offer Administrator.
-2. Enter a full name, valid email, password, and confirmation.
+2. Enter a first name, surname, optional middle name, valid email, password, and confirmation.
 3. Supply the required profile information.
 4. Submit the form. The server checks the form token, role, field validity, password requirements, and email uniqueness.
 5. After account creation, sign in.

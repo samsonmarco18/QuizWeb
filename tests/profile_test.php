@@ -7,8 +7,10 @@ function expect_profile(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 }
 
-$valid = ['student_number' => '001-2026', 'birthdate' => '2004-02-29', 'gender' => 'Prefer not to say', 'program' => 'BS Information Technology', 'year_level' => '3rd Year'];
+$valid = ['student_number' => '001-2026', 'birthdate' => '2004-02-29', 'gender' => 'Male', 'program' => 'BS Information Technology', 'year_level' => '3rd Year'];
 expect_profile(profile_errors($valid, 'student') === [], 'Valid student details must pass.');
+expect_profile(profile_errors(array_replace($valid, ['gender' => 'Female']), 'student') === [], 'Female must be accepted.');
+expect_profile(count(profile_errors(array_replace($valid, ['gender' => 'Other']), 'student')) > 0, 'Sex must be Male or Female.');
 expect_profile(count(profile_errors(profile_input([]), 'student')) === 5, 'All five student fields are required.');
 expect_profile(profile_errors(array_replace($valid, ['student_number' => '', 'program' => '', 'year_level' => '']), 'teacher') === [], 'Teacher academic fields are optional.');
 foreach (['2025-02-29', '2020-02-31', '1899-01-01', date('Y-m-d', strtotime('+1 day')), 'not-a-date'] as $date) {

@@ -19,7 +19,7 @@ render_header('Class list', 'class-list-page', ['/QuizWeb/assets/css/classroom.c
 <section class="glass panel classroom-roster-panel" aria-label="Enrolled students">
     <div class="classroom-roster-list">
         <?php foreach ($students as $student): ?>
-        <div><?php render_profile_avatar($student, 'classroom-member-avatar'); ?><div><strong><?php echo esc($student['name']); ?></strong><?php if ($user['role'] === 'teacher'): ?><small><?php echo esc($student['email']); ?></small><?php endif; ?></div></div>
+        <div><?php render_profile_avatar($student, 'classroom-member-avatar'); ?><div><strong><?php echo esc($student['name']); ?><?php echo (int) $student['id'] === (int) $user['id'] ? ' (YOU)' : ''; ?></strong><?php if ($user['role'] === 'teacher'): ?><small><?php echo esc($student['email']); ?></small><?php endif; ?></div></div>
         <?php endforeach; ?>
         <?php if (!$students): ?><p>No students have joined this classroom yet.</p><?php endif; ?>
     </div>

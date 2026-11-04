@@ -9,14 +9,23 @@ unset($_SESSION['signup_created_name']);
 $role = is_string($_POST['role'] ?? null) ? $_POST['role'] : 'student';
 $profile = profile_input($_POST);
 if ($role === 'teacher') { $profile['student_number'] = ''; $profile['year_level'] = ''; }
-$name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
+$nameParts = [];
+foreach (['first_name', 'surname', 'middle_name'] as $field) {
+    $nameParts[$field] = is_string($_POST[$field] ?? null) ? trim($_POST[$field]) : '';
+}
+$name = implode(' ', array_filter([$nameParts['first_name'], $nameParts['middle_name'], $nameParts['surname']], static fn($part) => $part !== ''));
 $email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $createdName = null;
     $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
     $confirm = is_string($_POST['confirm_password'] ?? null) ? $_POST['confirm_password'] : '';
     if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['signup_csrf'], $_POST['csrf'])) $errors[] = 'Your form expired. Please try again.';
-    if ($name === '' || strlen($name) > 150) $errors[] = 'Enter your full name (up to 150 characters).';
+    foreach (['first_name' => 'First name', 'surname' => 'Surname', 'middle_name' => 'Middle name'] as $field => $label) {
+        if (($field !== 'middle_name' && $nameParts[$field] === '') || strlen($nameParts[$field]) > 50) {
+            $errors[] = $label . ($field === 'middle_name' ? ' must be up to 50 characters.' : ' is required and must be up to 50 characters.');
+        }
+    }
+    if (strlen($name) > 150) $errors[] = 'Your combined name must be up to 150 characters.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) $errors[] = 'Enter a valid email address.';
     if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) $errors[] = 'Use at least 8 characters with a letter and a number.';
     if ($password !== $confirm) $errors[] = 'Passwords do not match.';
@@ -24,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = array_merge($errors, profile_errors($profile, $role));
     if (!$errors && find_user_by_email($email)) $errors[] = 'An account already exists for that email.';
     if (!$errors) {
-        register_user($name, $email, $password, $role, $profile);
+        register_user($name, $email, $password, $role, array_merge($profile, $nameParts));
         $_SESSION['signup_created_name'] = $name;
         $_SESSION['signup_csrf'] = bin2hex(random_bytes(32));
         redirect('/QuizWeb/register.php?created=1');
@@ -60,7 +69,11 @@ render_header('Register', 'auth-page signup-page');
         <?php if ($errors): ?><div class="inline-error" role="alert"><ul><?php foreach ($errors as $error): ?><li><?php echo esc($error); ?></li><?php endforeach; ?></ul></div><?php endif; ?>
         <section data-signup-step="0" class="signup-step">
             <h1 tabindex="-1">Create your account</h1>
-            <label><span>Full Name</span><input name="name" autocomplete="name" maxlength="150" required value="<?php echo esc($name); ?>" placeholder="Enter your full name"></label>
+            <div class="signup-field-grid">
+                <label><span>First Name</span><input name="first_name" autocomplete="given-name" maxlength="50" required value="<?php echo esc($nameParts['first_name']); ?>" placeholder="Enter your first name"></label>
+                <label><span>Surname</span><input name="surname" autocomplete="family-name" maxlength="50" required value="<?php echo esc($nameParts['surname']); ?>" placeholder="Enter your surname"></label>
+            </div>
+            <label><span>Middle Name (optional)</span><input name="middle_name" autocomplete="additional-name" maxlength="50" value="<?php echo esc($nameParts['middle_name']); ?>" placeholder="Enter your middle name"></label>
             <label><span>Email Address</span><input type="email" name="email" autocomplete="email" maxlength="190" required value="<?php echo esc($email); ?>" placeholder="Enter your email address"></label>
             <label><span>Password</span><span class="signup-password"><input type="password" name="password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" required placeholder="Create a password" aria-describedby="password-guidance password-strength-text"><button type="button" data-password-toggle aria-label="Show password" aria-pressed="false">Show</button></span></label>
             <label><span>Confirm Password</span><input type="password" name="confirm_password" autocomplete="new-password" required placeholder="Repeat your password"></label>

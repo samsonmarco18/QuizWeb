@@ -139,7 +139,7 @@ render_header('Results', 'results-page' . ($user['role']==='student' ? ' student
     <div class="action-row centered">
         <?php if ($reviewRows): ?><a class="button button-secondary" href="#answer-review">Review Answers</a><?php endif; ?>
         <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
-        <?php if ($quiz): ?>
+        <?php if ($quiz && $user['role'] === 'student'): ?>
             <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $attempt['quiz_id']); ?>">Play Again</a>
         <?php endif; ?>
         <?php if ($studentPracticeQuestions): ?>

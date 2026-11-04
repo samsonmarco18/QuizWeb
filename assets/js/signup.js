@@ -23,7 +23,7 @@
     function review() {
         const container = form.querySelector('[data-signup-review]');
         container.replaceChildren();
-        const labels = { name: 'Full Name', email: 'Email Address', role: 'Role', student_number: 'Student Number', birthdate: 'Birthdate', gender: 'Gender', program: form.elements.namedItem('role').value === 'teacher' ? 'Department' : 'Program / Course', year_level: 'Year Level' };
+        const labels = { first_name: 'First Name', surname: 'Surname', middle_name: 'Middle Name', email: 'Email Address', role: 'Role', student_number: 'Student Number', birthdate: 'Birthdate', gender: 'Sex', program: form.elements.namedItem('role').value === 'teacher' ? 'Department' : 'Program / Course', year_level: 'Year Level' };
         Object.entries(labels).forEach(([name, label]) => {
             if (form.elements.namedItem(name).disabled) return;
             const term = document.createElement('dt');

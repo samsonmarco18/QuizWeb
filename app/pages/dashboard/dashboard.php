@@ -263,8 +263,10 @@ if ($user['role'] === 'teacher') {
             <span class="eyebrow">Your classrooms</span>
             <h2><?php echo $myClassrooms ? 'Ready for your next class?' : 'Create your first classroom'; ?></h2>
             <p>Set up class details, academic information, and grading in My Classes.</p>
-            <a class="button button-primary" href="/QuizWeb/classes.php?create=1#new-class">Create Classroom</a>
-            <a class="button button-secondary" href="/QuizWeb/classes.php">My Classes</a>
+            <div class="action-row centered">
+                <a class="button button-primary" href="/QuizWeb/classes.php?create=1#new-class">Create Classroom</a>
+                <a class="button button-secondary" href="/QuizWeb/classes.php">My Classes</a>
+            </div>
         </article>
         <article class="glass panel">
             <div class="section-heading">

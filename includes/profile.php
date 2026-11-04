@@ -97,10 +97,10 @@ function profile_save_changes(PDO $pdo, int $userId, array $changes, bool $remov
 }
 
 function profile_labels(): array {
-    return ['student_number' => 'Student Number', 'birthdate' => 'Birthdate', 'gender' => 'Gender', 'program' => 'Program / Course', 'year_level' => 'Year Level'];
+    return ['student_number' => 'Student Number', 'birthdate' => 'Birthdate', 'gender' => 'Sex', 'program' => 'Program / Course', 'year_level' => 'Year Level'];
 }
 function profile_options(): array {
-    return ['gender' => ['Female', 'Male', 'Non-binary', 'Prefer not to say', 'Other'], 'year_level' => ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'Graduate', 'Other']];
+    return ['gender' => ['Male', 'Female'], 'year_level' => ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'Graduate', 'Other']];
 }
 function profile_input(array $input): array {
     $profile = [];

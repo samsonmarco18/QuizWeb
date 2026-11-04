@@ -466,6 +466,22 @@ body.ui-refined.classroom-page #quizzes .quiz-card-footer .action-row .button { 
 .profile-photo-controls input[type="file"] { max-width: 100%; font-size: 12px; }
 .profile-photo-controls [role="status"] { font-size: 12px; color: var(--text-secondary); }
 .messenger-dock .messenger-thread { position: relative; }
+/* Reserve a separate row for the conversation controls and room for Close. */
+body.ui-refined .messenger-dock .messenger-thread-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 32px;
+    gap: 8px;
+    padding: 14px 60px 14px 14px;
+}
+body.ui-refined .messenger-thread-top > div { grid-column: 1 / -1; }
+body.ui-refined .messenger-thread-top .messenger-members-toggle { justify-self: start; max-width: 100%; }
+body.ui-refined .messenger-thread-top .messenger-open-link { width: 32px; min-height: 36px; }
+body.ui-refined .messenger-dock .messenger-message.is-self .messenger-message-bubble p,
+body.ui-refined .messenger-dock .messenger-message.is-self .messenger-message-bubble a { color: #fff; }
+body.ui-refined .chat-message-self .chat-bubble p { color: #fff; }
+/* Keep the last form actions above the floating message launcher. */
+body.ui-refined:not(.auth-page):not(.game-page) .page-shell { padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+body.ui-refined .empty-state > .action-row { flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 .messenger-members-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 5px; min-height: 36px; padding: 7px 9px; border: 1px solid var(--chat-line); border-radius: 8px; background: var(--chat-raised); color: var(--chat-text); font-size: 10px; cursor: pointer; }
 .messenger-members-toggle .nav-icon { width: 16px; height: 16px; }
 .messenger-members-toggle:hover, .messenger-members-toggle[aria-expanded="true"] { color: var(--chat-accent); border-color: var(--chat-accent); }
