@@ -38,10 +38,22 @@ function mailer_settings_save(PDO $pdo, int $actorId, #[SensitiveParameter] arra
             'smtp_password' => trim((string) ($input['smtp_password'] ?? '')), 'http_token' => trim((string) ($input['http_token'] ?? '')),
             'google_client_secret' => trim((string) ($input['google_client_secret'] ?? '')), 'google_refresh_token' => trim((string) ($input['google_refresh_token'] ?? '')),
         ];
-        $hasNewSecret = implode('', $enteredSecrets) !== '';
-        $settings['encrypted_secrets'] = $saved['encrypted_secrets'] ?? null;
-        if ($hasNewSecret) $settings['encrypted_secrets'] = ai_settings_encrypt(json_encode($enteredSecrets, JSON_THROW_ON_ERROR));
-        if ($settings['enabled'] && !$settings['encrypted_secrets']) throw new InvalidArgumentException('Add the password, API token, or OAuth credentials before enabling mail.');
+        $savedSecrets = [];
+        if (is_array($saved['encrypted_secrets'] ?? null)) {
+            $decodedSecrets = json_decode(ai_settings_decrypt($saved['encrypted_secrets']), true);
+            if (is_array($decodedSecrets)) $savedSecrets = $decodedSecrets;
+        }
+        foreach ($enteredSecrets as $secretName => $secretValue) {
+            if ($secretValue !== '') $savedSecrets[$secretName] = $secretValue;
+        }
+        $settings['encrypted_secrets'] = $savedSecrets
+            ? ai_settings_encrypt(json_encode($savedSecrets, JSON_THROW_ON_ERROR))
+            : null;
+        if ($settings['enabled']) {
+            if ($provider === 'smtp' && empty($savedSecrets['smtp_password'])) throw new InvalidArgumentException('Enter the SMTP password or app password.');
+            if ($provider === 'http_api' && empty($savedSecrets['http_token'])) throw new InvalidArgumentException('Enter the HTTPS mail API token.');
+            if ($provider === 'google_oauth' && (empty($savedSecrets['google_client_secret']) || empty($savedSecrets['google_refresh_token']))) throw new InvalidArgumentException('Enter both the Google Client Secret and OAuth refresh token.');
+        }
     }
     $settings['updated_at'] = now_iso(); $settings['updated_by'] = $actorId;
     $pdo->beginTransaction();
