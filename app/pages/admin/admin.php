@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/ai_quiz.php';
 require_once dirname(__DIR__, 3) . '/includes/mailer_settings.php';
+require_once dirname(__DIR__, 3) . '/includes/password_reset.php';
 require_once dirname(__DIR__, 3) . '/includes/google_oauth.php';
 $user = require_role('admin');
 $views = ['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'ai' => 'AI settings', 'google_auth' => 'Google sign-in', 'mailer' => 'Mailer', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit', 'releases' => 'Grade releases'];
@@ -64,8 +65,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $view = 'mailer';
         try {
             ai_settings_csrf($_POST['csrf'] ?? null, $_SESSION['admin_csrf']);
-            mailer_settings_save(db(), (int) $user['id'], $_POST, $adminAction === 'mailer_remove');
-            flash_set('success', $adminAction === 'mailer_remove' ? 'Mailer credentials removed and delivery disabled.' : 'Mailer settings saved securely.');
+            if ($adminAction === 'mailer_test') {
+                $recipient = strtolower(trim((string) ($_POST['test_recipient'] ?? '')));
+                if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) throw new InvalidArgumentException('Enter a valid test recipient email address.');
+                $lastTest = (int) ($_SESSION['mailer_admin_last_test'] ?? 0);
+                if (time() - $lastTest < 30) throw new InvalidArgumentException('Wait 30 seconds before sending another test email.');
+                $_SESSION['mailer_admin_last_test'] = time();
+                mailer_send_message($recipient, $user['name'], 'CHALK mailer test', "Hello {$user['name']},\n\nYour CHALK mailer configuration is working. This test was sent from the Administration > Mailer page.\n\nNo action is required.");
+                record_audit('mailer_test_sent', (int) $user['id'], (int) $user['id']);
+                flash_set('success', 'Test email sent to ' . $recipient . '. Check the inbox and spam folder.');
+            } else {
+                mailer_settings_save(db(), (int) $user['id'], $_POST, $adminAction === 'mailer_remove');
+                flash_set('success', $adminAction === 'mailer_remove' ? 'Mailer credentials removed and delivery disabled.' : 'Mailer settings saved securely.');
+            }
             redirect('/QuizWeb/admin.php?tab=mailer');
         } catch (InvalidArgumentException | RuntimeException $exception) { $error = $exception->getMessage(); }
         catch (Throwable $exception) { error_log('Mailer settings failed: ' . $exception->getMessage()); $error = 'Could not save mailer settings.'; }
@@ -154,6 +166,12 @@ render_header('Administration', 'admin-page', ['/QuizWeb/assets/css/admin-ai.css
         <fieldset data-mailer-fields="http_api"><legend>HTTPS mail API</legend><div class="admin-form-grid"><label><span>API endpoint</span><input type="url" name="http_endpoint" value="<?php echo esc($mailerSettings['http_endpoint'] ?? ''); ?>" placeholder="https://api.provider.com/send"></label><label><span>Bearer / API token</span><input type="password" name="http_token" autocomplete="new-password" placeholder="<?php echo !empty($mailerSettings['encrypted_secrets']) ? 'Saved — enter to replace' : 'Required to enable'; ?>"></label></div></fieldset>
         <fieldset data-mailer-fields="google_oauth"><legend>Google OAuth 2.0</legend><p>Use a Google Cloud OAuth client with Gmail send permission and an authorized refresh token.</p><div class="admin-form-grid"><label><span>Google mailbox</span><input type="email" name="google_user" value="<?php echo esc($mailerSettings['google_user'] ?? ''); ?>"></label><label><span>Client ID</span><input name="google_client_id" value="<?php echo esc($mailerSettings['google_client_id'] ?? ''); ?>"></label><label><span>Client secret</span><input type="password" name="google_client_secret" autocomplete="new-password" placeholder="<?php echo !empty($mailerSettings['encrypted_secrets']) ? 'Saved — enter to replace' : 'Required'; ?>"></label><label><span>OAuth refresh token</span><input type="password" name="google_refresh_token" autocomplete="new-password" placeholder="<?php echo !empty($mailerSettings['encrypted_secrets']) ? 'Saved — enter to replace' : 'Required'; ?>"></label></div></fieldset>
         <div class="action-row"><button class="button button-primary" type="submit">Save mailer settings</button></div>
+    </form>
+    <form method="post" class="stack-form admin-mailer-test-form">
+        <input type="hidden" name="csrf" value="<?php echo esc($_SESSION['admin_csrf']); ?>"><input type="hidden" name="action" value="mailer_test">
+        <div class="section-heading"><div><h3>Test mail delivery</h3><p>Save and enable the configuration first. This uses the same delivery service as forgot-password emails.</p></div></div>
+        <label><span>Send test email to</span><input type="email" name="test_recipient" required value="<?php echo esc($user['email']); ?>" autocomplete="email"></label>
+        <div class="action-row"><button class="button button-secondary" type="submit">Send test email</button></div>
     </form>
     <?php if (!empty($mailerSettings['encrypted_secrets'])): ?><form method="post" class="action-row" data-confirm="Remove saved mail credentials and disable delivery?"><input type="hidden" name="csrf" value="<?php echo esc($_SESSION['admin_csrf']); ?>"><input type="hidden" name="action" value="mailer_remove"><button class="button button-secondary">Remove saved credentials</button></form><?php endif; ?>
 <?php else: ?>

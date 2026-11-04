@@ -475,6 +475,8 @@ function require_login(): array
         flash_set('warning', 'Please log in to continue.');
         redirect('/QuizWeb/login.php');
     }
+    $requestPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    if (!empty($_SESSION['temporary_password_login']) && !in_array($requestPath, ['/QuizWeb/change_temporary_password.php', '/QuizWeb/logout.php'], true)) redirect('/QuizWeb/change_temporary_password.php');
 
     return $user;
 }
@@ -823,10 +825,16 @@ function attempt_login(string $email, string $password): ?array
 {
     $user = find_user_by_email($email);
 
-    if (!$user || ($user['account_status'] ?? 'active') !== 'active' || !password_verify($password, $user['password'])) {
+    if (!$user || ($user['account_status'] ?? 'active') !== 'active') {
         record_audit('login_failed', null, $user ? (int) $user['id'] : null);
         return null;
     }
+    $temporary = false;
+    if (!password_verify($password, $user['password'])) {
+        $temporary = function_exists('attempt_temporary_password') && attempt_temporary_password($user, $password);
+        if (!$temporary) { record_audit('login_failed', null, (int) $user['id']); return null; }
+    }
+    if ($temporary) $user['_temporary_login'] = true;
     record_audit('login_succeeded', (int) $user['id'], (int) $user['id']);
     return $user;
 }
@@ -835,6 +843,7 @@ function login_user(array $user): void
 {
     session_regenerate_id(true);
     $_SESSION['user_id'] = $user['id'];
+    if (!empty($user['_temporary_login'])) $_SESSION['temporary_password_login'] = true;
 }
 
 function logout_user(): void

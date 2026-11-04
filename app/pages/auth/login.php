@@ -2,6 +2,7 @@
 
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/google_oauth.php';
+require_once dirname(__DIR__, 3) . '/includes/password_reset.php';
 
 if (is_logged_in()) {
     redirect('/QuizWeb/dashboard.php');
@@ -20,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         login_user($user);
         flash_set('success', 'Welcome back, ' . $user['name'] . '!');
-        redirect('/QuizWeb/dashboard.php');
+        redirect(!empty($user['_temporary_login']) ? '/QuizWeb/change_temporary_password.php' : '/QuizWeb/dashboard.php');
     }
 }
 
@@ -57,6 +58,7 @@ render_header('Login', 'auth-page login-page');
             <span>Password</span>
             <input type="password" name="password" required placeholder="Enter your password">
         </label>
+        <p class="auth-forgot"><a href="/QuizWeb/forgot_password.php">Forgot password?</a></p>
         <button class="button button-primary" type="submit">Sign in</button>
         <?php if (google_oauth_config()['enabled']): ?><div class="auth-divider"><span>or</span></div><a class="button button-secondary google-signin-button" href="/QuizWeb/google_auth.php" rel="nofollow">Sign in with Google</a><?php endif; ?>
         <p class="muted auth-switch">New here? <a href="/QuizWeb/register.php">Create an account</a></p>

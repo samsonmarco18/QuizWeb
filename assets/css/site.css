@@ -2294,6 +2294,8 @@ textarea:focus {
 .auth-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .google-signin-button { width: 100%; justify-content: center; }
+.auth-forgot { margin: -6px 0 0; text-align: right; font-size: 12px; }
+.auth-forgot a { color: var(--primary); font-weight: 600; }
 
 .split-fields {
     display: grid;
