@@ -29,8 +29,15 @@ function mailer_request(string $url, array $fields, string $bearer = ''): array
     if ($bearer !== '') $headers[] = 'Authorization: Bearer ' . $bearer;
     curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => http_build_query($fields), CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => 20, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2]);
     $body = curl_exec($curl); $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE); $error = curl_error($curl); curl_close($curl);
-    if (!is_string($body) || $error !== '' || $status < 200 || $status >= 300) throw new RuntimeException('The mail provider rejected the message.');
-    $data = json_decode($body, true); return is_array($data) ? $data : [];
+    if (!is_string($body) || $error !== '') throw new RuntimeException('Could not connect to the Google OAuth service.');
+    $data = json_decode($body, true);
+    if ($status < 200 || $status >= 300) {
+        $providerError = is_array($data) && is_string($data['error'] ?? null) ? $data['error'] : '';
+        if ($providerError === 'invalid_grant') throw new RuntimeException('Google rejected the saved refresh token. Generate a new token using this same Client ID and Client Secret, then save it again.');
+        if (in_array($providerError, ['invalid_client', 'unauthorized_client'], true)) throw new RuntimeException('Google rejected the OAuth Client ID or Client Secret. Verify that both belong to the same Web application used to generate the refresh token.');
+        throw new RuntimeException('Google rejected the OAuth token request. Verify the saved Client ID, Client Secret, and refresh token.');
+    }
+    return is_array($data) ? $data : [];
 }
 
 function mailer_send_message(string $to, string $name, string $subject, string $text): void
