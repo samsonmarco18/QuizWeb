@@ -437,10 +437,14 @@
             if (!bounds.width || !bounds.height) return;
             const cols = Number(crosswordLayout.cols) || 1;
             const rows = crosswordLayout.cells.length || 1;
-            const size = Math.floor(Math.min((bounds.width - 32) / cols, (bounds.height - 24) / rows));
-            const cellSize = Math.max(36, Math.min(64, size));
+            const boardStyle = window.getComputedStyle(board);
+            const availableWidth = bounds.width - parseFloat(boardStyle.paddingLeft || 0) - parseFloat(boardStyle.paddingRight || 0);
+            const availableHeight = bounds.height - parseFloat(boardStyle.paddingTop || 0) - parseFloat(boardStyle.paddingBottom || 0);
+            const size = Math.floor(Math.min(availableWidth / cols, availableHeight / rows));
+            const minimumSize = window.matchMedia('(max-width: 560px)').matches ? 22 : 36;
+            const cellSize = Math.max(minimumSize, Math.min(64, size));
             grid.style.setProperty('--crossword-cell-size', `${cellSize}px`);
-            board.classList.toggle('crossword-board-overflow', cols * cellSize > bounds.width - 32 || rows * cellSize > bounds.height - 24);
+            board.classList.toggle('crossword-board-overflow', cols * cellSize > availableWidth || rows * cellSize > availableHeight);
         };
         if (window.ResizeObserver) {
             crosswordSurface.resize = new ResizeObserver(fit);

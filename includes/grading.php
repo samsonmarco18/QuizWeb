@@ -107,7 +107,7 @@ function grading_attempt_result(array $attempts, string $policy): ?array
 {
     $valid = array_values(array_filter($attempts, static function ($attempt) {
         if (!is_array($attempt) || (float) ($attempt['max_score'] ?? 0) <= 0 || in_array($attempt['game_type'] ?? '', ['focus_training', 'practice'], true)
-            || !empty($attempt['preview_mode']) || !empty($attempt['answers']['_preview'])) return false;
+            || ($attempt['answers']['_late_review']['status'] ?? '') === 'pending' || !empty($attempt['preview_mode']) || !empty($attempt['answers']['_preview'])) return false;
         $snapshot = $attempt['answers']['_quiz_snapshot'] ?? [];
         if (!is_array($snapshot)) return false;
         // Legacy attempts can be included when the teacher categorizes their quiz.
@@ -294,6 +294,23 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
             $book['items'][$id]['period_id'] = $period;
             $changes[] = ['assign_term', $old, ['period_id' => $period, 'reason' => $reason], null, $id];
         }
+    } elseif ($action === 'student_scores') {
+        $student = grading_student_id($classroom, $input['student_id'] ?? '');
+        $period = !empty($book['config']['periods']) ? academic_period_id($input['period_id'] ?? '') : '';
+        $scores = $input['manual_scores'] ?? null;
+        if (!is_array($scores) || !$scores || count($scores) > 100) throw new InvalidArgumentException('Enter scores for 1?100 manual assessments.');
+        // Validate the whole form on a copy so one invalid score cannot partially save a batch.
+        $draft = $book;
+        foreach ($scores as $id => $value) {
+            $item = $book['items'][$id] ?? null;
+            if (!$item || ($period !== '' && ($item['period_id'] ?? '') !== $period)) throw new InvalidArgumentException('Choose assessments from the selected grading period.');
+            $changes = array_merge($changes, grading_apply_action($draft, $classroom, $actor, 'scores', [
+                'item_id' => (string) $id, 'scores' => [$student => $value], 'reason' => $input['reason'] ?? '',
+                'feedback' => isset($input['manual_feedback'][$id]) ? [$student => $input['manual_feedback'][$id]] : [],
+            ], $attempts));
+        }
+        $draft['revision'] = $book['revision'];
+        $book = $draft;
     } elseif ($action === 'scores') {
         $id = is_string($input['item_id'] ?? null) ? $input['item_id'] : '';
         $item = $book['items'][$id] ?? null;

@@ -90,3 +90,21 @@ function render_grade_components(?array $grade, ?array $config, bool $showActivi
         </article>
     <?php endforeach; ?></div><?php
 }
+
+function academic_selected_period(): string
+{
+    $period = $_GET['period'] ?? 'prelim';
+    return is_string($period) && in_array($period, ['prelim', 'midterm', 'finals'], true) ? $period : 'prelim';
+}
+
+function render_academic_period_navigation(string $baseUrl, string $selected): void
+{
+    $params = array_filter($_GET, fn($v) => is_scalar($v));
+    unset($params['page'], $params['attempt_page']);
+    ?><nav class="academic-period-tabs" aria-label="Grading period"><?php
+    foreach (academic_periods() as $period) {
+        $params['period'] = $period['id'];
+        ?><a class="<?php echo $selected === $period['id'] ? 'is-active' : ''; ?>" href="<?php echo esc($baseUrl . '?' . http_build_query($params)); ?>" <?php echo $selected === $period['id'] ? 'aria-current="page"' : ''; ?>><?php echo esc($period['name']); ?></a><?php
+    }
+    ?></nav><p class="academic-period-label">Viewing <strong><?php echo esc(ucfirst($selected)); ?> period</strong></p><?php
+}

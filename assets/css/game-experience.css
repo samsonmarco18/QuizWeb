@@ -260,3 +260,11 @@ body.ui-refined.builder-page #builder-review > button { text-align: left; justif
 body.ui-refined.builder-page .builder-live-preview .preview-choices .button { text-align: left; justify-content: flex-start; padding: 12px; font-weight: 500; line-height: 1.5; }
 body.ui-refined.builder-page .builder-live-preview { padding: 20px; }
 @media(max-width:1200px) { body.ui-refined.builder-page .builder-panel { grid-template-columns: minmax(0,1fr); } body.ui-refined.builder-page .builder-live-preview { position: static; max-height: 65dvh; } }
+
+@media (max-width: 600px) {
+    body.ui-refined.game-page .game-hud > .hud-stats { grid-column: 1; width: 100%; }
+    body.ui-refined.game-page .hud-pill { overflow-wrap: normal; }
+    body.ui-refined.game-page .game-controls { flex-wrap: wrap; }
+    body.ui-refined.game-page .game-controls .button { min-width: 0; max-width: 100%; }
+    body.ui-refined.game-page .question-stage { justify-content: flex-start; }
+}

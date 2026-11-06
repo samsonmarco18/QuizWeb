@@ -66,6 +66,12 @@ render_header('Results', 'results-page' . ($user['role']==='student' ? ' student
         <span><?php echo $isDisqualified ? 'Marked 0' : 'Performance recap'; ?></span>
     </div>
 
+    <?php if (!empty($attemptAnswers['_late_review'])): $lateReview = $attemptAnswers['_late_review']; ?>
+    <p class="academic-notice">Late submission: <?php echo esc(ucfirst($lateReview['status'])); ?>.
+    <?php if ($lateReview['status'] === 'pending'): ?>Awaiting teacher approval. Original score: <?php echo (int) $lateReview['original_score']; ?> / <?php echo (int) $attempt['max_score']; ?>. This result is not included in grades yet.
+    <?php elseif ($lateReview['status'] === 'accepted'): ?>Deduction: <?php echo (int) ($lateReview['deduction'] ?? 0); ?> points.
+    <?php else: ?>The teacher rejected this submission and recorded zero.<?php endif; ?></p>
+    <?php endif; ?>
     <div class="result-score-ring" style="--score-progress: <?php echo esc((string) $scorePercent); ?>%;">
         <div>
             <strong><?php echo esc((string) $scorePercent); ?>%</strong>
@@ -140,10 +146,7 @@ render_header('Results', 'results-page' . ($user['role']==='student' ? ' student
         <?php if ($reviewRows): ?><a class="button button-secondary" href="#answer-review">Review Answers</a><?php endif; ?>
         <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
         <?php if ($quiz && $user['role'] === 'student'): ?>
-            <a class="button button-primary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $classroom['id']); ?>&quiz_id=<?php echo esc((string) $attempt['quiz_id']); ?>">Play Again</a>
-        <?php endif; ?>
-        <?php if ($studentPracticeQuestions): ?>
-            <a class="button button-secondary" href="/QuizWeb/practice.php?return=<?php echo rawurlencode('/QuizWeb/results.php?id=' . $attempt['id']); ?>">Focus Practice</a>
+            <a class="button button-primary" href="/QuizWeb/practice.php">Focus Practice</a>
         <?php endif; ?>
     </div>
     <?php if ($quiz && !empty($quiz['grade_category_id'])): ?><p class="muted">This game score is one attempt. Your classroom grade uses the teacher's configured <?php echo esc($quiz['grade_attempt_policy'] ?? 'highest'); ?> attempt policy, category weights, and any adjustments. Released grades appear under My Grades.</p><?php endif; ?>

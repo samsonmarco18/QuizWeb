@@ -260,7 +260,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             <div id="builder-settings"></div>
             <label class="grade-confirm"><input type="checkbox" name="adaptive_practice_enabled" value="yes" <?php echo (($_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['adaptive_practice_enabled'] ?? '') === 'yes' : !empty($editingQuiz['adaptive_practice_enabled']))) ? 'checked' : ''; ?>><span>Allow these multiple-choice questions in adaptive practice. Students receive answer explanations; practice scores stay separate from grades.</span></label>
             <label id="mastery-target-setting" hidden><span>Mastery target (%)</span><input type="number" name="mastery_threshold" min="50" max="100" value="<?php echo (int) ($_POST['mastery_threshold'] ?? $defaultMasteryThreshold); ?>"><small>Accuracy needed to unlock the next difficulty level.</small></label>
-            <p>Deadlines are reminders; they do not close submissions. Students may retry. Configure the deadline in Details.</p>
+            <p>Students have one main quiz attempt. Late submissions await teacher approval and may receive a point deduction or be rejected as zero. Use Focus Practice for repeat practice. Configure the deadline in Details.</p>
         </section>
         <section data-builder-step="3" hidden>
             <h2>Academic grading</h2>

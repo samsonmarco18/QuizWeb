@@ -1571,6 +1571,10 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
     }
 
     $answers['_quiz_snapshot'] = $quiz;
+    if ($classroomId > 0 && !empty($quiz['due_at']) && time() > strtotime($quiz['due_at'])) {
+        $answers['_late_review'] = ['status' => 'pending', 'original_score' => $score, 'due_at' => $quiz['due_at']];
+        $score = 0;
+    }
     $attempt = [
         'id' => 0,
         'student_id' => $studentId,
@@ -1592,6 +1596,10 @@ function create_attempt(int $studentId, int $classroomId, array $quiz, array $an
         if (!empty($quiz['grade_category_id']) && !empty(grading_load($pdo, $classroomId)['locked'])) throw new InvalidArgumentException('This subject’s grades are finalized. Graded attempts are locked.');
         if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $pdo->query('SELECT id FROM attempts FOR UPDATE')->fetchAll();
         else $pdo->exec('LOCK TABLE attempts IN EXCLUSIVE MODE');
+        if ($classroomId > 0 && ($existing = latest_attempt_for_quiz($studentId, $classroomId, (int) $quiz['id'], $pdo))) {
+            $pdo->commit();
+            return $existing;
+        }
         $attempt['id'] = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM attempts')->fetchColumn();
         insert_attempt_record($pdo, $attempt);
         $pdo->commit();

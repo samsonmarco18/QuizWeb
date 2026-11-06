@@ -229,7 +229,7 @@ if ($user['role'] === 'teacher') {
                         <?php foreach (array_slice($learningProfile['focus_items'], 0, 3) as $item): ?>
                             <article class="dashboard-weak-item">
                                 <div><strong><?php echo esc($item['quiz_title']); ?></strong><span><?php echo esc($item['level_label'] . ' - ' . $item['accuracy'] . '% accuracy'); ?></span></div>
-                                <a class="button button-secondary" href="/QuizWeb/play.php?classroom_id=<?php echo esc((string) $item['classroom_id']); ?>&quiz_id=<?php echo esc((string) $item['quiz_id']); ?>">Retake Quiz</a>
+                                <a class="button button-secondary" href="/QuizWeb/practice.php">Focus Practice</a>
                             </article>
                         <?php endforeach; ?>
                     <?php else: ?>

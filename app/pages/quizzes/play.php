@@ -25,6 +25,11 @@ if (!isset($modes[$quiz['game_type'] ?? ''])) {
     redirect('/QuizWeb/classroom.php?id=' . $classroomId . '&tab=quizzes');
 }
 $isPreview = $user['role'] === 'teacher';
+if (!$isPreview && ($previous = latest_attempt_for_quiz((int) $user['id'], $classroomId, $quizId))) {
+    flash_set('warning', 'You have used your one main quiz attempt. Use Focus Practice to practice again.');
+    redirect('/QuizWeb/results.php?id=' . (int) $previous['id']);
+}
+
 if (!$isPreview && !empty($quiz['grade_category_id']) && !empty(grading_load(db(), $classroomId)['locked'])) {
     flash_set('danger', 'This subject’s grades are finalized. Graded quiz attempts are locked.');
     redirect('/QuizWeb/classroom.php?id=' . $classroomId);
@@ -147,8 +152,8 @@ render_header($quiz['title'], 'game-page mode-' . $quiz['game_type'], $quiz['gam
                     <div class="game-intro-info">
                         <span><?php echo (int) array_sum(array_column($quiz['questions'], 'points')); ?> possible points</span>
                         <span><?php echo empty($quiz['grade_category_id']) ? 'Practice · outside classroom grades' : 'Graded · attempt policy: ' . esc($quiz['grade_attempt_policy'] ?? 'highest'); ?></span>
-                        <?php if (!$isPreview): ?><span><?php echo count(array_filter(student_attempts((int) $user['id']), static fn($attempt) => (int) $attempt['classroom_id'] === $classroomId && (int) $attempt['quiz_id'] === $quizId)); ?> completed attempts · Retry available</span><?php endif; ?>
-                        <?php if (!empty($quiz['due_at'])): ?><span>Due <?php echo esc(format_date($quiz['due_at'])); ?> · reminder, submissions remain open</span><?php endif; ?>
+                        <?php if (!$isPreview): ?><span>One main quiz attempt ? Use Focus Practice for practice</span><?php endif; ?>
+                        <?php if (!empty($quiz['due_at'])): ?><span>Due <?php echo esc(format_date($quiz['due_at'])); ?> · late submissions require teacher approval</span><?php endif; ?>
                     </div>
                 </details>
             </div>

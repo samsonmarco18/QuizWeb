@@ -43,12 +43,24 @@
     setInterval(refreshMonitor, 15000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshMonitor(); });
   }
+  document.querySelectorAll('[data-grade-periods]').forEach(group => {
+    const buttons = [...group.querySelectorAll('[data-grade-period]')];
+    buttons.forEach(button => button.addEventListener('click', () => {
+      buttons.forEach(other => other.setAttribute('aria-pressed', String(other === button)));
+      group.querySelectorAll('[data-grade-period-panel]').forEach(panel => { panel.hidden = panel.dataset.gradePeriodPanel !== button.dataset.gradePeriod; });
+      group.closest('.academic-drawer')?.querySelectorAll('a[href*="gradebook.php"]').forEach(link => {
+        const url = new URL(link.href, window.location.href); url.searchParams.set('period', button.dataset.gradePeriod); link.href = url.href;
+      });
+    }));
+  });
   const table = document.querySelector('.academic-gradebook');
   const panels = [...document.querySelectorAll('.academic-drawer')];
   let active = null, trigger = null, closeTimer;
   let stage, slot;
+  const isTeacher = document.body.classList.contains('gradebook-page') && !document.body.classList.contains('grades-page');
+  const gradeTriggers = [...document.querySelectorAll('[data-open-grade]')];
   if (table && panels.length) {
-    stage = document.createElement('div'); stage.className = 'academic-detail-layout';
+    stage = document.createElement('div'); stage.className = 'academic-detail-layout' + (isTeacher ? ' academic-teacher-details' : '');
     slot = document.createElement('aside'); slot.className = 'academic-detail-slot';
     slot.setAttribute('aria-label', 'Grade breakdown');
     if (document.body.classList.contains('grades-page')) {
@@ -57,17 +69,28 @@
       const filter = document.querySelector('form[data-auto-filter]');
       (heading || table).before(stage); stage.append(left, slot);
       if (heading) left.append(heading); if (filter) left.append(filter); left.append(table);
-    } else { table.before(stage); stage.append(table, slot); } panels.forEach(panel => slot.append(panel));
+    } else { table.before(stage); stage.append(table, slot); } panels.forEach((panel, index) => {
+      slot.append(panel);
+      if (isTeacher && gradeTriggers.length > 1) {
+        const navigation = document.createElement('nav'); navigation.className = 'academic-detail-navigation'; navigation.setAttribute('aria-label', 'Student details');
+        [-1, 1].forEach(direction => {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'button button-secondary';
+          button.textContent = direction < 0 ? 'Previous student' : 'Next student'; button.disabled = !gradeTriggers[index + direction];
+          button.addEventListener('click', () => gradeTriggers[index + direction]?.click()); navigation.append(button);
+        });
+        panel.querySelector('.academic-drawer-body')?.prepend(navigation);
+      }
+    });
   }
   const closePanel = () => {
     if (!active) return;
     const panel = active; active = null;
-    stage?.classList.remove('has-detail'); panel.classList.add('is-closing');
+    panel.classList.add('is-closing');
     clearTimeout(closeTimer);
-    const finish = () => { panel.close(); panel.classList.remove('is-closing'); };
+    const finish = () => { panel.close(); panel.classList.remove('is-closing'); stage?.classList.remove('has-detail'); trigger?.focus({preventScroll: true}); };
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) finish();
     else closeTimer = setTimeout(finish, 220);
-    trigger?.setAttribute('aria-expanded', 'false'); trigger?.focus();
+    trigger?.setAttribute('aria-expanded', 'false');
   };
   document.querySelectorAll('[data-open-grade]').forEach(button => {
     button.setAttribute('aria-expanded', 'false'); button.setAttribute('aria-controls', button.dataset.openGrade);
@@ -80,7 +103,7 @@
       if (!panel.open) panel.show();
       stage?.classList.add('has-detail'); button.setAttribute('aria-expanded', 'true');
       panel.querySelector('[data-close-grade]')?.focus({preventScroll: true});
-      if (window.innerWidth < 800) panel.scrollIntoView?.({behavior: 'smooth', block: 'start'});
+      if (window.innerWidth < 800 || isTeacher) panel.scrollIntoView?.({behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest'});
     });
   });
   document.querySelectorAll('[data-close-grade]').forEach(button => button.addEventListener('click', closePanel));

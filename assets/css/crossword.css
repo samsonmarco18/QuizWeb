@@ -149,19 +149,27 @@ body.ui-refined.game-page.mode-crossword .crossword-cell:focus-within {
     color: #06352f;
     box-shadow: 0 0 18px #46e3bb6b;
 }
-body.ui-refined.game-page.mode-crossword .crossword-cell-number { top: 4px; left: 6px; color: inherit; font-size: 11px; line-height: 1; pointer-events: none; }
+body.ui-refined.game-page.mode-crossword .crossword-cell-number { z-index: 1; top: 4px; left: 6px; color: inherit; font-size: 11px; line-height: 1; pointer-events: none; }
 body.ui-refined.game-page.mode-crossword .crossword-cell-input {
     display: block;
     width: 100%;
     height: 100%;
-    padding: 9px 1px 0;
+    /* Keep the input inside its cell, independent of shared form styles. */
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    appearance: none;
     border: 0;
     border-radius: inherit;
     outline: none;
     background: transparent;
     color: inherit;
     box-shadow: none;
-    font-size: clamp(20px, 2.8vw, 32px);
+    font-size: calc(var(--crossword-cell-size) * .5);
     font-weight: 700;
     line-height: 1;
     text-align: center;
@@ -263,7 +271,7 @@ body.ui-refined.game-page.mode-crossword :is(.clue-button, .crossword-clue-tabs 
 }
 @media (max-width: 720px) {
     body.ui-refined.game-page.mode-crossword .game-hud { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 14px 6px; }
-    body.ui-refined.game-page.mode-crossword .hud-stats { grid-column: 1; grid-row: 2; justify-content: stretch; }
+    body.ui-refined.game-page.mode-crossword .game-hud > .hud-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-column: 1; grid-row: 2; justify-content: stretch; width: 100%; }
     body.ui-refined.game-page.mode-crossword .hud-pill { flex: 1 1 0; min-width: 0; }
     body.ui-refined.game-page.mode-crossword .game-security-status { text-align: left; }
     body.ui-refined.game-page.mode-crossword .crossword-play-shell { grid-template-columns: minmax(0, 1.1fr) minmax(220px, 1fr); gap: 12px; }
@@ -280,8 +288,23 @@ body.ui-refined.game-page.mode-crossword :is(.clue-button, .crossword-clue-tabs 
     body.ui-refined.game-page.mode-crossword .crossword-progress { flex-basis: 100%; }
     body.ui-refined.game-page.mode-crossword .crossword-footer .game-controls { flex: 1 1 100%; }
     body.ui-refined.game-page.mode-crossword .crossword-submit { flex: 1 1 auto; }
-    body.ui-refined.game-page.mode-crossword .crossword-cell-input { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
     body.ui-refined.game-page.mode-crossword .crossword-cell { transition: none; }
+}
+
+@media (max-width: 560px) {
+    body.ui-refined.game-page.mode-crossword .game-identity { gap: 10px; }
+    body.ui-refined.game-page.mode-crossword .hud-pill { justify-content: center; gap: 6px; padding: 6px; }
+    body.ui-refined.game-page.mode-crossword .hud-pill .nav-icon { width: 16px; height: 16px; }
+    body.ui-refined.game-page.mode-crossword .hud-pill strong { font-size: 12px; }
+    body.ui-refined.game-page.mode-crossword .crossword-board-scroll { padding: 8px; }
+    body.ui-refined.game-page.mode-crossword .crossword-stage-active > .answers-grid { flex: 1 0 auto; }
+    body.ui-refined.game-page.mode-crossword .crossword-play-shell { grid-template-rows: minmax(240px, 45dvh) auto; }
+    body.ui-refined.game-page.mode-crossword .crossword-cell { border-radius: 5px; }
+    body.ui-refined.game-page.mode-crossword .crossword-cell-number { top: 2px; left: 3px; font-size: calc(var(--crossword-cell-size) * .22); }
+    body.ui-refined.game-page.mode-crossword .crossword-footer .game-controls { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; margin: 0; }
+    body.ui-refined.game-page.mode-crossword .crossword-footer .button { width: 100%; min-width: 0; white-space: normal; }
+    body.ui-refined.game-page.mode-crossword .crossword-progress { flex-wrap: wrap; gap: 8px; }
+    body.ui-refined.game-page.mode-crossword .crossword-progress-track { flex: 1 1 100px; }
 }

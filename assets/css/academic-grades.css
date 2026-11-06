@@ -311,3 +311,40 @@ body.ui-refined.gradebook-page .academic-filter-actions .button { min-height: 44
     body.ui-refined.gradebook-page .academic-filter-bar { grid-template-columns: minmax(180px,1.5fr) repeat(3,minmax(120px,1fr)) 85px auto; gap: 12px; }
 }
 @media(max-width:420px) { .academic-filter-actions .button { flex: 1 1 auto; justify-content: center; } }
+
+/* Assessment details keep scores and status words readable on narrow screens. */
+.academic-component-assessments .academic-table { min-width: 320px; table-layout: auto; }
+.academic-component-assessments .academic-table :is(th, td) { word-break: normal; overflow-wrap: normal; }
+.academic-component-assessments .academic-table td { white-space: nowrap; }
+
+/* Details replace the teacher table without animating or squeezing its columns. */
+.academic-detail-layout.academic-teacher-details,
+.academic-detail-layout.academic-teacher-details.has-detail { display: block; transition: none; }
+.academic-teacher-details.has-detail > .academic-gradebook { display: none; }
+.academic-teacher-details .academic-detail-slot { display: block; }
+.academic-teacher-details .academic-drawer > header .academic-close { width: auto; height: auto; min-height: 40px; padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+.academic-teacher-details .academic-drawer-body { max-width: 1100px; margin-inline: auto; }
+.academic-detail-navigation { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.academic-period-tabs { display: flex; gap: 6px; padding: 5px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); margin: 12px 0 8px; }
+.academic-period-tabs :is(a, button) { flex: 1 1 0; display: block; min-width: 0; min-height: 40px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); text-align: center; text-decoration: none; font: inherit; font-weight: 600; cursor: pointer; }
+.academic-period-tabs :is(.is-active, [aria-pressed="true"]) { background: var(--surface); color: var(--accent); box-shadow: 0 1px 5px #0002; }
+.academic-period-tabs :is(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.academic-period-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
+[data-grade-period-panel][hidden] { display: none; }
+.academic-manual-shortcuts { margin: 12px 0 18px; }
+.academic-manual-inputs { min-width: 500px; }
+.academic-manual-inputs input { width: 110px; max-width: 100%; }
+.academic-save-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.academic-save-bar p { max-width: 65ch; font-size: 12px; color: var(--text-secondary); }
+.academic-save-bar .button { flex-shrink: 0; }
+@media (max-width: 600px) {
+    .academic-period-tabs :is(a, button) { padding: 10px 6px; font-size: 12px; }
+    .academic-save-bar { flex-direction: column; align-items: stretch; }
+    .academic-teacher-details .academic-drawer > header { padding: 12px; flex-wrap: wrap; }
+    .academic-teacher-details .academic-drawer-body { padding: 12px; }
+    .academic-detail-navigation .button { flex: 1; min-width: 0; font-size: 12px; padding: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .academic-detail-layout, .academic-detail-slot { transition: none; }
+    .academic-detail-slot .academic-drawer[open], .academic-detail-slot .academic-drawer.is-closing { animation: none; }
+}
