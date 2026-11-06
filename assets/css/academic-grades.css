@@ -364,3 +364,13 @@ body.ui-refined .academic-component-entry-table input { width: 105px; min-width:
 .academic-semester-summary .academic-period-cards { margin: 16px 0; }
 .academic-semester-table { min-width: 650px; }
 .academic-semester-table td { white-space: nowrap; }
+
+.academic-submission-table { min-width: 850px; }
+.academic-submission-table th:first-child { min-width: 170px; }
+.academic-submission-table td:nth-child(2) { width: 45%; min-width: 260px; max-width: 500px; }
+.academic-submission-table td:nth-child(3) input { width: 100px; min-width: 80px; }
+.academic-submission-table textarea { min-width: 180px; width: 100%; }
+.academic-submission-table :is(td, th) { vertical-align: top; }
+.academic-response-text { max-height: 280px; overflow: auto; white-space: normal; overflow-wrap: anywhere; padding: 4px; }
+.academic-submission-files { padding-left: 20px; margin: 10px 0; }
+.academic-submission-files li { margin: 6px 0; overflow-wrap: anywhere; }

@@ -1,7 +1,7 @@
 <?php
 // File bytes live separately from classroom JSON; URLs still enforce membership.
 function upload_storage_key(string $scope, string $name): void {
-    if (!in_array($scope, ['chat', 'announcements'], true)
+    if (!in_array($scope, ['chat', 'announcements', 'submissions'], true)
         || !preg_match('/^(?:[a-f0-9]{48}|[a-f0-9]{32}\.[a-z0-9]+)$/D', $name)) {
         throw new InvalidArgumentException('Invalid upload storage key.');
     }

@@ -57,7 +57,7 @@ try {
     portal_db_check(str_contains($html,'Updated response'),'Response missing.');
     portal_db_check(str_contains($html,'Explain your reasoning'),'Instructions missing.');
     $html=$render('grade_report.php',['year'=>'2026–2027','semester'=>'First Semester']);
-    portal_db_check(str_contains($html,'0.00') && !str_contains($html,'77.00'),'Grade report leaked a draft correction.');
+    portal_db_check($book['published']['students'][(string)$student['id']]['overall'] === null && str_contains($html,'SCI300') && str_contains($html,'Published') && !str_contains($html,'77.00'),'Grade report must keep the semester final blank until all terms have grades and must not show a draft correction.');
     $_SESSION['user_id']=$teacher['id'];
     $html=$render('app/pages/grading/gradebook.php',['classroom_id'=>300,'view'=>'assign']);
     portal_db_check(str_contains($html,'data-term-assignment'),'Bulk assignment page failed.');

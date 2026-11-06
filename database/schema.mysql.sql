@@ -149,6 +149,18 @@ CREATE TABLE IF NOT EXISTS activity_submissions (
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS activity_submission_files (
+    stored_name VARCHAR(80) PRIMARY KEY,
+    classroom_id BIGINT NOT NULL,
+    item_id VARCHAR(100) NOT NULL,
+    student_id BIGINT NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(150) NOT NULL,
+    file_size BIGINT NOT NULL,
+    uploaded_at VARCHAR(40) NOT NULL,
+    FOREIGN KEY (classroom_id, item_id, student_id) REFERENCES activity_submissions(classroom_id, item_id, student_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS ai_quiz_usage (
     teacher_id BIGINT NOT NULL,
     usage_day VARCHAR(10) NOT NULL,

@@ -4,6 +4,7 @@ require_once __DIR__ . '/activity.php';
 require_once __DIR__ . '/admin.php';
 require_once __DIR__ . '/grading.php';
 require_once __DIR__ . '/uploads.php';
+require_once __DIR__ . '/submissions.php';
 require_once __DIR__ . '/academics.php';
 require_once __DIR__ . '/classroom_lifecycle.php';
 

@@ -71,15 +71,15 @@ function portal_activities(array $classes, int $studentId): array {
             $due = $quiz['due_at'] ?? $item['due_at'] ?? null;
             $status = portal_activity_status($quiz ? $last !== null : $releasedScore !== null, isset($submissions[$id]), $due, $quiz && isset($started[$quiz['id']]));
             if (!$quiz && empty($item['accept_responses']) && $releasedScore === null) $status='Awaiting grading';
-            $result[] = ['id' => $id, 'classroom' => $class, 'meta' => academic_meta($class), 'name' => $item['name'], 'component' => grading_category($book, $item['category_id'])['name'] ?? 'Quiz', 'period' => $item['period_id'] ?? '', 'due' => $due, 'status' => $status, 'source' => $item['source'], 'instructions'=>$item['instructions'] ?? '', 'accept_responses'=>!empty($item['accept_responses']), 'score' => $quiz ? ($last['score'] ?? null) : $releasedScore, 'maximum' => $quiz ? ($last['max_score'] ?? null) : ($item['max_score'] ?? null), 'locked' => !empty($book['locked']), 'url' => $quiz ? ($last ? '/QuizWeb/results.php?id=' . $last['id'] : '/QuizWeb/play.php?classroom_id=' . $class['id'] . '&quiz_id=' . $quiz['id']) : '/QuizWeb/student_portal.php?view=activities&classroom_id=' . $class['id'] . '&item_id=' . rawurlencode($id), 'submission' => $submissions[$id] ?? null];
+            $result[] = ['id' => $id, 'classroom' => $class, 'meta' => academic_meta($class), 'name' => $item['name'], 'component' => grading_category($book, $item['category_id'])['name'] ?? 'Quiz', 'period' => $item['period_id'] ?? '', 'due' => $due, 'status' => $status, 'source' => $item['source'], 'instructions'=>$item['instructions'] ?? '', 'accept_responses'=>!empty($item['accept_responses']), 'score' => $quiz ? ($last['score'] ?? null) : $releasedScore, 'maximum' => $quiz ? ($last['max_score'] ?? null) : ($item['max_score'] ?? null), 'locked' => !empty($book['locked']), 'url' => $quiz ? ($last ? '/QuizWeb/results.php?id=' . $last['id'] : '/QuizWeb/play.php?classroom_id=' . $class['id'] . '&quiz_id=' . $quiz['id']) : '/QuizWeb/student_portal.php?view=activities&classroom_id=' . $class['id'] . '&item_id=' . rawurlencode($id), 'feedback' => $published['items'][$id]['feedback'] ?? '', 'submission_locked' => isset($book['scores'][$id][(string) $studentId]) || isset($book['overrides'][(string) $studentId][$id]), 'submission' => $submissions[$id] ?? null];
         }
     }
     usort($result, fn($a, $b) => [in_array($a['status'], ['Graded','Submitted']), $a['due'] ?? '9999', $a['name']] <=> [in_array($b['status'], ['Graded','Submitted']), $b['due'] ?? '9999', $b['name']]);
     return $result;
 }
 
-function portal_save_submission(PDO $pdo, array $student, int $classroomId, string $itemId, string $response): void {
-    if ($student['role'] !== 'student' || trim($response) === '' || mb_strlen($response) > 10000) throw new InvalidArgumentException('Enter a response of 1–10,000 characters.');
+function portal_save_submission(PDO $pdo, array $student, int $classroomId, string $itemId, string $response, array $files = [], array $removeFiles = []): void {
+    if ($student['role'] !== 'student' || mb_strlen($response) > 10000) throw new InvalidArgumentException('Enter a response of 1–10,000 characters.');
     $pdo->beginTransaction();
     try {
         $query = $pdo->prepare('SELECT * FROM classrooms WHERE id = ? FOR UPDATE'); $query->execute([$classroomId]);
@@ -90,6 +90,8 @@ function portal_save_submission(PDO $pdo, array $student, int $classroomId, stri
         if (isset($book['scores'][$itemId][(string) $student['id']]) || isset($book['overrides'][(string) $student['id']][$itemId])) throw new InvalidArgumentException('This response has already been graded.');
         $sql = 'INSERT INTO activity_submissions (classroom_id,item_id,student_id,response,submitted_at) VALUES (?,?,?,?,?) ' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'ON DUPLICATE KEY UPDATE response=VALUES(response),submitted_at=VALUES(submitted_at)' : 'ON CONFLICT (classroom_id,item_id,student_id) DO UPDATE SET response=EXCLUDED.response,submitted_at=EXCLUDED.submitted_at');
         $pdo->prepare($sql)->execute([$classroomId,$itemId,$student['id'],trim($response),now_iso()]);
+        submission_update_files($pdo, $classroomId, $itemId, (int) $student['id'], $files, $removeFiles);
+        if (trim($response) === '' && !submission_files($pdo, $classroomId, $itemId, (int) $student['id'])) throw new InvalidArgumentException('Enter an answer or attach at least one file.');
         $pdo->commit();
     } catch (Throwable $error) { $pdo->rollBack(); throw $error; }
 }

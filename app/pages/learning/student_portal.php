@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 3) . '/includes/layout.php';
 require_once dirname(__DIR__, 3) . '/includes/student_portal.php';
+require_once dirname(__DIR__, 3) . '/includes/grading_ui.php';
 $user = require_role('student');
 $views = ['home' => 'Home', 'activities' => 'Activities', 'progress' => 'Practice & progress', 'achievements' => 'Achievements', 'announcements' => 'Announcements'];
 $view = is_string($_GET['view'] ?? null) && isset($views[$_GET['view']]) ? $_GET['view'] : 'home';
@@ -8,10 +9,11 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_form_csrf();
     try {
-        portal_save_submission(db(), $user, (int) ($_POST['classroom_id'] ?? 0), is_string($_POST['item_id'] ?? null) ? $_POST['item_id'] : '', is_string($_POST['response'] ?? null) ? $_POST['response'] : '');
-        flash_set('success', 'Response received. Your teacher will review and grade it.');
+        portal_save_submission(db(), $user, (int) ($_POST['classroom_id'] ?? 0), is_string($_POST['item_id'] ?? null) ? $_POST['item_id'] : '', is_string($_POST['response'] ?? null) ? $_POST['response'] : '', $_FILES['submission_files'] ?? [], is_array($_POST['remove_files'] ?? null) ? $_POST['remove_files'] : []);
+        flash_set('success', 'Submission received. Your teacher will review your answer and files.');
         redirect('/QuizWeb/student_portal.php?view=activities&classroom_id=' . (int) $_POST['classroom_id'] . '&item_id=' . rawurlencode($_POST['item_id']));
     } catch (InvalidArgumentException $exception) { $error = $exception->getMessage(); }
+    catch (Throwable $exception) { error_log('Activity submission failed: ' . $exception->getMessage()); $error = 'Could not save your submission. Your answer is still here; reselect files and try again.'; }
 }
 $classes = student_classrooms((int) $user['id']);
 $activities = portal_activities($classes, (int) $user['id']);
@@ -44,7 +46,17 @@ render_header('Student portal', 'student-page student-portal-page', ['/QuizWeb/a
 $selected = null;
 foreach ($activities as $activity) if ($activity['id'] === ($_GET['item_id'] ?? '') && (int) $activity['classroom']['id'] === (int) ($_GET['classroom_id'] ?? 0)) $selected = $activity;
 if ($selected && $selected['source'] === 'manual'): ?>
-<section class="glass panel"><div class="portal-heading"><h2><?php echo esc($selected['name']); ?></h2><span class="portal-status"><?php echo esc($selected['status']); ?></span></div><p><?php echo esc($selected['classroom']['subject'] . ' · ' . $selected['component']); ?></p><p><?php echo nl2br(esc($selected['instructions'] ?: 'See classroom materials for activity instructions.')); ?></p><a href="/QuizWeb/classroom.php?id=<?php echo (int) $selected['classroom']['id']; ?>&view=materials">Open classroom materials</a><?php if ($selected['accept_responses']): ?><form method="post" class="stack-form"><input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>"><input type="hidden" name="classroom_id" value="<?php echo (int) $selected['classroom']['id']; ?>"><input type="hidden" name="item_id" value="<?php echo esc($selected['id']); ?>"><label><span>Your response</span><textarea name="response" rows="5" maxlength="10000" required <?php echo $selected['locked'] || $selected['status'] === 'Graded' ? 'readonly' : ''; ?>><?php echo esc($error && is_string($_POST['response'] ?? null) ? $_POST['response'] : ($selected['submission']['response'] ?? '')); ?></textarea></label><?php if (!$selected['locked'] && $selected['status'] !== 'Graded'): ?><button class="button button-primary">Submit response</button><?php endif; ?><?php if ($selected['submission']): ?><p class="muted">Received <?php echo esc(format_date($selected['submission']['submitted_at'])); ?>. Published scores appear in Academic records.</p><?php endif; ?></form><?php else: ?><p class="muted">Teacher-recorded activity. No portal submission is required.</p><?php endif; ?></section>
+<?php $selectedFiles = submission_files(db(), (int) $selected['classroom']['id'], $selected['id'], (int) $user['id']); $submissionReadOnly = $selected['locked'] || $selected['submission_locked']; ?>
+<section class="glass panel"><div class="portal-heading"><h2><?php echo esc($selected['name']); ?></h2><span class="portal-status"><?php echo esc($selected['status']); ?></span></div><p><?php echo esc($selected['classroom']['subject'] . ' | ' . $selected['component'] . ' | ' . ucfirst($selected['period'])); ?></p><p><?php echo nl2br(esc($selected['instructions'] ?: 'See classroom materials for instructions.')); ?></p><p>Maximum score: <?php echo esc(grade_display($selected['maximum'])); ?><?php echo $selected['due'] ? ' | Due ' . esc(format_date($selected['due'])) : ''; ?></p>
+<?php if ($selected['score'] !== null): ?><p class="academic-notice">Published score: <?php echo esc(grade_display($selected['score']) . ' / ' . grade_display($selected['maximum'])); ?></p><?php endif; ?>
+<?php if ($selected['feedback'] !== ''): ?><section><h3>Teacher feedback</h3><p><?php echo nl2br(esc($selected['feedback'])); ?></p></section><?php endif; ?>
+<?php if ($selected['accept_responses']): ?>
+<form method="post" enctype="multipart/form-data" class="stack-form"><input type="hidden" name="csrf" value="<?php echo esc(form_csrf()); ?>"><input type="hidden" name="classroom_id" value="<?php echo (int) $selected['classroom']['id']; ?>"><input type="hidden" name="item_id" value="<?php echo esc($selected['id']); ?>"><label><span>Your answer (optional when attaching files)</span><textarea name="response" rows="6" maxlength="10000" <?php echo $submissionReadOnly ? 'readonly' : ''; ?>><?php echo esc($error && is_string($_POST['response'] ?? null) ? $_POST['response'] : ($selected['submission']['response'] ?? '')); ?></textarea></label>
+<?php if ($selectedFiles): ?><h3>Your submitted files</h3><?php render_submission_files($selectedFiles); ?><?php endif; ?>
+<?php if (!$submissionReadOnly): ?><label><span>Attach files</span><input type="file" name="submission_files[]" multiple accept="<?php echo esc('.' . implode(',.', announcement_allowed_extensions())); ?>"></label><p class="muted">Submit text, files, or both. Up to five files, 10 MB each, subject to the server upload limit. Existing files stay attached unless you remove them.</p><?php foreach ($selectedFiles as $file): ?><label class="grade-confirm"><input type="checkbox" name="remove_files[]" value="<?php echo esc($file['stored_name']); ?>"><span>Remove <?php echo esc($file['original_name']); ?></span></label><?php endforeach; ?><button class="button button-primary"><?php echo $selected['submission'] ? 'Update submission' : 'Submit activity'; ?></button>
+<?php else: ?><p class="muted">This submission is locked for grading. Published scores appear in Academic records.</p><?php endif; ?>
+<?php if ($selected['submission']): ?><p class="muted">Received <?php echo esc(format_date($selected['submission']['submitted_at'])); ?>. Your teacher will grade the submission manually.</p><?php endif; ?></form>
+<?php else: ?><p class="muted">Teacher-recorded activity. No submission is required.</p><?php endif; ?></section>
 <?php endif; ?>
 <?php require dirname(__DIR__,3) . '/includes/student_activity_view.php'; ?>
 <?php elseif ($view === 'progress'): ?>

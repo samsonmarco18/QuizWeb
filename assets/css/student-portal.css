@@ -84,3 +84,7 @@ body.ui-refined.student-portal-page.results-page .result-score-ring strong { fon
 body.ui-refined.student-portal-page.results-page .stat-card { padding: 12px; }
 body.ui-refined.student-portal-page.results-page .stat-card strong { font-size: 18px; }
 body.ui-refined.student-portal-page.results-page .review-card { padding: 14px; }
+
+.student-portal-page .academic-submission-files { padding-left: 20px; }
+.student-portal-page .academic-submission-files li { margin: 8px 0; overflow-wrap: anywhere; }
+.student-portal-page input[type="file"] { width: 100%; min-width: 0; max-width: 100%; }
