@@ -69,22 +69,23 @@ function render_grade_components(?array $grade, ?array $config, bool $showActivi
     $groups = isset($grade['periods']) ? $grade['periods'] : [$grade];
     ?><div class="academic-component-list"><?php
     foreach ($config['categories'] ?? [] as $configuredCategory):
-        $entries = []; $activityCount = 0; $missing = 0; $emptyRequired = false;
+        $entries = []; $activityCount = 0; $missing = 0; $emptyRequired = false; $manualCount = 0;
         foreach ($groups as $group) {
             foreach ($group['categories'] ?? [] as $category) {
                 if ($category['id'] !== $configuredCategory['id']) continue;
+                if (!empty($category['manual_grade'])) $manualCount++;
                 $entries[] = ['period' => $group['name'] ?? '', 'category' => $category];
                 $activityCount += count($category['items']);
                 $missing += $category['missing'];
-                if (!$category['items'] && $category['weight'] > 0 && ($group['weight'] ?? 100) > 0) $emptyRequired = true;
+                if (empty($category['manual_grade']) && !$category['items'] && $category['weight'] > 0 && ($group['weight'] ?? 100) > 0) $emptyRequired = true;
             }
         }
-        $state = !$grade ? 'Awaiting release' : (!$activityCount ? 'No activities' : ($emptyRequired ? 'Activities needed' : ($missing ? $missing . ' ungraded' : 'Complete')));
+        $state = !$grade ? 'Awaiting release' : (!$activityCount && !$manualCount ? 'No activities' : ($emptyRequired ? 'Activities needed' : ($missing ? $missing . ' ungraded' : 'Complete')));
         ?>
         <article class="academic-component-card">
-            <header><h3><?php echo esc($configuredCategory['name']); ?><small><?php echo esc(grade_display($configuredCategory['weight'])); ?>% weight</small></h3><span class="academic-status <?php echo $activityCount && !$missing && !$emptyRequired ? 'is-complete' : 'is-pending'; ?>"><?php echo esc($state); ?></span></header>
+            <header><h3><?php echo esc($configuredCategory['name']); ?><small><?php echo esc(grade_display($configuredCategory['weight'])); ?>% weight</small></h3><span class="academic-status <?php echo ($activityCount || $manualCount) && !$missing && !$emptyRequired ? 'is-complete' : 'is-pending'; ?>"><?php echo esc($state); ?></span></header>
             <?php foreach ($entries as $entry): $category = $entry['category']; ?>
-            <div class="academic-component-metric"><span><?php echo esc($entry['period'] ?: 'Component score'); ?></span><strong><?php echo esc(grade_display($category['percentage'])); ?><?php echo $category['percentage'] !== null ? '%' : ''; ?></strong><small><?php echo count($category['items']); ?> activities<?php echo $category['missing'] ? ' · ' . $category['missing'] . ' ungraded' : ''; ?></small></div>
+            <div class="academic-component-metric"><span><?php echo esc($entry['period'] ?: 'Component score'); ?></span><strong><?php echo esc(grade_display($category['percentage'])); ?><?php echo $category['percentage'] !== null ? '%' : ''; ?></strong><small><?php echo !empty($category['manual_grade']) ? 'Manual component grade' : count($category['items']) . ' activities'; ?><?php echo $category['missing'] ? ' · ' . $category['missing'] . ' ungraded' : ''; ?></small></div>
             <?php if ($showActivities && $category['items']): ?><details class="academic-component-assessments"><summary>Activities<?php echo $entry['period'] ? ' · ' . esc($entry['period']) : ''; ?></summary><div class="academic-table-scroll"><table class="academic-table"><thead><tr><th scope="col">Activity</th><th scope="col">Score / maximum</th><th scope="col">Status</th></tr></thead><tbody><?php foreach ($category['items'] as $assessment): ?><tr><th scope="row"><?php echo esc($assessment['name']); ?></th><td><?php echo esc(grade_display($assessment['score']) . ' / ' . grade_display($assessment['max_score'])); ?></td><td><?php echo esc($assessment['status']); ?><?php echo !empty($assessment['override']) ? ' · Adjusted' : ''; ?></td></tr><?php endforeach; ?></tbody></table></div></details><?php endif; ?>
             <?php endforeach; ?>
         </article>

@@ -7,7 +7,7 @@ function ensure_grading_schema(PDO $pdo): void
 
 function grading_empty_book(): array
 {
-    return ['config' => null, 'items' => [], 'scores' => [], 'feedback' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null, 'reviewed' => null, 'locked' => false, 'academic_statuses' => []];
+    return ['config' => null, 'items' => [], 'scores' => [], 'feedback' => [], 'overrides' => [], 'revision' => 0, 'next_item_id' => 1, 'published' => null, 'reviewed' => null, 'locked' => false, 'academic_statuses' => [], 'component_scores' => []];
 }
 
 function grading_templates(): array
@@ -73,6 +73,9 @@ function grading_validate_config($input, array $book): array
     if ($weight !== 10000) throw new InvalidArgumentException('Category weights must total exactly 100%.');
     foreach ($book['items'] as $item) {
         if (empty($item['archived']) && !isset($normalized[$item['category_id']])) throw new InvalidArgumentException('Reassign or archive activities before removing their category.');
+    }
+    foreach ($book['component_scores'] ?? [] as $periodScores) foreach ($periodScores as $categoryId => $studentScores) {
+        if ($studentScores && !isset($normalized[$categoryId])) throw new InvalidArgumentException('Clear saved component grades before removing their component.');
     }
     $scale = $input['scale'] ?? null;
     if (!is_array($scale) || count($scale) < 1 || count($scale) > 10) throw new InvalidArgumentException('Create between 1 and 10 grade-scale bands.');
@@ -150,8 +153,19 @@ function grading_calculate_weighted(array $book, int $studentId, array $attempts
         }
     }
     $weighted = 0.0; $activeWeight = 0.0;
+    $componentPeriod = $book['component_period_id'] ?? 'all';
     foreach ($categories as &$category) {
         $category['percentage'] = $category['possible'] > 0 ? $category['earned'] / $category['possible'] * 100 : null;
+        $category['automatic_percentage'] = $category['percentage'];
+        $manual = $book['component_scores'][$componentPeriod][$category['id']][(string) $studentId] ?? null;
+        $category['manual_grade'] = $manual;
+        if ($manual !== null) {
+            $category['percentage'] = (float) $manual['value'];
+            $pending -= $category['missing'];
+            $graded -= count(array_filter($category['items'], fn($item) => $item['score'] !== null));
+            $graded++;
+            $category['missing'] = 0;
+        }
         $category['contribution'] = $category['percentage'] === null ? null : $category['percentage'] * $category['weight'] / 100;
         if ($category['percentage'] !== null && $category['weight'] > 0) { $weighted += $category['contribution']; $activeWeight += $category['weight']; }
     }
@@ -163,7 +177,9 @@ function grading_calculate_weighted(array $book, int $studentId, array $attempts
     foreach ($config['scale'] as $band) if ($overall !== null && $overall >= $band['min']) $label = $band['label'];
     foreach ($categories as &$category) $category['current_contribution'] = $category['contribution'] === null || $activeWeight <= 0 ? null : $category['contribution'] / $activeWeight * 100;
     unset($category);
-    $status = !$items ? 'Not Graded' : ($pending ? ($graded ? 'Partial' : 'Missing') : 'Complete');
+    $manualComponents = array_filter($categories, fn($category) => $category['manual_grade'] !== null);
+    $missingComponents = $manualComponents && array_filter($categories, fn($category) => $category['weight'] > 0 && $category['percentage'] === null);
+    $status = !$items && !$graded ? 'Not Graded' : ($pending || $missingComponents ? ($graded ? 'Partial' : 'Missing') : 'Complete');
     return ['student_id' => $studentId, 'overall' => $overall, 'calculated' => $calculated, 'override' => $override, 'categories' => array_values($categories),
         'items' => $items, 'status' => $status, 'scale_label' => $label, 'passed' => $overall === null ? null : $overall >= $config['passing'],
         'active_weight' => $activeWeight, 'pending' => $pending, 'graded' => $graded];
@@ -211,11 +227,12 @@ function grading_release_warnings(array $book, array $classroom, array $attempts
     foreach ($periods as $period) foreach ($book['config']['categories'] as $category) {
         if ($period['weight'] <= 0 || $category['weight'] <= 0) continue;
         $items = array_filter($book['items'], fn($item) => empty($item['archived']) && $item['category_id'] === $category['id'] && (!$period['id'] || ($item['period_id'] ?? '') === $period['id']));
-        if (!$items) $warnings[] = $period['name'] . ': ' . $category['name'] . ' has no activities or scores.';
+        if (!$items && count(array_filter($classroom['student_ids'], fn($sid) => isset($book['component_scores'][$period['id'] ?: 'all'][$category['id']][(string) $sid]))) !== count($classroom['student_ids'])) $warnings[] = $period['name'] . ': ' . $category['name'] . ' has no activities or scores.';
     }
     foreach ($classroom['student_ids'] as $student) {
         $row = grading_calculate($book, (int) $student, $attempts);
         foreach ($row['items'] as $item) {
+            if (isset($book['component_scores'][$item['period_id'] ?? 'all'][$item['category_id']][(string) $student])) continue;
             if ($item['score'] === null) $warnings[] = 'Student #' . $student . ': ' . $item['name'] . ($item['source'] === 'quiz' ? ' has no graded quiz attempt.' : ' has no recorded score.');
             elseif ($item['source'] === 'quiz' && !$item['attempt_count']) $warnings[] = 'Student #' . $student . ': ' . $item['name'] . ' has an adjusted score but no quiz attempt.';
         }
@@ -233,7 +250,7 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
     if ($action === 'config') {
         $config = grading_validate_config($input['config'] ?? null, $book);
         if (!empty($book['config']['periods']) && empty($config['periods'])) throw new InvalidArgumentException('Keep Prelim, Midterm, and Finals once academic periods are configured.');
-        $configReason = (!empty($book['scores']) || $book['published'] || $attempts) ? grading_text($input['reason'] ?? null, 'Grading configuration change reason', 500) : '';
+        $configReason = (!empty($book['scores']) || !empty($book['component_scores']) || $book['published'] || $attempts) ? grading_text($input['reason'] ?? null, 'Grading configuration change reason', 500) : '';
         if (!empty($config['periods'])) {
             foreach ($book['items'] as $id => &$item) {
                 if (!empty($item['archived'])) continue;
@@ -293,6 +310,43 @@ function grading_apply_action(array &$book, array $classroom, array $actor, stri
             if ($old === $period) continue;
             $book['items'][$id]['period_id'] = $period;
             $changes[] = ['assign_term', $old, ['period_id' => $period, 'reason' => $reason], null, $id];
+        }
+    } elseif ($action === 'add_component') {
+        if (!$book['config']) throw new InvalidArgumentException('Configure grading first.');
+        $name = grading_text($input['name'] ?? null, 'Component name', 50);
+        $weights = $input['component_weights'] ?? null;
+        if (!is_array($weights)) throw new InvalidArgumentException('Set the component weights.');
+        $config = $book['config'];
+        foreach ($config['categories'] as &$category) $category['weight'] = grading_number($weights[$category['id']] ?? null, 0, 100, 'Component weight');
+        unset($category);
+        $id = 'component-' . bin2hex(random_bytes(6));
+        $config['categories'][] = ['id' => $id, 'name' => $name, 'weight' => grading_number($input['weight'] ?? null, .01, 100, 'New component weight')];
+        $config = grading_validate_config($config, $book);
+        $reason = grading_text($input['reason'] ?? null, 'Component change reason', 500);
+        $changes[] = ['config', $book['config'], ['config' => $config, 'reason' => $reason], null, null];
+        $book['config'] = $config;
+    } elseif ($action === 'component_scores') {
+        $period = !empty($book['config']['periods']) ? academic_period_id($input['period_id'] ?? '') : 'all';
+        $values = $input['component_scores'] ?? null;
+        if (!is_array($values) || !$values || count($values) > 30) throw new InvalidArgumentException('Save up to 30 students at a time.');
+        $validated = [];
+        foreach ($values as $student => $components) {
+            $student = grading_student_id($classroom, $student);
+            if (!is_array($components) || count($components) > 8) throw new InvalidArgumentException('Enter valid grading components.');
+            foreach ($components as $category => $value) {
+                if (!grading_category($book, (string) $category)) throw new InvalidArgumentException('This grading component no longer exists. Reload the gradebook.');
+                $score = $value === '' ? null : grading_number($value, 0, 100, 'Component grade');
+                $old = $book['component_scores'][$period][$category][(string) $student] ?? null;
+                if (($old['value'] ?? null) === $score) continue;
+                $reason = $old !== null || $book['published'] ? grading_text($input['reason'] ?? null, 'Correction reason', 500) : '';
+                $next = $score === null ? null : ['value' => $score, 'reason' => $reason, 'actor_id' => (int) $actor['id'], 'at' => now_iso()];
+                $validated[] = [$student, $category, $old, $next, $reason];
+            }
+        }
+        foreach ($validated as [$student, $category, $old, $next, $reason]) {
+            if ($next === null) unset($book['component_scores'][$period][$category][(string) $student]);
+            else $book['component_scores'][$period][$category][(string) $student] = $next;
+            $changes[] = ['component_score', $old, ['grade' => $next, 'period_id' => $period, 'reason' => $reason], $student, $category];
         }
     } elseif ($action === 'student_scores') {
         $student = grading_student_id($classroom, $input['student_id'] ?? '');

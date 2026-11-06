@@ -1,0 +1,17 @@
+<?php
+$semesterMeta = academic_meta($classroom);
+$semesterPeriods = $book['config']['periods'] ?? academic_periods();
+$semesterSearch = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+$semesterStudents = array_values(array_filter($students, fn($student) => $semesterSearch === '' || str_contains(mb_strtolower($student['name']), mb_strtolower($semesterSearch))));
+$semesterPage = page_records($semesterStudents, 'page', 15);
+?>
+<section class="glass panel academic-semester-summary">
+<div class="academic-panel-heading"><div><h2>Whole semester overview</h2><p><?php echo esc(($semesterMeta['subject_code'] ?: $classroom['subject']) . ' | ' . $semesterMeta['academic_year'] . ' | ' . $semesterMeta['semester']); ?></p></div><div class="action-row"><a class="button button-primary" href="<?php echo esc($url . '&view=overview&period=' . $selectedPeriod); ?>">Back to <?php echo esc(ucfirst($selectedPeriod)); ?> grade entry</a><a class="button button-secondary" href="<?php echo esc($url . '&view=semester&export=csv'); ?>">Export semester CSV</a></div></div>
+<p class="muted">Saved draft grades for all terms. Select a term grade to edit that student's grades. Students see the published release.</p>
+<div class="academic-period-cards"><?php foreach ($semesterPeriods as $period): ?><article><strong><?php echo esc($period['name']); ?></strong><span><?php echo !empty($book['config']['periods']) ? esc(grade_display($period['weight'])) . '% of semester grade' : 'Not configured'; ?></span></article><?php endforeach; ?></div>
+<form method="get" class="academic-filter-bar"><input type="hidden" name="classroom_id" value="<?php echo $classroomId; ?>"><input type="hidden" name="view" value="semester"><input type="hidden" name="period" value="<?php echo esc($selectedPeriod); ?>"><label><span>Search student</span><input name="q" type="search" value="<?php echo esc($semesterSearch); ?>"></label><button class="button button-secondary">Search</button></form>
+<div class="academic-table-scroll"><table class="academic-table academic-semester-table"><caption>Semester grades - <?php echo count($semesterStudents); ?> students</caption><thead><tr><th scope="col">Student</th><?php foreach ($semesterPeriods as $period): ?><th scope="col"><?php echo esc($period['name']); ?></th><?php endforeach; ?><th scope="col">Semester final grade</th><th scope="col">Semester status</th></tr></thead><tbody>
+<?php foreach ($semesterPage['items'] as $student): $semesterRow = $rows[(int) $student['id']]; ?><tr><th scope="row"><?php echo esc($student['name']); ?></th><?php foreach ($semesterPeriods as $period): ?><td><a href="<?php echo esc($url . '&view=overview&period=' . $period['id'] . '&q=' . rawurlencode($student['name'])); ?>" aria-label="<?php echo esc('Edit ' . $student['name'] . ' ' . $period['name'] . ' grades'); ?>"><?php echo esc(grade_display($semesterRow['periods'][$period['id']]['overall'] ?? null)); ?></a></td><?php endforeach; ?><td><strong class="academic-grade-value"><?php echo esc(grade_display($semesterRow['overall'])); ?></strong></td><td><span class="academic-status"><?php echo esc($semesterRow['status']); ?></span></td></tr><?php endforeach; ?>
+<?php if (!$semesterStudents): ?><tr><td colspan="<?php echo count($semesterPeriods) + 3; ?>">No students match your search.</td></tr><?php endif; ?></tbody></table></div><?php render_pagination($semesterPage); ?>
+</section>
+<?php require __DIR__ . '/academic_release_view.php'; ?>

@@ -1,5 +1,6 @@
 <?php
 $monitorPeriods = $book['config']['periods'] ?? [['id' => '', 'name' => 'All activities', 'weight' => 100]];
+if (!empty($book['config']['periods'])) $monitorPeriods = array_values(array_filter($monitorPeriods, fn($period) => $period['id'] === academic_selected_period()));
 foreach ($monitorPeriods as $monitorPeriod):
     $componentRows = []; $readyComponents = 0;
     foreach ($book['config']['categories'] as $category) {

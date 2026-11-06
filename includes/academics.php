@@ -73,6 +73,7 @@ function academic_calculate(array $book, int $student, array $attempts): array {
     $periods = []; $allItems = []; $weighted = 0; $active = 0; $graded = 0; $pending = 0; $complete = true;
     foreach ($book['config']['periods'] as $period) {
         $part = $book;
+        $part['component_period_id'] = $period['id'];
         $part['items'] = array_filter($book['items'], fn($item) => ($item['period_id'] ?? '') === $period['id']);
         unset($part['overrides'][(string) $student]['overall']);
         $grade = grading_calculate_weighted($part, $student, $attempts);

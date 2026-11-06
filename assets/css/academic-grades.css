@@ -348,3 +348,19 @@ body.ui-refined.gradebook-page .academic-filter-actions .button { min-height: 44
     .academic-detail-layout, .academic-detail-slot { transition: none; }
     .academic-detail-slot .academic-drawer[open], .academic-detail-slot .academic-drawer.is-closing { animation: none; }
 }
+
+body.ui-refined.gradebook-page .academic-component-grid .academic-component-entry-table { min-width: max-content; width: 100%; }
+.academic-component-entry-table th { min-width: 150px; max-width: 220px; }
+.academic-component-entry-table th:first-child { min-width: 180px; }
+.academic-component-entry-table .academic-component-input { display: block; margin: 0; }
+body.ui-refined .academic-component-entry-table input { width: 105px; min-width: 85px; min-height: 42px; padding: 8px; font-size: 14px; }
+.academic-component-entry-table td { vertical-align: top; }
+.academic-student-detail-link { display: block; margin-top: 6px; font-size: 11px; font-weight: 400; }
+.academic-component-weight-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.academic-add-component summary, .academic-publish-disclosure > summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.academic-publish-disclosure { margin-bottom: 24px; }
+.academic-component-grid .academic-save-bar { position: sticky; bottom: 0; padding: 14px; background: var(--surface); z-index: 2; border: 1px solid var(--border); border-radius: 8px; }
+
+.academic-semester-summary .academic-period-cards { margin: 16px 0; }
+.academic-semester-table { min-width: 650px; }
+.academic-semester-table td { white-space: nowrap; }
