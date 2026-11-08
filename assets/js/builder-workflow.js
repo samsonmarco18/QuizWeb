@@ -181,14 +181,28 @@
         if (mode() === 'time_attack') settings.append(node('p', 'Each question allows 12 seconds. A timeout earns zero for that item.'));
         if (mode() === 'boss_battle') settings.append(node('p', 'Boss and shield start at 100. The run can end early when either reaches zero. Health never subtracts academic points.'));
         const review = document.getElementById('builder-review'); review.replaceChildren();
-        review.append(node('p', form.elements.activity_type?.value || 'Quiz'));
-        review.append(node('h3', form.elements.title.value.trim() || 'Untitled activity'), node('p', `${window.quizBuilderModes[mode()]?.label} · ${questions.length} questions · ${questions.reduce((sum, q) => sum + q.points, 0)} points`), node('p', form.elements.due_at.value ? `Deadline: ${form.elements.due_at.value.replace('T', ' ')}` : 'No deadline'));
+        const summary = node('table'); summary.className = 'formal-review-table';
+        summary.append(node('caption', 'Activity summary'));
+        const body = node('tbody');
+        const rows = [
+            ['Title', form.elements.title.value.trim() || 'Untitled activity'],
+            ['Activity type', form.elements.activity_type?.value || 'Quiz'],
+            ['Game mode', window.quizBuilderModes[mode()]?.label || mode()],
+            ['Questions', String(questions.length)],
+            ['Total points', String(questions.reduce((sum, q) => sum + q.points, 0))],
+            ['Deadline', form.elements.due_at.value ? form.elements.due_at.value.replace('T', ' ') : 'No deadline'],
+            ['Grade category', categorySelect?.value ? categorySelect.selectedOptions[0].textContent : 'Practice activity: excluded from classroom grades'],
+            ['Gradebook maximum', categorySelect?.value ? String(form.elements.grade_max_score.value || questions.reduce((sum, q) => sum + q.points, 0)) : 'Not applicable'],
+            ['Attempt policy', categorySelect?.value ? form.elements.grade_attempt_policy.selectedOptions[0].textContent : 'Not applicable']
+        ];
+        rows.forEach(([label, value]) => { const row = node('tr'), heading = node('th', label); heading.scope = 'row'; row.append(heading, node('td', value)); body.append(row); });
+        summary.append(body); review.append(summary);
         review.append(action(form.elements.title.value.trim() ? '✓ Quiz information complete' : '! Quiz title is required', () => showStep(0)));
         const incomplete = questions.findIndex(q => problem(q));
         review.append(action(!questions.length ? '! Add a question' : incomplete < 0 ? '✓ Questions and answers complete' : `! Q${incomplete + 1}: ${problem(questions[incomplete])}`, () => { showStep(1); selectQuestion(Math.max(0, incomplete)); }));
         const issues = configurationProblems(questions);
         review.append(action(issues.length ? `! ${issues.join(' ')}` : '✓ Settings valid', () => showStep(2)));
-        review.append(node('p', categorySelect?.value ? `Grade category: ${categorySelect.selectedOptions[0].textContent} · Gradebook maximum: ${form.elements.grade_max_score.value || questions.reduce((sum, q) => sum + q.points, 0)} · Attempt policy: ${form.elements.grade_attempt_policy.selectedOptions[0].textContent}` : 'Practice activity — excluded from classroom grades.'));
+
         review.append(node('p', 'Preview validates game content without recording an attempt. Saving makes the activity available in this classroom. Grades are published separately.'));
         cards().forEach((card, index) => {
             let error = card.querySelector('.question-error');

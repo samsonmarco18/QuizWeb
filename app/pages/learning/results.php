@@ -45,6 +45,9 @@ render_header('Results', 'results-page' . ($user['role']==='student' ? ' student
 ?>
 
 <section class="results-shell glass">
+    <div class="result-top-navigation">
+        <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>" aria-label="Back to Classroom"><span aria-hidden="true">&larr;</span> Back</a>
+    </div>
     <span class="eyebrow"><?php echo $isDisqualified ? 'Quiz Rule Violation' : 'Game Complete'; ?></span>
     <h1><?php echo esc($attempt['quiz_title']); ?></h1>
     <p class="lead">
@@ -142,9 +145,8 @@ render_header('Results', 'results-page' . ($user['role']==='student' ? ' student
         </div>
     <?php endif; ?>
 
-    <div class="action-row centered">
+    <div class="action-row centered result-actions">
         <?php if ($reviewRows): ?><a class="button button-secondary" href="#answer-review">Review Answers</a><?php endif; ?>
-        <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
         <?php if ($quiz && $user['role'] === 'student'): ?>
             <a class="button button-primary" href="/QuizWeb/practice.php">Focus Practice</a>
         <?php endif; ?>

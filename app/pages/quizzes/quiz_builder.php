@@ -172,7 +172,7 @@ render_header($editingQuiz ? 'Edit Quiz' : 'Create Quiz', 'builder-page', ['/Qui
             </article>
         <?php endforeach; ?>
     </div>
-    <div class="action-row">
+    <div class="action-row builder-template-actions">
         <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo esc((string) $classroom['id']); ?>">Back to Classroom</a>
     </div>
 </section>

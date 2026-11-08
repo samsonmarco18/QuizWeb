@@ -37,11 +37,26 @@
       byId('grading-weight-total').textContent = `Total: ${total.toFixed(2)}% · ${total === 100 ? 'Ready' : total < 100 ? `${(100 - total).toFixed(2)}% remaining` : `${(total - 100).toFixed(2)}% over`}`;
       byId('grading-weight-progress').value = Math.min(100, total);
       const review = byId('grading-setup-review'); review.replaceChildren();
-      state.categories.forEach(category => review.append(node('p', `${category.name || 'Unnamed category'}: ${category.weight || 0}%`)));
-      if (state.periods) state.periods.forEach(period => review.append(node('p', `${period.name}: ${period.weight}% of final grade`)));
-      review.append(node('p', 'Category grade = earned points ÷ possible points × 100. Overall = sum of category grade × category weight, normalized over categories with available points.'));
-      review.append(node('p', `Passing: ${state.passing}% · Missing scores: ${state.missing_policy === 'zero' ? 'count as zero' : 'excluded until graded'}`));
-      [...state.scale].sort((a, b) => Number(a.min) - Number(b.min)).forEach(band => review.append(node('p', `${band.min}% and above: ${band.label}`)));
+      const table = (caption, headings, rows) => {
+        const wrap = node('div'); wrap.className = 'formal-review-section';
+        const table = node('table'); table.className = 'formal-review-table';
+        table.append(node('caption', caption));
+        const head = node('thead'), header = node('tr');
+        headings.forEach(label => { const cell = node('th', label); cell.scope = 'col'; header.append(cell); });
+        head.append(header); table.append(head);
+        const body = node('tbody');
+        rows.forEach(values => { const row = node('tr'); values.forEach((value, index) => { const cell = node(index === 0 ? 'th' : 'td', value); if (index === 0) cell.scope = 'row'; row.append(cell); }); body.append(row); });
+        table.append(body); wrap.append(table); review.append(wrap);
+      };
+      table('Assessment categories', ['Category', 'Weight'], [...state.categories.map(category => [category.name || 'Unnamed category', `${category.weight || 0}%`]), ['Total', `${total.toFixed(2)}%`]]);
+      if (state.periods?.length) table('Grading periods', ['Period', 'Weight of final grade'], [...state.periods.map(period => [period.name, `${period.weight}%`]), ['Total', `${state.periods.reduce((sum, period) => sum + Number(period.weight || 0), 0).toFixed(2)}%`]]);
+      table('Calculation rules', ['Setting', 'Value'], [
+        ['Passing grade', `${state.passing}%`],
+        ['Missing scores', state.missing_policy === 'zero' ? 'Count as zero' : 'Excluded until graded'],
+        ['Category grade', 'Earned points / possible points x 100'],
+        ['Overall grade', 'Weighted category grades, normalized over categories with available points']
+      ]);
+      table('Grade scale', ['Minimum percentage', 'Result'], [...state.scale].sort((a, b) => Number(a.min) - Number(b.min)).map(band => [`${band.min}%`, band.label]));
       setupDirty = Boolean(window.gradingPostedDraft) || JSON.stringify(state) !== initial;
     }
     function render() {

@@ -63,7 +63,10 @@ assert.equal(d.querySelectorAll('#grading-weights input')[1].value, '30', 'Reord
 click('add-grading-category'); const extra = d.querySelector('#grading-categories .grade-editor-row:last-child'); input(extra.querySelector('input'), 'Projects'); extra.querySelectorAll('button')[2].click(); assert.equal(d.querySelectorAll('#grading-categories input').length, 3);
 click('add-grading-band'); const band = d.querySelector('#grading-scale .grade-editor-row:last-child'); input(band.querySelector('input[type="number"]'), '90'); input(band.querySelector('input[type="text"]'), 'Excellent');
 input(form.elements.passing, '80'); form.elements.missing_policy.value = 'zero'; form.elements.missing_policy.dispatchEvent(new w.Event('change'));
-d.querySelector('[data-grading-step="3"]').click(); assert.match(d.getElementById('grading-setup-review').textContent, /Passing: 80%.*count as zero/); assert.match(d.getElementById('grading-setup-review').textContent, /90% and above: Excellent/);
+d.querySelector('[data-grading-step="3"]').click(); assert.match(d.getElementById('grading-setup-review').textContent, /Passing grade80%Missing scoresCount as zero/); assert.match(d.getElementById('grading-setup-review').textContent, /90%Excellent/);
+assert.ok(d.querySelectorAll('#grading-setup-review table caption').length >= 3);
+assert.ok(d.querySelectorAll('#grading-setup-review th[scope="row"]').length > 0);
+
 submit = new w.Event('submit', {cancelable: true}); form.dispatchEvent(submit); assert(!submit.defaultPrevented);
 const payload = JSON.parse(d.getElementById('grading-config-payload').value); assert.equal(payload.categories[1].id, 'quiz'); assert.equal(payload.categories[1].name, 'Knowledge checks'); assert.equal(payload.scale.length, 3);
 submit = new w.Event('submit', {cancelable: true}); form.dispatchEvent(submit); assert(submit.defaultPrevented, 'Duplicate submission rejected');

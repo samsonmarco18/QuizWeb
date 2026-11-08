@@ -90,7 +90,7 @@ const gradeMaximum = a.doc.querySelector('[name="grade_max_score"]');
 gradeMaximum.value = '50'; gradeMaximum.dispatchEvent(new a.w.Event('input', {bubbles: true}));
 const gradePolicy = a.doc.querySelector('[name="grade_attempt_policy"]');
 gradePolicy.value = 'latest'; gradePolicy.dispatchEvent(new a.w.Event('change', {bubbles: true}));
-assert.match(a.doc.getElementById('builder-review').textContent, /Grade category: Quizzes.*Gradebook maximum: 50.*latest/);
+assert.match(a.doc.getElementById('builder-review').textContent, /Grade categoryQuizzes.*Gradebook maximum50.*latest/);
 gradeCategory.value = ''; gradeCategory.dispatchEvent(new a.w.Event('change', {bubbles: true}));
 assert(a.doc.querySelector('[data-quiz-graded]').hidden);
 assert.match(a.doc.getElementById('builder-review').textContent, /Practice activity/);

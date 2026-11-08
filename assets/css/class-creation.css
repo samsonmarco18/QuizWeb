@@ -166,3 +166,9 @@ body.ui-refined #class-creation .class-review-card h4 { display: flex; align-ite
     #class-creation .class-creation-actions [data-class-submit] { min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) { #class-creation * { scroll-behavior: auto; } }
+/* Align review labels and values as bordered form rows. */
+body.ui-refined #class-creation .class-review-card dl { gap: 0; border: 1px solid var(--border); }
+body.ui-refined #class-creation .class-review-card dt,
+body.ui-refined #class-creation .class-review-card dd { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+body.ui-refined #class-creation .class-review-card dt { background: var(--surface-soft); font-weight: 600; }
+body.ui-refined #class-creation .class-review-weights dt::before { display: none; }

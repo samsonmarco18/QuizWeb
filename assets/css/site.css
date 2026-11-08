@@ -4534,3 +4534,34 @@ body.theme-dark.signup-page .signup-card input.password-valid { border-color: #7
 @media (prefers-reduced-motion: reduce) {
     .signup-page .password-strength-meter > span::after, .signup-page .password-requirements li, .signup-page .password-requirements li > span, .signup-page .signup-card input.password-valid { transition: none; animation: none; }
 }
+
+/* Give result navigation breathing room between review content and grading notes. */
+.results-page .results-shell .result-actions {
+    margin-top: 24px;
+    margin-bottom: 24px;
+    gap: 12px;
+}
+
+.results-page .results-shell .result-top-navigation {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+/* Formal review summaries shared by setup forms. */
+.formal-review-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid var(--border, var(--line)); font-size: 13px; line-height: 1.6; text-align: left; }
+.formal-review-table caption { text-align: left; font-size: 15px; font-weight: 700; padding: 0 0 12px; color: var(--text-primary); }
+.formal-review-table th, .formal-review-table td { padding: 12px 16px; border-bottom: 1px solid var(--border, var(--line)); vertical-align: top; overflow-wrap: anywhere; }
+.formal-review-table th { font-weight: 600; }
+.formal-review-table thead th { background: var(--surface-hover); color: var(--text-secondary); }
+.formal-review-table tbody th { width: 38%; background: var(--surface-soft); }
+#grading-setup-review { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 20px 0 28px; align-items: start; }
+.formal-review-section { min-width: 0; }
+body.ui-refined.builder-page #builder-review { padding: 24px; gap: 18px; }
+body.ui-refined .signup-review { gap: 0; padding: 0; overflow: hidden; }
+body.ui-refined .signup-review dt, body.ui-refined .signup-review dd { padding: 12px 16px; border-bottom: 1px solid var(--border, var(--line)); }
+body.ui-refined .signup-review dt { background: var(--surface-soft); font-weight: 600; }
+@media (max-width: 700px) {
+    #grading-setup-review { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .formal-review-table th, .formal-review-table td { padding: 10px 12px; }
+    body.ui-refined.builder-page #builder-review { padding: 16px; }
+}

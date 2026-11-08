@@ -362,6 +362,10 @@ body.ui-refined .academic-component-entry-table input { width: 105px; min-width:
 .academic-component-grid .academic-save-bar { position: sticky; bottom: 0; padding: 14px; background: var(--surface); z-index: 2; border: 1px solid var(--border); border-radius: 8px; }
 
 .academic-semester-summary .academic-period-cards { margin: 16px 0; }
+.academic-semester-summary .academic-period-cards article { grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; }
+.academic-semester-summary .academic-period-cards :is(strong, span) { min-width: 0; overflow-wrap: anywhere; }
+.academic-semester-summary .academic-period-cards span { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+
 .academic-semester-table { min-width: 650px; }
 .academic-semester-table td { white-space: nowrap; }
 

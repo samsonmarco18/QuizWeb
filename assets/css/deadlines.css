@@ -1,0 +1,24 @@
+.deadlines-page .portal-filters { margin-bottom: 20px; }
+.deadlines-page .panel { margin-bottom: 20px; }
+.deadline-month { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.deadline-month h2 { flex: 1; text-align: center; margin: 0; }
+.deadline-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.deadline-weekday { text-align: center; padding: 8px 0; font-size: 12px; }
+.deadline-day { min-height: 85px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+.deadline-day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.deadline-count { color: var(--accent); font-size: 12px; }
+.deadline-date-group { scroll-margin-top: 100px; padding-top: 12px; }
+.deadline-event { color: inherit; text-decoration: none; gap: 12px; }
+.deadline-event > div { min-width: 0; overflow-wrap: anywhere; }
+.deadline-event small { display: block; }
+.deadline-event:hover { background: var(--surface-hover); }
+.deadline-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 600px) {
+    .deadline-grid { gap: 3px; }
+    .deadline-day { min-height: 66px; padding: 6px 3px; text-align: center; }
+    .deadline-count span { display: none; }
+    .deadline-month { gap: 8px; flex-wrap: wrap; }
+    .deadline-month h2 { font-size: 18px; }
+    .deadline-lists { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .deadline-event { flex-wrap: wrap; }
+}

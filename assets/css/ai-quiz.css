@@ -40,3 +40,8 @@
 .builder-page .ai-quiz-content .button { font-size: 11px; padding: 9px 12px; }
 @media (max-width: 760px) { .builder-page .ai-quiz-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (max-width: 400px) { .builder-page .ai-quiz-fields { grid-template-columns: minmax(0, 1fr); } }
+
+/* Separate classroom navigation from the activity template cards. */
+body.ui-refined.builder-page .builder-template-actions {
+    margin-top: 24px;
+}
