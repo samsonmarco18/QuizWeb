@@ -58,7 +58,9 @@ try:
     assert 'value="90"' in page and 'value="85"' in page and 'value="95"' in page
     # Students continue to see their published 80 until the teacher reviews and publishes.
     student_page=request(student,'grades.php?classroom_id=200&period=prelim')
-    assert 'name="manual_scores' not in student_page and 'aria-current="page">Prelim' in student_page
+    assert 'name="manual_scores' not in student_page and 'academic-period-tabs' not in student_page
+    assert 'academic-period-label' not in student_page
+    assert 'academic-period-tabs' in overview
     subject_detail=re.search(r'<dialog[^>]*id="subject-200".*?</dialog>',student_page,re.S).group(0)
     assert '90.00 / 100.00' not in subject_detail
     action(teacher,200,'review'); action(teacher,200,'publish',{'confirm':'yes','final_confirm':'yes'})
