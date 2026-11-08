@@ -42,7 +42,20 @@ const assert = require('node:assert/strict');
   const contentEnd=w.chalkLoading.begin('Loading...',0,'grades'); await wait(10);
   assert.equal(d.querySelector('.chalk-loading').style.left,'212px','Blur must start at the sidebar edge');
   assert.equal(d.querySelector('.chalk-loading').style.top,'64px','Blur must start below the header');
-  contentEnd(); w.chalkLoading.reset(); sidebar.remove(); header.remove();
+  contentEnd(); w.chalkLoading.reset();
+  const desktopWidth = w.innerWidth;
+  for (const width of [375, 483, 760]) {
+    w.innerWidth = width;
+    d.body.classList.add('sidebar-open');
+    const mobileEnd = w.chalkLoading.begin('Loading...', 0, 'classroom'); await wait(10);
+    assert.equal(d.querySelector('.chalk-loading').style.left, '0px', 'Mobile sidebar must not offset the loader');
+    d.body.classList.remove('sidebar-open');
+    w.dispatchEvent(new w.Event('resize'));
+    assert.equal(d.querySelector('.chalk-loading').style.left, '0px', 'Closing the mobile sidebar keeps the loader full width');
+    mobileEnd(); w.chalkLoading.reset();
+  }
+  w.innerWidth = desktopWidth;
+  sidebar.remove(); header.remove();
   const saving = w.fetch('/save.php',{method:'POST'});
   await wait(200); assert(loading(), 'Pending save needs visible feedback');
   resolve({ok:true}); await saving; await wait(150); assert(loading(), 'Fast save should finish its loading animation'); await wait(850); assert(!loading(), 'Successful save must clear feedback');

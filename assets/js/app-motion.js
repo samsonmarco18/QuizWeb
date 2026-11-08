@@ -12,7 +12,7 @@
     const header = document.querySelector('.site-header');
     const side = sidebar?.getBoundingClientRect();
     const top = header?.getBoundingClientRect();
-    notice.style.left = `${side && side.width > 0 && side.left <= 0 && side.right > 0 ? Math.min(window.innerWidth, side.right) : 0}px`;
+    notice.style.left = `${window.innerWidth > 760 && side && side.width > 0 && side.left <= 0 && side.right > 0 ? Math.min(window.innerWidth, side.right) : 0}px`;
     notice.style.top = `${top && top.height > 0 ? Math.max(0, top.bottom) : 0}px`;
   }
   const scenes = {
