@@ -50,6 +50,13 @@ section.admin-report-summary .admin-report-copy > span { color: var(--text-secon
 section.admin-report-summary .admin-report-card > .nav-icon { flex: 0 0 17px; width: 17px; height: 17px; margin-top: 3px; color: var(--accent); }
 section.admin-report-summary a.admin-report-card:hover, section.admin-report-summary a.admin-report-card:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--surface) 85%, var(--accent) 15%); }
 body.admin-page .classroom-sidebar-link .nav-icon { color: var(--accent); }
+body.admin-page .panel > .action-row { gap: 14px; margin-top: 22px; padding-bottom: 4px; }
+body.admin-page .admin-google-auth-form .action-row { gap: 14px; margin-top: 12px; }
+body.admin-page .admin-google-remove-form { margin-top: 16px; }
+body.admin-page .admin-google-remove-form .button { margin: 0; }
+body.admin-page .admin-mailer-test-form { margin-bottom: 18px; }
+body.admin-page .admin-mailer-test-form .action-row { margin-top: 12px; }
+body.admin-page .admin-mailer-remove-form { gap: 14px; margin-top: 16px; }
 @media (max-width: 900px) { .admin-overview-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { section.admin-report-summary .admin-report-grid { grid-template-columns: 1fr; } .admin-overview-stats .stat-card { padding: 12px; } }
 @media (max-width: 760px) { .admin-form-grid { grid-template-columns: 1fr; } .admin-table-wrap { border-radius: 12px; } }
