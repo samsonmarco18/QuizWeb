@@ -143,16 +143,16 @@ render_header('Administration', 'admin-page', ['/QuizWeb/assets/css/admin-ai.css
     <?php
     $overviewStats = [
         ['users', 'Accounts', 'users'], ['classrooms', 'Classes', 'graduation'], ['attempts', 'Student attempts', 'poll'],
-        ['audit_logs', 'System reports', 'document'],
     ];
     $reportStats = [
-        ['Failed sign-ins', "SELECT COUNT(*) FROM audit_logs WHERE action = 'login_failed'", 'security'],
-        ['Grade changes', 'SELECT COUNT(*) FROM grade_changes', 'chart'],
-        ['Grade releases', "SELECT COUNT(*) FROM grade_changes WHERE action = 'publish'", 'check'],
+        ['Failed sign-ins', (int) db()->query("SELECT COUNT(*) FROM audit_logs WHERE action = 'login_failed'")->fetchColumn(), 'security', 'security', 'Unsuccessful login attempts recorded by the system.'],
+        ['Grade changes', (int) db()->query('SELECT COUNT(*) FROM grade_changes')->fetchColumn(), 'chart', 'grade_logs', 'Recorded grade edits and corrections made by teachers.'],
+        ['Grade releases', (int) db()->query("SELECT COUNT(*) FROM grade_changes WHERE action = 'publish'")->fetchColumn(), 'check', 'releases', 'Grade publication events that made results available to students.'],
+        ['Audit log events', (int) db()->query('SELECT COUNT(*) FROM audit_logs')->fetchColumn(), 'document', 'logs', 'Account and system activity recorded for administrative review.'],
     ];
     ?>
     <div class="learning-summary-grid admin-overview-stats"><?php foreach ($overviewStats as [$table, $label, $icon]): ?><article class="stat-card"><span class="admin-stat-icon"><?php echo nav_icon($icon); ?></span><strong><?php echo (int) db()->query('SELECT COUNT(*) FROM ' . $table)->fetchColumn(); ?></strong><span><?php echo esc($label); ?></span></article><?php endforeach; ?></div>
-    <section class="admin-report-summary" aria-labelledby="admin-report-summary-title"><div class="section-heading"><div><span class="eyebrow">Reports</span><h2 id="admin-report-summary-title">Activity summary</h2><p>Totals across the reports available to administrators.</p></div></div><div class="admin-report-grid"><?php foreach ($reportStats as [$label, $sql, $icon]): ?><a class="admin-report-card" href="/QuizWeb/admin.php?tab=<?php echo $label === 'Failed sign-ins' ? 'security' : ($label === 'Grade changes' ? 'grade_logs' : 'releases'); ?>"><span class="admin-stat-icon"><?php echo nav_icon($icon); ?></span><span><strong><?php echo (int) db()->query($sql)->fetchColumn(); ?></strong><small><?php echo esc($label); ?></small></span><?php echo nav_icon('arrow-right'); ?></a><?php endforeach; ?></div></section>
+    <section class="admin-report-summary" aria-labelledby="admin-report-summary-title"><div class="section-heading"><div><span class="eyebrow">Reports</span><h2 id="admin-report-summary-title">Activity summary</h2><p>A quick read of the reports available to administrators.</p></div></div><div class="admin-report-grid"><?php foreach ($reportStats as [$label, $count, $icon, $tab, $description]): ?><a class="admin-report-card" href="/QuizWeb/admin.php?tab=<?php echo esc($tab); ?>"><span class="admin-stat-icon"><?php echo nav_icon($icon); ?></span><span class="admin-report-copy"><strong><?php echo $count; ?> <small><?php echo esc($label); ?></small></strong><span><?php echo esc($description); ?></span></span><?php echo nav_icon('arrow-right'); ?></a><?php endforeach; ?></div></section>
     <div class="action-row"><a class="button button-primary" href="/QuizWeb/admin.php?tab=users">Manage users</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=ai">Configure AI quizzes</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=security">Review failed sign-ins</a></div>
 <?php elseif ($view === 'ai'): ?>
     <?php require dirname(__DIR__, 3) . '/includes/admin_ai_view.php'; ?>

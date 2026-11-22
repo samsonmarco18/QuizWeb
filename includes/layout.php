@@ -74,7 +74,12 @@ function nav_links(?array $user): array
 
 function nav_icon(string $name): string
 {
-    $name = ['Home'=>'Dashboard','Activities'=>'document','Academic Records'=>'chart','Practice & Progress'=>'Focus Practice','Achievements'=>'trophy'][$name] ?? $name;
+    $name = [
+        'Home' => 'Dashboard', 'Administration' => 'Dashboard', 'Users' => 'users',
+        'Security' => 'security', 'Academic Settings' => 'settings',
+        'Activities' => 'document', 'Academic Records' => 'chart',
+        'Practice & Progress' => 'Focus Practice', 'Achievements' => 'trophy',
+    ][$name] ?? $name;
     if ($name === 'My Grades') $name = 'chart';
     if ($name === 'My Classes') $name = 'Focus Practice';
     $paths = [
@@ -82,7 +87,8 @@ function nav_icon(string $name): string
         'Join Class' => '<circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6m3 4a6 6 0 0 1 3 5v2"/>',
         'Focus Practice' => '<path d="M12 5v16M12 5C8 2 5 2 2 4v16c3-2 6-2 10 1 4-3 7-3 10-1V4c-3-2-6-2-10 1Z"/>',
         'user' => '<circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3Z"/>',
-        'settings' => '<circle cx="12" cy="7" r="4"/><path d="M5 22v-3a7 7 0 0 1 14 0v3"/>',
+        'settings' => '<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .9v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.9l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.9-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .9-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.9v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .9l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .9 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.9 3Z"/>',
+        'users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2m8-13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm4 2a4 4 0 0 0 0-8m2 11a4 4 0 0 1 4 4v2"/>',
         'moon' => '<path d="M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z"/>',
         'logout' => '<path d="M10 3H4v18h6m5-14 5 5-5 5M8 12h12"/>',
         'chevron' => '<path d="m6 9 6 6 6-6"/>',
@@ -124,6 +130,7 @@ function nav_icon(string $name): string
         'graduation' => '<path d="m2 8 10-5 10 5-10 5L2 8Zm4 2v7c4 3 8 3 12 0v-7m4-2v8"/>',
         'plus' => '<path d="M12 4v16M4 12h16"/>',
         'info' => '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+        'security' => '<path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/>',
     ];
     return '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['user']) . '</svg>';
 }
@@ -238,7 +245,7 @@ function render_header(string $title, string $pageClass = '', array $styles = []
         <aside class="classroom-sidebar" id="classroom-sidebar" aria-label="Classrooms">
             <?php $sidebarClassrooms = $user['role'] === 'admin' ? [] : user_classrooms($user); ?>
             <?php if ($user['role'] === 'admin'): ?>
-                <h2>Administration</h2><nav aria-label="System navigation"><?php foreach (['overview' => 'Overview', 'users' => 'Users', 'classes' => 'Classes', 'ai' => 'AI settings', 'google_auth' => 'Google sign-in', 'mailer' => 'Mailer', 'security' => 'Security', 'logs' => 'Audit logs', 'grade_logs' => 'Grade audit', 'releases' => 'Grade releases'] as $key => $label): ?><a class="classroom-sidebar-link<?php echo ($_GET['tab'] ?? 'overview') === $key ? ' is-active' : ''; ?>" href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>"><?php echo esc($label); ?></a><?php endforeach; ?></nav>
+                <h2>Administration</h2><nav aria-label="System navigation"><?php foreach (['overview' => ['Overview', 'Dashboard'], 'users' => ['Users', 'user'], 'classes' => ['Classes', 'graduation'], 'ai' => ['AI settings', 'settings'], 'google_auth' => ['Google sign-in', 'user'], 'mailer' => ['Mailer', 'send'], 'security' => ['Security', 'security'], 'logs' => ['Audit logs', 'document'], 'grade_logs' => ['Grade audit', 'chart'], 'releases' => ['Grade releases', 'check']] as $key => [$label, $icon]): ?><a class="classroom-sidebar-link<?php echo ($_GET['tab'] ?? 'overview') === $key ? ' is-active' : ''; ?>" href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>"><?php echo nav_icon($icon); ?><span><?php echo esc($label); ?></span></a><?php endforeach; ?></nav>
             <?php elseif (($user['role'] ?? '') === 'student'): ?>
                 <h2>Classrooms</h2>
                 <details class="student-classes-dropdown" open>
