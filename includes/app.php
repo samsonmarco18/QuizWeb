@@ -822,11 +822,17 @@ function register_user(string $name, string $email, string $password, string $ro
     return $user;
 }
 
-function attempt_login(string $email, string $password): ?array
+function attempt_login(string $email, string $password, ?string &$failureReason = null): ?array
 {
+    $failureReason = null;
     $user = find_user_by_email($email);
 
-    if (!$user || ($user['account_status'] ?? 'active') !== 'active') {
+    if ($user && ($user['account_status'] ?? 'active') !== 'active') {
+        $failureReason = 'suspended';
+        record_audit('login_failed', null, (int) $user['id']);
+        return null;
+    }
+    if (!$user) {
         record_audit('login_failed', null, $user ? (int) $user['id'] : null);
         return null;
     }

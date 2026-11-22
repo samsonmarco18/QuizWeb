@@ -14,10 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_form_csrf();
     $email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
     $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
-    $user = attempt_login($email, $password);
+    $failureReason = null;
+    $user = attempt_login($email, $password, $failureReason);
 
     if (!$user) {
-        $errors[] = 'Invalid email or password.';
+        $errors[] = $failureReason === 'suspended'
+            ? 'This account is suspended. Contact an administrator for help.'
+            : 'Invalid email or password.';
     } else {
         login_user($user);
         flash_set('success', 'Welcome back, ' . $user['name'] . '!');
