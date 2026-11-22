@@ -136,12 +136,23 @@ $googleConfig = $view === 'google_auth' ? google_oauth_config() : [];
 header('Cache-Control: no-store');
 render_header('Administration', 'admin-page', ['/QuizWeb/assets/css/admin-ai.css', '/QuizWeb/assets/css/admin.css']);
 ?>
-<header class="page-heading"><div><span class="eyebrow">System administration</span><h1><?php echo esc($views[$view]); ?></h1><p>Manage accounts and review system activity.</p></div><a class="button button-secondary" href="/QuizWeb/admin.php">Back to Overview</a></header>
-<nav class="classroom-tabs" aria-label="Administration"><?php foreach ($views as $key => $label): ?><a href="/QuizWeb/admin.php?tab=<?php echo esc($key); ?>" <?php echo $view === $key ? 'class="is-active" aria-current="page"' : ''; ?>><?php echo esc($label); ?></a><?php endforeach; ?></nav>
+<header class="page-heading"><div><span class="eyebrow">System administration</span><h1><?php echo esc($views[$view]); ?></h1><p>Manage accounts and review system activity.</p></div><?php if ($view !== 'overview'): ?><a class="button button-secondary" href="/QuizWeb/admin.php">Back to Overview</a><?php endif; ?></header>
 <?php if ($error): ?><p class="inline-error" role="alert"><?php echo esc($error); ?></p><?php endif; ?>
 <section class="glass panel">
 <?php if ($view === 'overview'): ?>
-    <div class="learning-summary-grid"><?php foreach (['users' => 'Accounts', 'classrooms' => 'Classes', 'attempts' => 'Student attempts'] as $table => $label): ?><article class="stat-card"><strong><?php echo (int) db()->query('SELECT COUNT(*) FROM ' . $table)->fetchColumn(); ?></strong><span><?php echo esc($label); ?></span></article><?php endforeach; ?></div>
+    <?php
+    $overviewStats = [
+        ['users', 'Accounts', 'users'], ['classrooms', 'Classes', 'graduation'], ['attempts', 'Student attempts', 'poll'],
+        ['audit_logs', 'System reports', 'document'],
+    ];
+    $reportStats = [
+        ['Failed sign-ins', "SELECT COUNT(*) FROM audit_logs WHERE action = 'login_failed'", 'security'],
+        ['Grade changes', 'SELECT COUNT(*) FROM grade_changes', 'chart'],
+        ['Grade releases', "SELECT COUNT(*) FROM grade_changes WHERE action = 'publish'", 'check'],
+    ];
+    ?>
+    <div class="learning-summary-grid admin-overview-stats"><?php foreach ($overviewStats as [$table, $label, $icon]): ?><article class="stat-card"><span class="admin-stat-icon"><?php echo nav_icon($icon); ?></span><strong><?php echo (int) db()->query('SELECT COUNT(*) FROM ' . $table)->fetchColumn(); ?></strong><span><?php echo esc($label); ?></span></article><?php endforeach; ?></div>
+    <section class="admin-report-summary" aria-labelledby="admin-report-summary-title"><div class="section-heading"><div><span class="eyebrow">Reports</span><h2 id="admin-report-summary-title">Activity summary</h2><p>Totals across the reports available to administrators.</p></div></div><div class="admin-report-grid"><?php foreach ($reportStats as [$label, $sql, $icon]): ?><a class="admin-report-card" href="/QuizWeb/admin.php?tab=<?php echo $label === 'Failed sign-ins' ? 'security' : ($label === 'Grade changes' ? 'grade_logs' : 'releases'); ?>"><span class="admin-stat-icon"><?php echo nav_icon($icon); ?></span><span><strong><?php echo (int) db()->query($sql)->fetchColumn(); ?></strong><small><?php echo esc($label); ?></small></span><?php echo nav_icon('arrow-right'); ?></a><?php endforeach; ?></div></section>
     <div class="action-row"><a class="button button-primary" href="/QuizWeb/admin.php?tab=users">Manage users</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=ai">Configure AI quizzes</a><a class="button button-secondary" href="/QuizWeb/admin.php?tab=security">Review failed sign-ins</a></div>
 <?php elseif ($view === 'ai'): ?>
     <?php require dirname(__DIR__, 3) . '/includes/admin_ai_view.php'; ?>
