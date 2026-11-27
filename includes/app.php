@@ -223,7 +223,7 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
         'description' => $classroom['description'] ?? '',
         'code' => $classroom['code'],
         'student_ids' => db_json_encode(array_values($classroom['student_ids'] ?? [])),
-        'student_statuses' => db_json_encode((object) ($classroom['student_statuses'] ?? [])),
+        'student_statuses' => json_encode((object) ($classroom['student_statuses'] ?? []), JSON_UNESCAPED_SLASHES),
         'quizzes' => db_json_encode(array_values($classroom['quizzes'] ?? [])),
         'announcements' => db_json_encode(array_values($classroom['announcements'] ?? [])),
         'chat_messages' => db_json_encode(array_values($classroom['chat_messages'] ?? [])),
