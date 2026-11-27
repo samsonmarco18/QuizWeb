@@ -223,6 +223,7 @@ function insert_classroom_record(PDO $pdo, array $classroom): void
         'description' => $classroom['description'] ?? '',
         'code' => $classroom['code'],
         'student_ids' => db_json_encode(array_values($classroom['student_ids'] ?? [])),
+        'student_statuses' => db_json_encode((object) ($classroom['student_statuses'] ?? [])),
         'quizzes' => db_json_encode(array_values($classroom['quizzes'] ?? [])),
         'announcements' => db_json_encode(array_values($classroom['announcements'] ?? [])),
         'chat_messages' => db_json_encode(array_values($classroom['chat_messages'] ?? [])),
@@ -302,6 +303,7 @@ function hydrate_classroom(array $row): array
         'description' => $row['description'] ?? '',
         'code' => $row['code'],
         'student_ids' => array_map('intval', db_json_decode($row['student_ids'] ?? '[]')),
+        'student_statuses' => (array) db_json_decode($row['student_statuses'] ?? '{}'),
         'quizzes' => db_json_decode($row['quizzes'] ?? '[]'),
         'announcements' => db_json_decode($row['announcements'] ?? '[]'),
         'chat_messages' => db_json_decode($row['chat_messages'] ?? '[]'),
@@ -1440,7 +1442,8 @@ function classroom_belongs_to_user(array $classroom, array $user): bool
         return (int) $classroom['teacher_id'] === (int) $user['id'];
     }
 
-    return $user['role'] === 'student' && in_array((int) $user['id'], $classroom['student_ids'] ?? [], true);
+    if ($user['role'] !== 'student' || !in_array((int) $user['id'], $classroom['student_ids'] ?? [], true)) return false;
+    return classroom_student_status($classroom, (int) $user['id'])['status'] === 'active';
 }
 
 function can_view_attempt(array $classroom, array $attempt, array $user): bool
@@ -1475,6 +1478,46 @@ function classroom_students(array $classroom): array
     return array_values(array_filter(array_map(function (int $id) {
         return find_user_by_id($id);
     }, $studentIds)));
+}
+
+function classroom_student_status(array $classroom, int $studentId): array
+{
+    $status = (array) ($classroom['student_statuses'][(string) $studentId] ?? []);
+    return [
+        'status' => ($status['status'] ?? 'active') === 'suspended' ? 'suspended' : 'active',
+        'reason' => is_string($status['reason'] ?? null) ? $status['reason'] : '',
+    ];
+}
+
+function classroom_student_action(PDO $pdo, array $classroom, array $teacher, int $studentId, string $action, string $reason): void
+{
+    if ($teacher['role'] !== 'teacher' || (int) $classroom['teacher_id'] !== (int) $teacher['id']) throw new RuntimeException('Only this classroom teacher can manage students.');
+    if (!in_array($action, ['suspend', 'reinstate', 'remove'], true)) throw new InvalidArgumentException('Choose a valid student action.');
+    if (mb_strlen(trim($reason)) < 3 || mb_strlen(trim($reason)) > 500) throw new InvalidArgumentException('Enter a reason between 3 and 500 characters.');
+    $reason = trim($reason);
+    $student = find_user_by_id($studentId);
+    if (!$student || ($student['role'] ?? '') !== 'student' || !in_array($studentId, $classroom['student_ids'], true)) throw new InvalidArgumentException('That student is no longer enrolled in this class.');
+    $classroom['student_statuses'] = (array) ($classroom['student_statuses'] ?? []);
+    if ($action === 'remove') {
+        $classroom['student_ids'] = array_values(array_filter($classroom['student_ids'], static fn($id) => (int) $id !== $studentId));
+        unset($classroom['student_statuses'][(string) $studentId]);
+    } else {
+        $classroom['student_statuses'][(string) $studentId] = ['status' => $action === 'suspend' ? 'suspended' : 'active', 'reason' => $reason];
+    }
+    $classroom['updated_at'] = now_iso();
+    $pdo->beginTransaction();
+    try {
+        insert_classroom_record($pdo, $classroom);
+        $notice = $pdo->prepare('INSERT INTO student_notifications (student_id, classroom_id, classroom_name, title, body, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+        $label = $action === 'remove' ? 'removed from' : ($action === 'suspend' ? 'suspended in' : 'reinstated in');
+        $notice->execute([$studentId, (int) $classroom['id'], $classroom['name'], 'Class membership update', $teacher['name'] . ' ' . $label . ' ' . $classroom['name'] . '. Reason: ' . $reason, now_iso()]);
+        $audit = $pdo->prepare('INSERT INTO audit_logs (actor_id, target_id, action, occurred_at) VALUES (?, ?, ?, ?)');
+        $audit->execute([(int) $teacher['id'], $studentId, 'class_student_' . $action, now_iso()]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
 }
 
 function classroom_quiz(array $classroom, int $quizId): ?array

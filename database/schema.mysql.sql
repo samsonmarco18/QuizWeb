@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS classrooms (
     description TEXT NOT NULL,
     code VARCHAR(20) NOT NULL UNIQUE,
     student_ids JSON NOT NULL,
+    student_statuses JSON NOT NULL,
     quizzes JSON NOT NULL,
     announcements JSON NOT NULL,
     chat_messages JSON NOT NULL,
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS classrooms (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 ALTER TABLE classrooms ADD COLUMN IF NOT EXISTS lifecycle_state VARCHAR(20) NOT NULL DEFAULT 'active';
+ALTER TABLE classrooms ADD COLUMN IF NOT EXISTS student_statuses JSON NOT NULL;
 
 -- ATTEMPTS: scores, submitted answers, and historical quiz snapshots
 CREATE TABLE IF NOT EXISTS attempts (
@@ -136,6 +138,17 @@ CREATE TABLE IF NOT EXISTS academic_reminders (
     quiz_id BIGINT NOT NULL, student_id BIGINT NOT NULL, teacher_id BIGINT NOT NULL,
     body TEXT NOT NULL, created_at VARCHAR(40) NOT NULL,
     INDEX idx_academic_reminders_student (classroom_id, student_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS student_notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT NOT NULL,
+    classroom_id BIGINT NOT NULL,
+    classroom_name VARCHAR(190) NOT NULL,
+    title VARCHAR(190) NOT NULL,
+    body TEXT NOT NULL,
+    created_at VARCHAR(40) NOT NULL,
+    INDEX idx_student_notifications_student (student_id, id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS activity_submissions (

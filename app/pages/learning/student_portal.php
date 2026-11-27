@@ -16,6 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     catch (Throwable $exception) { error_log('Activity submission failed: ' . $exception->getMessage()); $error = 'Could not save your submission. Your answer is still here; reselect files and try again.'; }
 }
 $classes = student_classrooms((int) $user['id']);
+$noticeId = filter_var($_GET['notice'] ?? null, FILTER_VALIDATE_INT);
+$membershipNotice = null;
+if ($noticeId) {
+    $noticeQuery = db()->prepare('SELECT classroom_name, title, body, created_at FROM student_notifications WHERE id = ? AND student_id = ?');
+    $noticeQuery->execute([$noticeId, (int) $user['id']]);
+    $membershipNotice = $noticeQuery->fetch() ?: null;
+}
 $activities = portal_activities($classes, (int) $user['id']);
 $attempts = student_attempts((int) $user['id']);
 $rewards = portal_rewards($attempts);
@@ -35,6 +42,7 @@ render_header('Student portal', 'student-page student-portal-page', ['/QuizWeb/a
 <header class="page-heading"><div><span class="eyebrow">Student portal</span><h1><?php echo esc($views[$view]); ?></h1><p>Your classrooms, learning activities, and academic progress.</p></div><a class="button button-secondary" href="/QuizWeb/join.php">Join class</a></header>
 <nav class="portal-nav" aria-label="Student portal"><a href="/QuizWeb/student_portal.php" <?php echo $view === 'home' ? 'aria-current="page"' : ''; ?>>Home</a><a href="/QuizWeb/classes.php">My classes</a><?php foreach (array_slice($views,1,null,true) as $key => $label): ?><a href="/QuizWeb/student_portal.php?view=<?php echo esc($key); ?>" <?php echo $view === $key ? 'aria-current="page"' : ''; ?>><?php echo esc($label); ?></a><?php endforeach; ?><a href="/QuizWeb/deadlines.php">Deadlines</a><a href="/QuizWeb/grades.php">Academic records</a><a href="/QuizWeb/profile.php">Profile</a></nav>
 <?php if ($error): ?><p class="inline-error" role="alert"><?php echo esc($error); ?></p><?php endif; ?>
+<?php if ($membershipNotice): ?><section class="glass panel" role="status"><span class="eyebrow"><?php echo esc($membershipNotice['classroom_name']); ?> · <?php echo esc(format_date($membershipNotice['created_at'])); ?></span><h2><?php echo esc($membershipNotice['title']); ?></h2><p><?php echo esc($membershipNotice['body']); ?></p></section><?php endif; ?>
 <?php if ($view === 'home'): ?>
 <div class="portal-counters"><?php foreach (['Pending activities'=>count($pending),'Due in 48 hours'=>$dueSoon,'Enrolled subjects'=>count($classes),'Released subjects'=>count($releases)] as $label=>$value): ?><article class="glass"><span><?php echo esc($label); ?></span><strong><?php echo $value; ?></strong></article><?php endforeach; ?></div>
 <div class="portal-grid"><section class="glass panel"><div class="portal-heading"><h2>Next activities</h2><a href="/QuizWeb/student_portal.php?view=activities">View all</a></div><?php foreach (array_slice($pending,0,5) as $activity): ?><article class="portal-row"><div><strong><?php echo esc($activity['name']); ?></strong><small><?php echo esc($activity['classroom']['subject'] . ' · ' . $activity['component']); ?><?php echo $activity['due'] ? ' · ' . esc(format_date($activity['due'])) : ''; ?></small></div><a class="button button-secondary" href="<?php echo esc($activity['url']); ?>"><?php echo esc($activity['status']); ?></a></article><?php endforeach; if (!$pending): ?><p class="muted">You're caught up. Open a classroom or try practice.</p><?php endif; ?></section>

@@ -3,6 +3,18 @@
 function navbar_notifications(array $user, array $classrooms): array
 {
     $items = [];
+    $statement = db()->prepare('SELECT id, classroom_id, classroom_name, title, body, created_at FROM student_notifications WHERE student_id = ? ORDER BY id DESC LIMIT 20');
+    $statement->execute([(int) $user['id']]);
+    foreach ($statement->fetchAll() as $notice) {
+        $items[] = [
+            'id' => 'student-notice:' . (int) $notice['id'],
+            'title' => $notice['title'],
+            'context' => $notice['body'],
+            'at' => $notice['created_at'],
+            'icon' => 'bell',
+            'href' => '/QuizWeb/student_portal.php?notice=' . (int) $notice['id'],
+        ];
+    }
     foreach ($classrooms as $classroom) {
         if (!classroom_belongs_to_user($classroom, $user) || classroom_is_archived($user, (int) $classroom['id'])) continue;
         $classId = (int) $classroom['id'];
