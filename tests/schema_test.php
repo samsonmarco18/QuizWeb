@@ -33,10 +33,10 @@ class CapturedSchemaPDO extends PDO {
 }
 $pdo = new CapturedSchemaPDO();
 ensure_database_schema($pdo);
-foreach (['users', 'classrooms', 'attempts', 'audit_logs', 'gradebooks', 'grade_changes'] as $table) {
+foreach (['users', 'classrooms', 'attempts', 'audit_logs', 'gradebooks', 'grade_changes', 'student_notifications'] as $table) {
     if (!str_contains($pdo->executed, 'CREATE TABLE IF NOT EXISTS ' . $table)) throw new RuntimeException('Missing table: ' . $table);
 }
-if (!str_contains($pdo->executed, 'ADD COLUMN IF NOT EXISTS profile') || !str_contains($pdo->executed, 'ADD COLUMN IF NOT EXISTS chat_messages')) throw new RuntimeException('Legacy schema upgrades missing.');
+if (!str_contains($pdo->executed, 'ADD COLUMN IF NOT EXISTS profile') || !str_contains($pdo->executed, 'ADD COLUMN IF NOT EXISTS chat_messages') || !str_contains($pdo->executed, 'ADD COLUMN IF NOT EXISTS student_statuses')) throw new RuntimeException('Legacy schema upgrades missing.');
 if (str_contains($pdo->executed, 'admin@chalk.local') || str_contains($pdo->executed, 'INSERT INTO users')) throw new RuntimeException('Startup must not create the sample account.');
 $version = $pdo->query('SELECT version FROM quizweb_schema_state WHERE id = 1')->fetchColumn();
 $executed = $pdo->executed;

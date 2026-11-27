@@ -212,10 +212,10 @@ FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = seed.email);
 
 INSERT INTO classrooms (id, teacher_id, name, subject, description, code,
-                        student_ids, quizzes, announcements, chat_messages, created_at, updated_at)
+                        student_ids, student_statuses, quizzes, announcements, chat_messages, created_at, updated_at)
 SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM classrooms), teacher.id,
        'Test Classroom', 'General Education', 'Shared classroom for testing teacher and student logins.',
-       'TESTCLASS', jsonb_build_array(student1.id, student2.id),
+       'TESTCLASS', jsonb_build_array(student1.id, student2.id), '{}'::jsonb,
        '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, CURRENT_TIMESTAMP::text, CURRENT_TIMESTAMP::text
 FROM users teacher, users student1, users student2
 WHERE teacher.email = 'teacher@chalk.test' AND teacher.role = 'teacher'
