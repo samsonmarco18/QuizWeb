@@ -37,7 +37,9 @@ try {
         $pdo->query('SELECT pg_advisory_unlock(724103826)');
     }
 } catch (Throwable $error) {
-    // Do not log connection credentials or full PDO connection errors.
-    fwrite(STDERR, "Render database/account bootstrap failed. Check the service's PostgreSQL connection and account conflicts.\n");
+    // PDO connection errors can echo host/user details; report only a sanitized category and message.
+    $message = preg_replace('/(host|server|user|username|password|dbname|database)\s*[=:]\s*[^\s,;]+/i', '$1=[redacted]', $error->getMessage());
+    $message = preg_replace('/postgres(?:ql)?:\/\/[^\s]+/i', 'postgresql://[redacted]', $message ?? '');
+    fwrite(STDERR, 'Render database/account bootstrap failed (' . get_class($error) . '): ' . substr($message ?: 'Unknown provisioning error.', 0, 500) . "\n");
     exit(1);
 }
