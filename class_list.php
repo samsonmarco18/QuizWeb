@@ -23,6 +23,9 @@ usort($students, static fn($a, $b) => strcasecmp($a['name'], $b['name']));
 $GLOBALS['quizweb_current_classroom_id'] = $classroomId;
 render_header('Class list', 'class-list-page', ['/QuizWeb/assets/css/classroom.css', '/QuizWeb/assets/css/class-list.css']);
 ?>
+<script defer src="<?php echo esc(versioned_asset_url('/QuizWeb/assets/js/class-list.js')); ?>"></script>
+<?php
+?>
 <header class="page-heading">
     <div><span class="eyebrow"><?php echo esc($classroom['name']); ?></span><h1>Class list</h1><p><?php echo count($students); ?> enrolled student<?php echo count($students) === 1 ? '' : 's'; ?><?php if ($user['role'] === 'teacher'): ?> · Manage enrollment and send a reason with each update<?php endif; ?></p></div>
     <a class="button button-secondary" href="/QuizWeb/classroom.php?id=<?php echo $classroomId; ?>&amp;tab=overview">Back to classroom</a>
